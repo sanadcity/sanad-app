@@ -595,8 +595,6 @@ body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--t1);-webkit
   </div>
 </div>
 
-<div class="ov hid" id="sv-modal" style="align-items:center;justify-content:center;"></div>
-
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1011,8 +1009,8 @@ const rDash=()=>{
       <td style="font-family:monospace;color:var(--bl);font-weight:700;font-size:11px;">${p.id}</td>
       <td><div style="font-weight:700;">${p.ownerName}</div><div style="font-size:10px;color:var(--t3);">${p.city} · ${p.district}</div></td>
       <td style="font-size:11px;color:var(--t3);">${addedBy}</td>
-      <td>${pill(p.devStatus||"—",DSC[p.devStatus]||"#8896A4")}${!p.verified?`<span style="font-size:9px;font-weight:700;background:#FFF3CD;color:#B7770D;border:1px solid rgba(183,119,13,.3);border-radius:5px;padding:1px 6px;margin-right:4px;">قيد المراجعة</span>`:""}</td>
-      <td style="font-family:monospace;font-size:12px;color:var(--gold);font-weight:700;">${p.verified&&p.pricePerMeter&&p.area?fmtM(p.area*p.pricePerMeter):"—"}</td>
+      <td>${pill(p.devStatus||"—",DSC[p.devStatus]||"#8896A4")}</td>
+      <td style="font-family:monospace;font-size:12px;color:var(--gold);font-weight:700;">${p.pricePerMeter&&p.area?fmtM(p.area*p.pricePerMeter):"—"}</td>
       <td style="font-size:11px;color:var(--t3);">${p.createdAt||"—"}</td>
       <td><button class="btn btn-gh btn-xs" onclick="event.stopPropagation();openProj('${p.id}')">↗ فتح</button></td>
     </tr>`;
@@ -1052,12 +1050,12 @@ const rProjs=()=>{
     const dc=DSC[p.devStatus]||"#8896A4",r=10,circ=2*Math.PI*r;
     return`<div class="pc" onclick="openProj('${p.id}')">
       <div class="pc-top">
-        <div style="display:flex;flex-direction:column;gap:4px;">${pill(p.devStatus||"—",dc)}${!p.verified?`<span style="font-size:9px;font-weight:700;background:#FFF3CD;color:#B7770D;border:1px solid rgba(183,119,13,.3);border-radius:5px;padding:1px 6px;align-self:flex-start;">قيد المراجعة</span>`:""}</div>
-        ${p.verified?`<svg width="46" height="46">
+        <div>${pill(p.devStatus||"—",dc)}</div>
+        <svg width="46" height="46">
           <circle cx="23" cy="23" r="${r}" fill="none" stroke="var(--bdl)" stroke-width="3.5"/>
           <circle cx="23" cy="23" r="${r}" fill="none" stroke="${cc}" stroke-width="3.5" stroke-dasharray="${circ}" stroke-dashoffset="${circ*(1-comp/100)}" stroke-linecap="round" transform="rotate(-90 23 23)"/>
           <text x="23" y="27" text-anchor="middle" font-size="9" font-weight="700" fill="${cc}" font-family="monospace">${comp}%</text>
-        </svg>`:`<div style="width:46px;height:46px;border-radius:50%;border:2px dashed rgba(183,119,13,.4);display:flex;align-items:center;justify-content:center;"><span style="font-size:14px;">🕐</span></div>`}
+        </svg>
       </div>
       <div class="pc-title">${p.ownerName}</div>
       <div style="font-size:10px;color:var(--t3);margin-bottom:4px;">أضافه: ${p.byRole==="office"?"مكتب":p.byRole==="staff"?"موظف":"—"} · ${p.byName||"—"}</div>
@@ -1075,7 +1073,6 @@ const openProj=id=>{CPJ=id;const proj=(LS.g(K.p)||[]).find(p=>p.id===id);if(proj
 const rFile=()=>{
   const proj=(LS.g(K.p)||[]).find(p=>p.id===CPJ);
   if(!proj){$("fc").innerHTML="<div class='card cp'>المشروع غير موجود</div>";return;}
-  if(CU.role==="client"){rClientPortal(proj);return;}
   const comp=calcC(proj),cc=CC(comp),ci=curI(proj);
   const can=["admin","staff","office"].includes(CU.role);
   const canDel=CU.role==="admin";
@@ -1152,25 +1149,12 @@ const rFile=()=>{
     <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
       ${pill(proj.devStatus||"—",DSC[proj.devStatus]||"#8896A4")}
       ${proj.marketStatus&&proj.marketStatus!=="غير محدد"?pill(proj.marketStatus,MSC[proj.marketStatus]||"#8896A4"):""}
+      ${can?`<button class="btn btn-gh btn-sm" onclick="openEditProj('${proj.id}')">✎ تعديل</button>`:""}
+      ${can?`<button class="btn btn-gh btn-sm" onclick="openAddTask('${proj.id}')">☑ مهمة</button>`:""}
       <button class="btn btn-gh btn-sm" onclick="openSvc()">⚡ طلب خدمة</button>
       ${canDel?`<button class="btn btn-d btn-sm" onclick="delCP()">🗑 حذف</button>`:""}
     </div>
   </div>
-
-  <!-- VERIFICATION BANNER -->
-  ${!proj.verified?`
-  <div style="background:${proj.rejectedReason?"#FDF0F0":"#FFFBF0"};border:1.5px solid ${proj.rejectedReason?"rgba(192,57,43,.4)":"rgba(183,119,13,.4)"};border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-    <span style="font-size:22px;">${proj.rejectedReason?"⚠":"🕐"}</span>
-    <div style="flex:1;min-width:180px;">
-      <div style="font-size:13px;font-weight:800;color:${proj.rejectedReason?"var(--rd)":"var(--am)"};">${proj.rejectedReason?"تم إرجاع المشروع":"قيد المراجعة — في انتظار الاعتماد"}</div>
-      <div style="font-size:11px;color:var(--t3);margin-top:2px;">${proj.rejectedReason?`السبب: ${proj.rejectedReason}`:"سيتم مراجعة البيانات والمستندات وتفعيل الـ Score بعد الاعتماد"}</div>
-    </div>
-    ${canDel?`<div style="display:flex;gap:6px;">
-      <button class="btn btn-gr btn-sm" onclick="approveProj('${proj.id}')">✓ اعتماد المشروع</button>
-      <button class="btn btn-d btn-sm" onclick="rejectProj('${proj.id}')">✗ إرجاع</button>
-    </div>`:""}
-  </div>`:""}
-
 
   <!-- HEADER: dark with stage tabs -->
   <div style="background:linear-gradient(140deg,var(--n9),var(--n8));border-radius:16px;padding:20px 22px;margin-bottom:16px;">
@@ -1181,17 +1165,11 @@ const rFile=()=>{
         <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;">📍 ${proj.city} · ${proj.district} · أضافه: ${addedBy}</div>
       </div>
       <div style="display:flex;gap:16px;align-items:center;">
-        ${proj.verified?`
         <div style="text-align:center;">
           <div style="font-size:28px;font-weight:900;color:${cc};font-family:monospace;">${comp}%</div>
           <div style="font-size:9px;color:rgba(255,255,255,.35);">الإنجاز الكلي</div>
         </div>
-        <div style="width:1px;height:36px;background:rgba(255,255,255,.1);"></div>`:`
-        <div style="text-align:center;background:rgba(183,119,13,.15);border:1px solid rgba(183,119,13,.3);border-radius:10px;padding:8px 14px;">
-          <div style="font-size:11px;font-weight:700;color:var(--gold);">قيد المراجعة</div>
-          <div style="font-size:9px;color:rgba(255,255,255,.4);margin-top:2px;">Score غير مفعّل</div>
-        </div>
-        <div style="width:1px;height:36px;background:rgba(255,255,255,.1);"></div>`}
+        <div style="width:1px;height:36px;background:rgba(255,255,255,.1);"></div>
         <div style="text-align:center;">
           <div style="font-size:22px;font-weight:900;color:#fff;font-family:monospace;">${completedCount}/${proj.stages.length}</div>
           <div style="font-size:9px;color:rgba(255,255,255,.35);">مراحل مكتملة</div>
@@ -1225,31 +1203,6 @@ const rFile=()=>{
           <div style="height:100%;width:${sc}%;background:${stDone?"#1B7A4A":stage.color};border-radius:3px;transition:width .4s;"></div>
         </div>
       </div>
-
-      <!-- Stage Supervisor -->
-      ${(()=>{const sv=stage.supervisor;
-        if(!sv&&!can)return"";
-        if(!sv)return`<div style="background:var(--w);border:1px dashed var(--bdl);border-radius:12px;padding:13px;text-align:center;">
-          <div style="font-size:11px;color:var(--t3);margin-bottom:8px;">لم يُعيَّن مشرف لهذه المرحلة</div>
-          <button class="btn btn-gh btn-sm" onclick="openSupervisor('${stage.key}')">+ تعيين مشرف</button>
-        </div>`;
-        const initials=sv.name.split(" ").slice(0,2).map(w=>w[0]||"").join("");
-        return`<div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);">
-          <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.1em;margin-bottom:10px;">المشرف على المرحلة</div>
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-            <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--n8),var(--n7));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0;">${initials}</div>
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:13px;font-weight:800;color:var(--t1);">${sv.name}</div>
-              <div style="font-size:10px;color:var(--t3);">${sv.role||""}${sv.type==="external"?" · خارجي":""}</div>
-            </div>
-            ${can?`<button onclick="openSupervisor('${stage.key}')" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:18px;padding:2px;">✎</button>`:""}
-          </div>
-          <div style="display:flex;gap:6px;">
-            ${sv.phone?`<a href="tel:${sv.phone}" class="btn btn-gh btn-sm" style="flex:1;justify-content:center;">📞 تواصل</a>`:""}
-            ${sv.phone?`<a href="https://wa.me/2${sv.phone.replace(/\D/g,'')}" target="_blank" class="btn btn-gh btn-sm" style="flex:1;justify-content:center;">💬 واتساب</a>`:""}
-          </div>
-        </div>`;
-      })()}
 
       <!-- Project info -->
       <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;padding:15px;box-shadow:0 1px 3px rgba(0,0,0,.06);">
@@ -1308,243 +1261,78 @@ const rFile=()=>{
   $("fc").innerHTML=html;
 };
 
-// ── CLIENT PORTAL ──
-const rClientPortal=proj=>{
-  const comp=calcC(proj),cc=CC(comp),ci=curI(proj);
-  const allUploaded=proj.stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]).filter(d=>d.up);
-  const pendingDocs=proj.stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]).filter(d=>d.req&&!d.up);
-  const curStage=proj.stages[ci];
-  const waLink=LS.g(K.wa)||[];
-  const mainWa=waLink[0]?.phone||"201115509998";
-
-  // Stage timeline
-  const timeline=proj.stages.map((s,i)=>{
-    const all=[...(s.docs||[]),...(s.cd||[])];
-    const req=all.filter(d=>d.req);
-    const done=req.length>0&&req.every(d=>d.up);
-    const isCur=i===ci&&!done;
-    const clr=done?"#1B7A4A":isCur?"var(--gold)":"var(--bdl)";
-    const txt=done||isCur?"#fff":"var(--t3)";
-    return`<div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:60px;">
-      <div style="width:34px;height:34px;border-radius:50%;background:${clr};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:${txt};border:2px solid ${isCur?"var(--gold)":done?"#1B7A4A":"var(--bdl)"};">${done?"✓":i+1}</div>
-      <div style="font-size:8px;color:${isCur?"var(--gold)":done?"#1B7A4A":"var(--t3)"};text-align:center;max-width:60px;line-height:1.4;font-weight:${isCur||done?700:400};">${s.label}</div>
-    </div>${i<proj.stages.length-1?`<div style="flex:1;height:2px;background:${done?"#1B7A4A":"var(--bdl)"};margin-bottom:18px;min-width:8px;"></div>`:""}`;
-  }).join("");
-
-  const html=`
-  <!-- CLIENT PORTAL HEADER -->
-  <div style="background:var(--w);border:1px solid var(--bd);border-radius:14px;padding:16px 20px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-    <div style="display:flex;align-items:center;gap:10px;">
-      <button class="btn btn-gh btn-sm" onclick="showPage('projs')">← رجوع</button>
-      <div style="font-size:13px;font-weight:700;color:var(--t3);">بوابة العميل</div>
+const openEditProj=id=>{
+  const proj=(LS.g(K.p)||[]).find(p=>p.id===id);
+  if(!proj)return;
+  const el=document.createElement("div");
+  el.id="m-edit-proj";
+  el.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center;padding:16px;";
+  el.innerHTML=`
+  <div style="background:var(--w);border-radius:16px;padding:22px;width:480px;max-width:100%;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+      <div style="font-size:15px;font-weight:800;color:var(--t1);">تعديل بيانات المشروع</div>
+      <button onclick="document.getElementById('m-edit-proj').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--t3);">✕</button>
     </div>
-    <a href="https://wa.me/${mainWa}" target="_blank" class="btn btn-gr" style="text-decoration:none;background:#25D366;color:#fff;">💬 تواصل عبر واتساب</a>
-  </div>
-
-  <!-- PROJECT HERO -->
-  <div style="background:var(--w);border:1px solid var(--bd);border-radius:14px;padding:20px 24px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
-      <div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-          <span style="font-size:10px;font-family:monospace;color:var(--t3);">${proj.id}</span>
-          ${pill(proj.devStatus||"—",DSC[proj.devStatus]||"#8896A4")}
-          ${pill(proj.activity||"سكني","#4A1A6B")}
-        </div>
-        <div style="font-size:22px;font-weight:900;color:var(--t1);margin-bottom:4px;">${proj.ownerName}</div>
-        <div style="font-size:12px;color:var(--t3);">📍 ${proj.city}، ${proj.gov||""}، ${proj.district}</div>
-      </div>
-      ${proj.verified?`
-      <div style="background:linear-gradient(135deg,var(--n9),var(--n8));border-radius:12px;padding:14px 18px;text-align:center;min-width:100px;">
-        <div style="font-size:9px;color:var(--gold);font-weight:700;letter-spacing:.08em;margin-bottom:4px;">صحة المشروع</div>
-        <div style="font-size:28px;font-weight:900;color:${cc};font-family:monospace;">${comp}</div>
-        <div style="font-size:9px;color:rgba(255,255,255,.4);">/100</div>
-      </div>`:`
-      <div style="background:linear-gradient(135deg,#2a2206,#3d3408);border:1px solid rgba(183,119,13,.3);border-radius:12px;padding:14px 18px;text-align:center;min-width:100px;">
-        <div style="font-size:9px;color:var(--gold);font-weight:700;letter-spacing:.08em;margin-bottom:6px;">صحة المشروع</div>
-        <div style="font-size:20px;margin-bottom:4px;">🕐</div>
-        <div style="font-size:9px;color:rgba(255,255,255,.5);">قيد المراجعة</div>
-      </div>`}
+    <div class="fw">
+      <div class="fg"><label class="fl">اسم المالك <span class="rq">*</span></label><input class="fi" id="ep-name" value="${(proj.ownerName||"").replace(/"/g,"&quot;")}"/></div>
+      <div class="fg"><label class="fl">الرقم القومي</label><input class="fi" id="ep-nid" value="${proj.nationalId||""}" maxlength="14" placeholder="14 رقم"/></div>
     </div>
-
-    <!-- Pending review banner -->
-    ${!proj.verified?`<div style="background:${proj.rejectedReason?"#FDF0F0":"#FFFBF0"};border:1.5px solid ${proj.rejectedReason?"rgba(192,57,43,.35)":"rgba(183,119,13,.35)"};border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start;">
-      <span style="font-size:20px;">${proj.rejectedReason?"⚠":"🕐"}</span>
-      <div><div style="font-size:13px;font-weight:800;color:${proj.rejectedReason?"var(--rd)":"var(--am)"};">${proj.rejectedReason?"طلبك يحتاج تعديل":"طلبك قيد المراجعة"}</div>
-      <div style="font-size:11px;color:var(--t3);margin-top:2px;">${proj.rejectedReason?`ملاحظة الفريق: ${proj.rejectedReason}`:"جاري مراجعة بياناتك — سيتم التواصل معك خلال 48 ساعة لتأكيد الملف وتفعيل الـ Score"}</div></div>
-    </div>`:""}
-
-    <!-- Progress summary -->
-    <div style="background:var(--w2);border:1px solid var(--bdl);border-radius:10px;padding:14px 16px;margin-bottom:16px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
-        <div style="font-size:13px;font-weight:800;color:var(--t1);">ملخص الإنجاز</div>
-        <div style="font-size:10px;color:var(--t3);">آخر تحديث: ${proj.lastUpdated||proj.createdAt||"—"}</div>
-      </div>
-      ${proj.verified?`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-        <div style="font-size:30px;font-weight:900;color:${cc};font-family:monospace;">${comp}%</div>
-        <div style="flex:1;">
-          <div style="height:8px;background:var(--bdl);border-radius:4px;overflow:hidden;">
-            <div style="height:100%;width:${comp}%;background:linear-gradient(90deg,#1B7A4A,var(--gold));border-radius:4px;transition:width .5s;"></div>
-          </div>
-          <div style="font-size:10px;color:var(--t3);margin-top:4px;">${comp>=80?"مكتمل تقريباً":comp>=50?"في المنتصف":"في المراحل الأولى"} · المرحلة الحالية: <strong style="color:var(--t1);">${curStage?.label||"—"}</strong></div>
-        </div>
-      </div>`:`<div style="text-align:center;padding:12px;color:var(--t3);font-size:12px;">سيظهر الـ Score بعد اعتماد الملف من الفريق</div>`}
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
-        <div style="text-align:center;padding:8px;background:var(--w);border-radius:8px;border:1px solid var(--bdl);">
-          <div style="font-size:9px;color:var(--t3);margin-bottom:3px;">تاريخ البدء</div>
-          <div style="font-size:12px;font-weight:700;color:var(--t1);">${proj.createdAt||"—"}</div>
-        </div>
-        <div style="text-align:center;padding:8px;background:var(--w);border-radius:8px;border:1px solid var(--bdl);">
-          <div style="font-size:9px;color:var(--t3);margin-bottom:3px;">المستندات المرفوعة</div>
-          <div style="font-size:12px;font-weight:700;color:var(--gr);">${allUploaded.length} وثيقة ✓</div>
-        </div>
-        <div style="text-align:center;padding:8px;background:${pendingDocs.length?"var(--rdl)":"var(--grl)"};border-radius:8px;border:1px solid ${pendingDocs.length?"rgba(192,57,43,.15)":"rgba(27,122,74,.15)"};">
-          <div style="font-size:9px;color:var(--t3);margin-bottom:3px;">مستندات ناقصة</div>
-          <div style="font-size:12px;font-weight:700;color:${pendingDocs.length?"var(--rd)":"var(--gr)"};">${pendingDocs.length?pendingDocs.length+" مطلوب":"لا يوجد ✓"}</div>
-        </div>
-      </div>
+    <div class="fw">
+      <div class="fg"><label class="fl">البريد الإلكتروني</label><input class="fi" id="ep-email" type="email" value="${proj.ownerEmail||""}" placeholder="owner@email.com"/></div>
+      <div class="fg"><label class="fl">رقم الهاتف</label><input class="fi" id="ep-phone" value="${proj.phone||""}" placeholder="01xxxxxxxxx" dir="ltr"/></div>
     </div>
-
-    <!-- Stage timeline -->
-    <div style="font-size:12px;font-weight:800;color:var(--t1);margin-bottom:10px;">الجدول الزمني للمراحل</div>
-    <div style="display:flex;align-items:flex-start;overflow-x:auto;padding-bottom:6px;scrollbar-width:none;">
-      ${timeline}
+    <div class="fw">
+      <div class="fg"><label class="fl">حالة التطوير</label><select class="fs" id="ep-dev">${["قيد التخطيط","قيد الترخيص","قيد التنفيذ","مكتمل"].map(v=>`<option ${proj.devStatus===v?"selected":""}>${v}</option>`).join("")}</select></div>
+      <div class="fg"><label class="fl">حالة السوق</label><select class="fs" id="ep-mkt">${["غير محدد","للبيع","للإيجار","شراكة","تطوير","مغلق"].map(v=>`<option ${proj.marketStatus===v?"selected":""}>${v}</option>`).join("")}</select></div>
     </div>
-  </div>
-
-  <!-- INFO CARDS -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
-    <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);">
-      <div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:10px;letter-spacing:.07em;">بيانات العقار</div>
-      ${[
-        ["المساحة",proj.area?Number(proj.area).toLocaleString()+" م²":"—"],
-        ["النشاط",proj.activity||"—"],
-        ["عدد الأدوار",proj.floors?proj.floors+" أدوار":"—"],
-        ["المصعد",proj.hasElevator?"نعم ✓":"لا"],
-        ["بدروم",proj.hasBasement?"نعم ✓":"لا"],
-        ["حمام سباحة",proj.hasPool?"نعم ✓":"لا"],
-      ].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bdl);"><span style="font-size:11px;color:var(--t3);">${l}</span><span style="font-size:11px;font-weight:700;color:var(--t1);">${v}</span></div>`).join("")}
+    <div class="fw">
+      <div class="fg"><label class="fl">الحي / المنطقة</label><input class="fi" id="ep-dist" value="${proj.district||""}"/></div>
+      <div class="fg"><label class="fl">المساحة (م²)</label><input class="fi" id="ep-area" type="number" value="${proj.area||""}"/></div>
     </div>
-    <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);">
-      <div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:10px;letter-spacing:.07em;">المرحلة الحالية</div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-        <div style="width:36px;height:36px;border-radius:9px;background:${curStage?.color||"var(--n8)"};display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;">${curStage?.icon||"◆"}</div>
-        <div>
-          <div style="font-size:13px;font-weight:800;color:var(--t1);">${curStage?.label||"—"}</div>
-          <div style="font-size:10px;color:var(--t3);">مرحلة ${ci+1} من ${proj.stages.length}</div>
-        </div>
-      </div>
-      ${pendingDocs.length?`
-      <div style="background:var(--aml);border:1px solid rgba(183,119,13,.2);border-radius:8px;padding:10px;">
-        <div style="font-size:10px;font-weight:700;color:var(--am);margin-bottom:6px;">⚠ مستندات مطلوبة (${pendingDocs.length})</div>
-        ${pendingDocs.slice(0,3).map(d=>`<div style="font-size:10px;color:var(--t2);padding:2px 0;">• ${d.label}</div>`).join("")}
-        ${pendingDocs.length>3?`<div style="font-size:10px;color:var(--t3);">و${pendingDocs.length-3} أخرى...</div>`:""}
-      </div>`:`<div style="background:var(--grl);border:1px solid rgba(27,122,74,.2);border-radius:8px;padding:10px;text-align:center;"><div style="font-size:12px;font-weight:700;color:var(--gr);">✅ جميع مستندات هذه المرحلة مكتملة</div></div>`}
+    <div class="fw">
+      <div class="fg"><label class="fl">سعر المتر (ج.م)</label><input class="fi" id="ep-price" type="number" value="${proj.pricePerMeter||""}"/></div>
+      <div class="fg"><label class="fl">عدد الأدوار</label><input class="fi" id="ep-floors" type="number" value="${proj.floors||""}"/></div>
     </div>
-  </div>
-
-  <!-- UPLOADED DOCUMENTS -->
-  ${allUploaded.length?`
-  <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-      <div style="font-size:14px;font-weight:800;color:var(--t1);">المستندات المعتمدة</div>
-      <span style="font-size:11px;color:var(--t3);">${allUploaded.length} وثيقة</span>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
-      ${allUploaded.map(d=>`
-      <div style="background:var(--w2);border:1px solid var(--bdl);border-radius:10px;padding:12px;display:flex;align-items:center;gap:9px;">
-        <div style="font-size:22px;flex-shrink:0;">${d.up.type?.includes("pdf")?"📄":"🖼"}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:11px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.label}</div>
-          <div style="font-size:9px;color:var(--t3);">${d.up.size} · ${d.up.date}</div>
-        </div>
-        <a href="${d.up.data}" download="${d.up.name}" style="width:28px;height:28px;border-radius:7px;background:var(--w);border:1.5px solid var(--bdl);display:flex;align-items:center;justify-content:center;color:var(--t2);text-decoration:none;font-size:13px;flex-shrink:0;">⬇</a>
-      </div>`).join("")}
-    </div>
-  </div>`:""}
-
-  <!-- CTA -->
-  <div style="background:linear-gradient(135deg,var(--n9),var(--n8));border-radius:14px;padding:22px 24px;text-align:center;">
-    <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:6px;">هل لديك استفسار عن حالة المشروع؟</div>
-    <div style="font-size:12px;color:rgba(255,255,255,.45);margin-bottom:16px;">فريقنا الهندسي والإداري على اتصال دائم للرد على جميع استفساراتك</div>
-    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-      <a href="https://wa.me/${mainWa}" target="_blank" style="text-decoration:none;" class="btn btn-g">💬 اتصل الآن</a>
-      <button class="btn btn-gh" style="color:#fff;border-color:rgba(255,255,255,.2);" onclick="showPage('svcs')">⚡ طلب خدمة</button>
+    <div class="fg"><label class="fl">كود جهة الولاية</label><input class="fi" id="ep-auth" value="${proj.authorityCode||""}" placeholder="NUCA-2024-XXX"/></div>
+    <div class="fg"><label class="fl">ملاحظات</label><textarea class="fi" id="ep-note" rows="3">${proj.note||""}</textarea></div>
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <button class="btn btn-gh" onclick="document.getElementById('m-edit-proj').remove()">إلغاء</button>
+      <div style="flex:1;"></div>
+      <button class="btn btn-p" onclick="saveEditProj('${id}')">✓ حفظ التعديلات</button>
     </div>
   </div>`;
+  document.body.appendChild(el);
+};
 
-  $("fc").innerHTML=html;
+const saveEditProj=id=>{
+  const projs=LS.g(K.p)||[];
+  const proj=projs.find(p=>p.id===id);
+  if(!proj)return;
+  const name=document.getElementById("ep-name")?.value?.trim();
+  if(!name){toast("اسم المالك مطلوب","err");return;}
+  proj.ownerName=name;
+  proj.nationalId=document.getElementById("ep-nid")?.value?.trim()||proj.nationalId;
+  proj.ownerEmail=document.getElementById("ep-email")?.value?.trim()||"";
+  proj.phone=document.getElementById("ep-phone")?.value?.trim()||"";
+  proj.devStatus=document.getElementById("ep-dev")?.value||proj.devStatus;
+  proj.marketStatus=document.getElementById("ep-mkt")?.value||proj.marketStatus;
+  proj.district=document.getElementById("ep-dist")?.value?.trim()||proj.district;
+  proj.area=Number(document.getElementById("ep-area")?.value)||proj.area;
+  proj.pricePerMeter=Number(document.getElementById("ep-price")?.value)||proj.pricePerMeter;
+  proj.floors=Number(document.getElementById("ep-floors")?.value)||proj.floors;
+  proj.authorityCode=document.getElementById("ep-auth")?.value?.trim()||"";
+  proj.note=document.getElementById("ep-note")?.value||"";
+  proj.lastUpdated=new Date().toISOString().slice(0,10);
+  LS.s(K.p,projs);
+  document.getElementById("m-edit-proj")?.remove();
+  rFile();
+  toast("✓ تم حفظ التعديلات");
 };
 
 const switchStage=i=>{
   const proj=(LS.g(K.p)||[]).find(p=>p.id===CPJ);
   if(!proj||i<0||i>=proj.stages.length)return;
   CSV=i;rFile();
-};
-
-const openSupervisor=stageKey=>{
-  const proj=(LS.g(K.p)||[]).find(p=>p.id===CPJ);
-  const stage=proj?.stages.find(s=>s.key===stageKey);
-  const sv=stage?.supervisor||{};
-  const users=(LS.g(K.u)||[]).filter(u=>["staff","office"].includes(u.role));
-  const userOpts=users.map(u=>`<option value="${u.id}" ${sv.userId===u.id?"selected":""}>${u.name} (${u.role==="staff"?"موظف":"مكتب"})</option>`).join("");
-  cm("sv-modal");
-  $("sv-modal").classList.remove("hid");
-  $("sv-modal").innerHTML=`
-  <div style="background:var(--w);border-radius:16px;padding:22px;width:340px;max-width:95vw;">
-    <div style="font-size:15px;font-weight:800;color:var(--t1);margin-bottom:16px;">تعيين مشرف على المرحلة</div>
-    <div style="font-size:11px;color:var(--t3);margin-bottom:6px;">نوع المشرف</div>
-    <div style="display:flex;gap:6px;margin-bottom:14px;">
-      <button id="svt-int" onclick="svToggle('internal')" class="btn ${!sv.type||sv.type==='internal'?'btn-p':'btn-gh'} btn-sm" style="flex:1;justify-content:center;">داخلي (موظف)</button>
-      <button id="svt-ext" onclick="svToggle('external')" class="btn ${sv.type==='external'?'btn-p':'btn-gh'} btn-sm" style="flex:1;justify-content:center;">خارجي</button>
-    </div>
-    <div id="sv-int-wrap" style="${sv.type==='external'?'display:none':''}">
-      <div style="font-size:11px;color:var(--t3);margin-bottom:5px;">اختر من الموظفين</div>
-      <select id="sv-user" class="fs" style="margin-bottom:12px;"><option value="">-- اختر موظف --</option>${userOpts}</select>
-    </div>
-    <div id="sv-ext-wrap" style="${sv.type!=='external'?'display:none':''}">
-      <div class="fg" style="margin-bottom:10px;"><label class="fl">الاسم</label><input class="fi" id="sv-name" value="${sv.type==='external'?sv.name||'':''}" placeholder="م. محمد أحمد"/></div>
-      <div class="fg" style="margin-bottom:10px;"><label class="fl">الدور / التخصص</label><input class="fi" id="sv-role" value="${sv.type==='external'?sv.role||'':''}" placeholder="مهندس معماري، مقاول..."/></div>
-      <div class="fg" style="margin-bottom:10px;"><label class="fl">رقم الهاتف</label><input class="fi" id="sv-phone" value="${sv.type==='external'?sv.phone||'':''}" placeholder="01xxxxxxxxx" dir="ltr"/></div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:6px;">
-      <button class="btn btn-gh" onclick="cm('sv-modal')">إلغاء</button>
-      <div style="flex:1;"></div>
-      ${sv.name||sv.userId?`<button class="btn btn-d btn-sm" onclick="saveSupervisor('${stageKey}',null)">إزالة</button>`:''}
-      <button class="btn btn-p" onclick="saveSupervisor('${stageKey}')">✓ حفظ</button>
-    </div>
-  </div>`;
-};
-
-let _svType="internal";
-const svToggle=t=>{
-  _svType=t;
-  $("svt-int").className=`btn ${t==="internal"?"btn-p":"btn-gh"} btn-sm`;
-  $("svt-ext").className=`btn ${t==="external"?"btn-p":"btn-gh"} btn-sm`;
-  $("sv-int-wrap").style.display=t==="internal"?"":"none";
-  $("sv-ext-wrap").style.display=t==="external"?"":"none";
-};
-
-const saveSupervisor=(stageKey,forceClear)=>{
-  const projs=LS.g(K.p)||[];
-  const proj=projs.find(p=>p.id===CPJ);
-  if(!proj)return;
-  const stage=proj.stages.find(s=>s.key===stageKey);
-  if(!stage)return;
-  if(forceClear===null){stage.supervisor=null;}
-  else if(_svType==="internal"){
-    const uid=$("sv-user")?.value;
-    if(!uid){toast("اختر موظفاً","warn");return;}
-    const u=(LS.g(K.u)||[]).find(u=>u.id===uid);
-    stage.supervisor={type:"internal",userId:uid,name:u?.name||"",role:u?.role==="staff"?"موظف":"مكتب هندسي",phone:u?.phone||""};
-  } else {
-    const name=$("sv-name")?.value.trim();
-    if(!name){toast("أدخل اسم المشرف","warn");return;}
-    stage.supervisor={type:"external",name,$("sv-role")?.value.trim()||"",role:$("sv-role")?.value.trim()||"",phone:$("sv-phone")?.value.trim()||""};
-  }
-  LS.s(K.p,projs);
-  cm("sv-modal");
-  rFile();
-  toast("تم حفظ المشرف","ok");
 };
 
 const tgS=k=>{const b=$("sb-"+k),a=$("sa-"+k);const h=b.classList.contains("hid");b.classList.toggle("hid");if(a)a.classList.toggle("open",h);};
@@ -1601,8 +1389,6 @@ const openNP=()=>{
 
 const rPM=()=>{
   const isC=PFrm.type==="compound";
-  const isExternal=["developer","client"].includes(CU?.role);
-  if(isExternal){rPM_External();return;}
   const steps=[{l:"البيانات الأساسية"},{l:"البيانات المالية"},...(isC?[{l:"نماذج الوحدات"}]:[])];
   $("wz").innerHTML=steps.map((s,i)=>`<div class="ww"><div class="wd" style="background:${PS>=i+1?"var(--n8)":"var(--bdl)"};color:${PS>=i+1?"#fff":"var(--t3)"};">${i+1}</div><div class="wlb" style="color:${PS===i+1?"var(--n8)":"var(--t3)"};">${s.l}</div></div>${i<steps.length-1?`<div style="height:2px;width:28px;background:${PS>i+1?"var(--n8)":"var(--bdl)"};border-radius:2px;margin:0 2px;margin-bottom:12px;"></div>`:""}`).join("");
 
@@ -1755,7 +1541,6 @@ const svPF=()=>{
       return true;
     }).map(d=>({...d,up:null,note:""})),cd:[]}));
 
-  const autoVerified=["admin","staff","office"].includes(CU.role);
   const proj={
     id:genId(PFrm.city),
     createdAt:new Date().toISOString().slice(0,10),
@@ -1763,9 +1548,9 @@ const svPF=()=>{
     by:CU.id,byName:CU.name,byRole:CU.role,
     ownerName:PFrm.ownerName,nationalId:PFrm.nationalId||"",
     agents:PFrm.agents||[],
-    ownerEmail:PFrm.ownerEmail||CU.email||"",
+    ownerEmail:PFrm.ownerEmail||"",
     type:PFrm.type,activity:PFrm.activity,
-    gov:PFrm.gov||"",city:PFrm.city,district:PFrm.district,plot:PFrm.plot||"—",
+    gov:PFrm.gov||"",city:PFrm.city,district:PFrm.district,plot:PFrm.plot,
     area:Number(PFrm.area)||0,
     authorityCode:PFrm.authorityCode||"",floors:Number(PFrm.floors)||0,
     hasElevator:PFrm.hasElevator||false,hasBasement:PFrm.hasBasement||false,
@@ -1773,106 +1558,11 @@ const svPF=()=>{
     devStatus:PFrm.devStatus||"قيد التخطيط",marketStatus:PFrm.marketStatus||"غير محدد",
     pricePerMeter:Number(PFrm.pricePerMeter)||0,note:PFrm.note||"",
     isCompound:isC,totalUnits:Number(PFrm.totalUnits)||0,
-    compoundModels:isC?(PFrm.models||[]):[],stages,
-    verified:autoVerified,
-    verifiedAt:autoVerified?new Date().toISOString().slice(0,10):null,
-    verifiedBy:autoVerified?CU.id:null,
-    rejectedReason:null
+    compoundModels:isC?(PFrm.models||[]):[],stages
   };
   const list=LS.g(K.p)||[];list.unshift(proj);LS.s(K.p,list);
-  if(autoVerified){
-    addNotif(`تم إنشاء مشروع جديد: ${proj.ownerName}`,"info",proj.id);
-    cm("mnp");openProj(proj.id);toast("✓ تم إنشاء المشروع — الكود: "+proj.id);
-  } else {
-    addNotif(`طلب مشروع جديد يحتاج مراجعة: ${proj.ownerName}`,"warn",proj.id);
-    cm("mnp");showPage("projs");toast("✓ تم إرسال طلبك — سيتم مراجعته قريباً");
-  }
-};
-
-// ── EXTERNAL PROJECT SUBMISSION (developer/client) ──
-const rPM_External=()=>{
-  const cityOpts=Object.keys(CITIES_DATA).map(gov=>
-    `<optgroup label="${gov}">${CITIES_DATA[gov].map(c=>`<option value="${c}" data-gov="${gov}" ${PFrm.city===c?"selected":""}>${c}</option>`).join("")}</optgroup>`
-  ).join("");
-  $("wz").innerHTML=`<div style="display:flex;align-items:center;gap:8px;">
-    <div style="width:26px;height:26px;border-radius:50%;background:var(--n8);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;">1</div>
-    <div style="font-size:13px;font-weight:700;color:var(--n8);">تقديم طلب مشروع</div>
-  </div>`;
-  $("pb").innerHTML=`
-    <div style="background:linear-gradient(135deg,#FFF8E7,#FFFEF5);border:1px solid rgba(183,119,13,.3);border-radius:10px;padding:12px 14px;margin-bottom:16px;display:flex;gap:10px;align-items:flex-start;">
-      <span style="font-size:18px;">ℹ️</span>
-      <div><div style="font-size:12px;font-weight:700;color:var(--am);margin-bottom:2px;">سيتم مراجعة طلبك</div>
-      <div style="font-size:11px;color:var(--t3);">بعد الإرسال سيراجع فريق سند بياناتك ومستنداتك، وسيتم التواصل معك خلال 48 ساعة.</div></div>
-    </div>
-    <div class="fw">
-      <div class="fg"><label class="fl">اسم المالك / العقار <span class="rq">*</span></label><input class="fi" id="po" value="${PFrm.ownerName||""}" placeholder="الاسم الكامل للمالك"/></div>
-      <div class="fg"><label class="fl">رقم التواصل <span class="rq">*</span></label><input class="fi" id="pph" type="tel" value="${PFrm.phone||""}" placeholder="01xxxxxxxxx" dir="ltr"/></div>
-    </div>
-    <div class="fw">
-      <div class="fg"><label class="fl">نوع النشاط</label><select class="fs" id="pa">${["سكني","تجاري","إداري","سكني تجاري"].map(v=>`<option ${PFrm.activity===v?"selected":""}>${v}</option>`).join("")}</select></div>
-      <div class="fg"><label class="fl">المدينة <span class="rq">*</span></label><select class="fs" id="pc" onchange="selCity(this)">${cityOpts}</select></div>
-    </div>
-    <div class="fw">
-      <div class="fg"><label class="fl">الحي / المنطقة <span class="rq">*</span></label><input class="fi" id="pd" value="${PFrm.district||""}" placeholder="الحي أو المنطقة"/></div>
-      <div class="fg"><label class="fl">المساحة التقريبية (م²)</label><input class="fi" id="par" type="number" value="${PFrm.area||""}" placeholder="0.00"/></div>
-    </div>
-    <div class="fg"><label class="fl">وصف مختصر للمشروع</label><textarea class="fi" id="pno" rows="3" placeholder="اكتب وصفاً مختصراً للعقار أو المشروع...">${PFrm.note||""}</textarea></div>`;
-  $("pf").innerHTML=`<button class="btn btn-gh" onclick="cm('mnp')">إلغاء</button><div style="flex:1;"></div><button class="btn btn-p" onclick="svPF_External()">إرسال الطلب ←</button>`;
-};
-
-const svPF_External=()=>{
-  const o=$("po")?.value?.trim(),ph=$("pph")?.value?.trim(),d=$("pd")?.value?.trim(),city=$("pc")?.value;
-  if(!o||!ph||!d||!city){toast("يرجى تعبئة الحقول المطلوبة (*)","err");return;}
-  const cityOpt=$("pc")?.options[$("pc")?.selectedIndex];
-  PFrm.ownerName=o;PFrm.phone=ph;PFrm.district=d;PFrm.city=city;
-  PFrm.gov=cityOpt?.closest?.("optgroup")?.label||"";
-  PFrm.activity=$("pa")?.value||"سكني";
-  PFrm.area=$("par")?.value||"0";
-  PFrm.note=$("pno")?.value||"";
-  PFrm.type="normal";
-  const stages=STAGES.map(s=>({...s,docs:s.docs.map(d=>({...d,up:null,note:""})),cd:[]}));
-  const proj={
-    id:genId(PFrm.city),
-    createdAt:new Date().toISOString().slice(0,10),
-    lastUpdated:new Date().toISOString().slice(0,10),
-    by:CU.id,byName:CU.name,byRole:CU.role,
-    ownerName:PFrm.ownerName,nationalId:"",agents:[],
-    ownerEmail:CU.email||"",phone:PFrm.phone||"",
-    type:"normal",activity:PFrm.activity,
-    gov:PFrm.gov||"",city:PFrm.city,district:PFrm.district,plot:"—",
-    area:Number(PFrm.area)||0,
-    authorityCode:"",floors:0,hasElevator:false,hasBasement:false,hasPool:false,hasPergola:false,
-    devStatus:"قيد التخطيط",marketStatus:"غير محدد",
-    pricePerMeter:0,note:PFrm.note||"",
-    isCompound:false,totalUnits:0,compoundModels:[],stages,
-    verified:false,verifiedAt:null,verifiedBy:null,rejectedReason:null
-  };
-  const list=LS.g(K.p)||[];list.unshift(proj);LS.s(K.p,list);
-  addNotif(`طلب مشروع جديد يحتاج مراجعة: ${proj.ownerName}`,"warn",proj.id);
-  cm("mnp");showPage("projs");
-  toast("✓ تم إرسال طلبك — سيتم مراجعته خلال 48 ساعة");
-};
-
-const approveProj=id=>{
-  const projs=LS.g(K.p)||[];
-  const proj=projs.find(p=>p.id===id);
-  if(!proj)return;
-  proj.verified=true;proj.verifiedAt=new Date().toISOString().slice(0,10);
-  proj.verifiedBy=CU.id;proj.rejectedReason=null;
-  LS.s(K.p,projs);
-  addNotif(`✓ تم اعتماد المشروع: ${proj.ownerName}`,"ok",id);
-  rFile();toast("✓ تم اعتماد المشروع وتفعيل الـ Score");
-};
-
-const rejectProj=id=>{
-  const reason=prompt("سبب الرفض (اختياري):")||"يحتاج مراجعة إضافية";
-  const projs=LS.g(K.p)||[];
-  const proj=projs.find(p=>p.id===id);
-  if(!proj)return;
-  proj.verified=false;proj.rejectedReason=reason;
-  LS.s(K.p,projs);
-  addNotif(`✗ تم رفض المشروع: ${proj.ownerName} — ${reason}`,"warn",id);
-  rFile();toast("تم إرجاع المشروع مع ملاحظات","warn");
+  addNotif(`تم إنشاء مشروع جديد: ${proj.ownerName}`,"info",proj.id);
+  cm("mnp");openProj(proj.id);toast("✓ تم إنشاء المشروع — الكود: "+proj.id);
 };
 
 // ── SERVICES ──
@@ -1992,13 +1682,8 @@ const rTasks=()=>{
 
   // Kanban board
   $("tasks-board").innerHTML=TCOLS.map(col=>{
-    const finalTasks=col.k==="late"
-      ?myTasks.filter(t=>t.status!=="done"&&isLate(t))
-      :col.k==="new"
-        ?myTasks.filter(t=>t.status==="new"&&!isLate(t))
-        :col.k==="done"
-          ?myTasks.filter(t=>t.status==="done")
-          :myTasks.filter(t=>t.status===col.k&&!isLate(t));
+    const colTasks=myTasks.filter(t=>t.status===col.k||(col.k==="late"&&t.status!=="done"&&isLate(t)&&t.status!=="late"));
+    const finalTasks=col.k==="late"?myTasks.filter(t=>t.status==="late"||(!["done"].includes(t.status)&&isLate(t))):myTasks.filter(t=>t.status===col.k);
     return`<div style="background:var(--w2);border-radius:12px;overflow:hidden;border:1px solid var(--bdl);">
       <div style="padding:12px 14px;background:${col.bg};border-bottom:2px solid ${col.c}20;display:flex;align-items:center;justify-content:space-between;">
         <div style="font-size:13px;font-weight:800;color:${col.c};">${col.l}</div>
@@ -2092,9 +1777,10 @@ const openTaskDetail=id=>{
   document.body.insertAdjacentHTML("beforeend",h);
 };
 
-const openAddTask=()=>{
+const openAddTask=(presetProjId)=>{
   const users=(LS.g(K.u)||[]).filter(u=>["admin","staff","office"].includes(u.role)&&u.status==="active");
   const projs=LS.g(K.p)||[];
+  const today=new Date().toISOString().slice(0,10);
   const h=`<div class="ov" id="m-add-task" style="position:fixed;inset:0;background:rgba(13,27,46,.55);z-index:300;display:flex;align-items:center;justify-content:center;">
     <div class="modal" style="max-width:480px;">
       <div class="mh"><div class="mt">مهمة جديدة</div><button class="cx" onclick="document.getElementById('m-add-task').remove()">✕</button></div>
@@ -2117,11 +1803,13 @@ const openAddTask=()=>{
           </div>
         </div>
         <div class="fw">
-          <div class="fg"><label class="fl">تاريخ الاستحقاق</label><input class="fi" id="tk-due" type="date"/></div>
+          <div class="fg"><label class="fl">تاريخ الاستحقاق</label><input class="fi" id="tk-due" type="date" min="${today}" oninput="tkDateHint(this.value)"/>
+            <div id="tk-due-hint" style="font-size:10px;margin-top:3px;color:var(--t3);"></div>
+          </div>
           <div class="fg"><label class="fl">المشروع (اختياري)</label>
             <select class="fs" id="tk-proj">
               <option value="">— بدون مشروع —</option>
-              ${projs.map(p=>`<option value="${p.id}">${p.ownerName} · ${p.city}</option>`).join("")}
+              ${projs.map(p=>`<option value="${p.id}" ${presetProjId===p.id?"selected":""}>${p.ownerName} · ${p.city}</option>`).join("")}
             </select>
           </div>
         </div>
@@ -2135,6 +1823,17 @@ const openAddTask=()=>{
   document.body.insertAdjacentHTML("beforeend",h);
 };
 
+const tkDateHint=v=>{
+  const el=document.getElementById("tk-due-hint");
+  if(!el||!v)return;
+  const today=new Date().toISOString().slice(0,10);
+  const diff=Math.ceil((new Date(v)-new Date(today))/(1000*60*60*24));
+  if(diff<0)el.innerHTML=`<span style="color:var(--rd);">⚠ تاريخ في الماضي — ستُضاف مباشرة كمتأخرة</span>`;
+  else if(diff===0)el.innerHTML=`<span style="color:var(--am);">⚡ اليوم — آخر موعد</span>`;
+  else if(diff<=3)el.innerHTML=`<span style="color:var(--am);">خلال ${diff} أيام</span>`;
+  else el.innerHTML=`<span style="color:var(--gr);">خلال ${diff} يوم</span>`;
+};
+
 const saveTask=()=>{
   const title=document.getElementById("tk-title")?.value?.trim();
   const desc=document.getElementById("tk-desc")?.value?.trim();
@@ -2143,8 +1842,10 @@ const saveTask=()=>{
   const dueDate=document.getElementById("tk-due")?.value;
   const projId=document.getElementById("tk-proj")?.value;
   if(!title||!assignedTo){toast("يرجى تعبئة العنوان والمسؤول","err");return;}
+  const today=new Date().toISOString().slice(0,10);
+  const initStatus=dueDate&&dueDate<today?"late":"new";
   const tasks=LS.g(K.tasks)||[];
-  tasks.push({id:"tk"+Date.now(),title,desc,assignedTo,priority,dueDate,projId,status:"new",createdBy:CU.id,createdAt:new Date().toISOString().slice(0,10)});
+  tasks.push({id:"tk"+Date.now(),title,desc,assignedTo,priority,dueDate,projId,status:initStatus,createdBy:CU.id,createdAt:today});
   LS.s(K.tasks,tasks);
   document.getElementById("m-add-task")?.remove();
   addNotif(`مهمة جديدة: ${title}`,"info");
