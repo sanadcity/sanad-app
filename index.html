@@ -756,12 +756,24 @@ const cm=id=>$(id).classList.add("hid");
 const sm=(id,m,t)=>{const el=$(id);if(!el)return;el.innerHTML=m?`<div class="amsg ${t}">${m}</div>`:""};
 
 // ── NOTIFICATIONS ──
-const addNotif=(msg,type="info",projId="")=>{
+// forWho: null=admin+staff only | "all" | userId | role string
+const addNotif=(msg,type="info",projId="",forWho=null)=>{
   const list=LS.g(K.notif)||[];
-  list.unshift({id:"N"+Date.now(),msg,type,projId,date:new Date().toISOString().slice(0,10),read:false});
-  if(list.length>50)list.pop();
+  list.unshift({id:"N"+Date.now(),msg,type,projId,date:new Date().toISOString().slice(0,10),read:false,forWho});
+  if(list.length>100)list.pop();
   LS.s(K.notif,list);
   updBdg();
+};
+
+const myNotifs=()=>{
+  const all=LS.g(K.notif)||[];
+  return all.filter(n=>{
+    if(!n.forWho||n.forWho===null)return["admin","staff"].includes(CU.role);
+    if(n.forWho==="all")return true;
+    if(n.forWho===CU.id)return true;
+    if(n.forWho===CU.role)return true;
+    return false;
+  });
 };
 
 const togNotifs=()=>{
@@ -769,20 +781,27 @@ const togNotifs=()=>{
   const isHid=p.classList.contains("hid");
   p.classList.toggle("hid");
   if(!isHid)return;
-  const list=LS.g(K.notif)||[];
+  const list=myNotifs();
   if(!list.length){p.innerHTML=`<div style="padding:20px;text-align:center;color:var(--t3);font-size:12px;">لا توجد إشعارات</div>`;return;}
   p.innerHTML=`<div style="padding:12px 16px;border-bottom:1px solid var(--bdl);display:flex;justify-content:space-between;align-items:center;"><span style="font-size:13px;font-weight:800;color:var(--t1);">الإشعارات</span><button onclick="clrNotifs()" style="font-size:11px;color:var(--rd);border:none;background:none;cursor:pointer;font-family:Cairo,sans-serif;font-weight:700;">مسح الكل</button></div>`+
   list.map((n,i)=>`<div onclick="readNotif(${i},'${n.projId}')" style="padding:11px 16px;border-bottom:1px solid var(--bdl);cursor:pointer;background:${n.read?"var(--w)":"rgba(201,168,76,.06)"};display:flex;gap:10px;align-items:flex-start;">
     <div style="width:7px;height:7px;border-radius:50%;background:${n.read?"var(--bdl)":"var(--gold)"};flex-shrink:0;margin-top:5px;"></div>
     <div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:${n.read?500:700};color:var(--t1);">${n.msg}</div><div style="font-size:10px;color:var(--t3);margin-top:2px;">${n.date}</div></div>
   </div>`).join("");
-  // mark all read
-  LS.s(K.notif,list.map(n=>({...n,read:true})));
+  // mark only my notifs as read
+  const all=LS.g(K.notif)||[];
+  const myIds=new Set(list.map(n=>n.id));
+  LS.s(K.notif,all.map(n=>myIds.has(n.id)?{...n,read:true}:n));
   updBdg();
+};
+const clrNotifs=()=>{
+  const all=LS.g(K.notif)||[];
+  const myIds=new Set(myNotifs().map(n=>n.id));
+  LS.s(K.notif,all.filter(n=>!myIds.has(n.id)));
+  $("notif-panel").innerHTML="";updBdg();
 };
 
 const readNotif=(i,pid)=>{$("notif-panel").classList.add("hid");if(pid){openProj(pid);}};
-const clrNotifs=()=>{LS.s(K.notif,[]);$("notif-panel").innerHTML="";updBdg();};
 
 // close notif panel on outside click
 document.addEventListener("click",e=>{
@@ -926,7 +945,7 @@ const updBdg=()=>{
   const mySvcs=(LS.g(K.svc)||[]).filter(s=>
     isAdmin?s.status==="pending":(s.by===CU.id&&s.status==="pending")
   ).length;
-  const unread=(LS.g(K.notif)||[]).filter(n=>!n.read).length;
+  const unread=myNotifs().filter(n=>!n.read).length;
   const tot=pu+mySvcs+unread;
   const nb=$("nb");if(nb){nb.textContent=tot;nb.classList.toggle("hid",tot===0);}
   const bu=$("bdg-users");if(bu){bu.textContent=pu;bu.classList.toggle("hid",pu===0||!isAdmin);}
@@ -1586,7 +1605,7 @@ const hUp=(sk,dk,isC,inp)=>{
     const upd=arr=>arr.map(d=>d.key===dk?{...d,up:{name:file.name,type:file.type,size:(file.size/1024).toFixed(0)+"KB",data:e.target.result,date:new Date().toISOString().slice(0,10)}}:d);
     p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
     svP(p);rFile();
-    addNotif(`تم رفع ملف في مشروع ${p.ownerName}`,`info`,p.id);
+    addNotif(`تم رفع ملف في مشروع ${p.ownerName}`,`info`,p.id,null);
     toast("✓ تم رفع الملف بنجاح");
   };
   r.readAsDataURL(file);
@@ -1599,7 +1618,7 @@ const rF=(sk,dk,isC)=>{
   const upd=arr=>arr.map(d=>d.key===dk?{...d,up:null}:d);
   p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
   svP(p);rFile();
-  addNotif(`تم حذف ملف من مشروع ${p.ownerName}`,"warn",p.id);
+  addNotif(`تم حذف ملف من مشروع ${p.ownerName}`,"warn",p.id,null);
   toast("تم حذف الملف","info");
 };
 const sN=(sk,dk,isC,note)=>{const p=gP();if(!p)return;const upd=arr=>arr.map(d=>d.key===dk?{...d,note}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);};
@@ -1809,7 +1828,7 @@ const svPF=()=>{
   }
   proj.timeline.push({date:proj.createdAt,event:"إنشاء الملف",by:CU.name,icon:"🗂"});
   const list=LS.g(K.p)||[];list.unshift(proj);LS.s(K.p,list);
-  addNotif(`تم إنشاء مشروع جديد: ${proj.ownerName}`,"info",proj.id);
+  addNotif(`تم إنشاء مشروع جديد: ${proj.ownerName}`,"info",proj.id,null);
   cm("mnp");openProj(proj.id);toast("✓ تم إنشاء المشروع — الكود: "+proj.id);
 };
 
@@ -1838,7 +1857,7 @@ const subSvc=()=>{
   const proj=CPJ?(LS.g(K.p)||[]).find(p=>p.id===CPJ):null;
   const req={id:"REQ-"+Date.now().toString(36).toUpperCase(),date:new Date().toISOString().slice(0,10),projId:CPJ||"",projOwner:proj?.ownerName||"",service:svc?.l||"",name,phone,note:$("snt").value,status:"pending",by:CU.id};
   const list=LS.g(K.svc)||[];list.unshift(req);LS.s(K.svc,list);
-  addNotif(`طلب خدمة جديد: ${svc?.l} من ${name}`,"info","");
+  addNotif(`طلب خدمة جديد: ${svc?.l} من ${name}`,"info","",null);
   cm("msv");updBdg();toast("✓ تم إرسال الطلب — سيتواصل معك الفريق قريباً");
 };
 
@@ -2096,7 +2115,7 @@ const saveTask=()=>{
   tasks.push({id:"tk"+Date.now(),title,desc,assignedTo,priority,dueDate,projId,status:initStatus,createdBy:CU.id,createdAt:today});
   LS.s(K.tasks,tasks);
   document.getElementById("m-add-task")?.remove();
-  addNotif(`مهمة جديدة: ${title}`,"info");
+  addNotif(`مهمة جديدة: ${title}`,"info","",assignedTo);
   rTasks();toast(`✓ تمت إضافة المهمة`);
 };
 
@@ -2164,7 +2183,7 @@ const sendStaffInvite=()=>{
   users.push({id:"u"+Date.now(),name,email,pass,jobTitle:title||"",phone:phone||"",role:"staff",status:"active",created:new Date().toISOString().slice(0,10)});
   LS.s(K.u,users);
   document.getElementById("m-invite")?.remove();
-  addNotif(`تمت إضافة موظف جديد: ${name}`,"info");
+  addNotif(`تمت إضافة موظف جديد: ${name}`,"info","",null);
   rStaffMgmt();
   toast(`✓ تم إنشاء حساب ${name}`);
 };
