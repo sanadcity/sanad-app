@@ -1135,7 +1135,8 @@ const rFile=()=>{
         <div style="background:var(--grl);border-radius:7px;padding:8px 10px;display:flex;align-items:center;gap:8px;">
           <span style="font-size:16px;">${doc.up.type?.includes("pdf")?"📄":"🖼"}</span>
           <div style="flex:1;min-width:0;"><div style="font-size:11px;font-weight:700;color:var(--gr);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${doc.up.name}</div><div style="font-size:9px;color:var(--gr);opacity:.7;">${doc.up.size} · ${doc.up.date}</div></div>
-          <a href="${doc.up.data}" download="${doc.up.name}" class="btn btn-gh btn-xs">⬇</a>
+          <button onclick="previewFile('${doc.up.data}','${doc.up.name}','${doc.up.type||""}')" class="btn btn-gh btn-xs" title="معاينة">👁</button>
+          <a href="${doc.up.data}" download="${doc.up.name}" class="btn btn-gh btn-xs" title="تحميل">⬇</a>
           ${can?`<button onclick="rF('${stage.key}','${doc.key}',${isC})" class="btn btn-d btn-xs">🗑</button>`:""}
         </div>
         ${can?`<input style="margin-top:7px;width:100%;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;color:var(--t2);outline:none;font-family:Cairo,sans-serif;background:transparent;" placeholder="ملاحظة..." value="${(doc.note||"").replace(/"/g,"&quot;")}" onchange="sN('${stage.key}','${doc.key}',${isC},this.value)"/>`:""}
@@ -1283,7 +1284,7 @@ const rFile=()=>{
     <div>
       <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;">
         <div style="padding:14px 16px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;background:var(--w);">
-          <div style="font-size:14px;font-weight:800;color:var(--t1);">📋 مستندات المرحلة</div>
+          <div style="font-size:14px;font-weight:800;color:var(--t1);">${stage.icon} ${stage.label}</div>
           <span style="font-size:11px;color:var(--t3);">${upCount} من ${allDocs.length} مرفوع</span>
         </div>
         <div style="padding:14px;max-height:500px;overflow-y:auto;">
@@ -1536,6 +1537,34 @@ const saveEditProj=id=>{
   document.getElementById("m-edit-proj")?.remove();
   rFile();
   toast("✓ تم حفظ التعديلات");
+};
+
+const previewFile=(data,name,type)=>{
+  const isPdf=type?.includes("pdf")||name?.toLowerCase().endsWith(".pdf");
+  const isImg=type?.includes("image")||/\.(jpg|jpeg|png|gif|webp)$/i.test(name||"");
+  const el=document.createElement("div");
+  el.id="m-preview";
+  el.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;";
+  el.onclick=e=>{if(e.target===el)el.remove();};
+  el.innerHTML=`
+    <div style="width:100%;max-width:860px;max-height:90vh;display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:13px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80%;">${name||"ملف"}</div>
+        <div style="display:flex;gap:8px;">
+          <a href="${data}" download="${name}" class="btn btn-gh btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3);">⬇ تحميل</a>
+          <button onclick="document.getElementById('m-preview').remove()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:8px;color:#fff;padding:6px 14px;cursor:pointer;font-family:Cairo,sans-serif;font-size:12px;">✕ إغلاق</button>
+        </div>
+      </div>
+      <div style="flex:1;overflow:auto;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;min-height:300px;max-height:80vh;">
+        ${isPdf
+          ?`<iframe src="${data}" style="width:100%;height:75vh;border:none;border-radius:12px;"></iframe>`
+          :isImg
+            ?`<img src="${data}" style="max-width:100%;max-height:75vh;object-fit:contain;border-radius:12px;" alt="${name}"/>`
+            :`<div style="padding:40px;text-align:center;color:var(--t3);"><div style="font-size:48px;margin-bottom:12px;">📎</div><div style="font-size:14px;">لا يمكن معاينة هذا الملف</div><a href="${data}" download="${name}" class="btn btn-p" style="margin-top:12px;">⬇ تحميل الملف</a></div>`
+        }
+      </div>
+    </div>`;
+  document.body.appendChild(el);
 };
 
 const switchStage=i=>{
