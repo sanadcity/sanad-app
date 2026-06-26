@@ -957,16 +957,35 @@ const showPage=pg=>{
 
 const togSB=()=>{$("sb").classList.toggle("sl");$("main").classList.toggle("sl");};
 
+// Returns viewer's party role in a project (or null)
+const myPartyRole=(proj)=>{
+  if(!proj.parties)return null;
+  return proj.parties.find(p=>p.partyId===CU.id)?.role||null;
+};
+
+// Visibility rules per party role
+const PARTY_CAN={
+  owner:   {docs:"own", stages:true,  tasks:false, internals:false, financials:false, parties:"partial"},
+  developer:{docs:"all",stages:true,  tasks:true,  internals:false, financials:false, parties:"partial"},
+  office:  {docs:"all", stages:true,  tasks:true,  internals:true,  financials:true,  parties:"full"},
+  broker:  {docs:"own", stages:false, tasks:false, internals:false, financials:false, parties:"partial"},
+};
+
 const myP=()=>{
   const all=LS.g(K.p)||[];
   if(["admin","staff"].includes(CU.role))return all;
-  if(CU.role==="client")return all.filter(p=>p.ownerEmail===CU.email||p.at?.includes(CU.id));
-  // office: own projects + office staff's projects
-  if(CU.role==="office"){
-    const staffIds=(LS.g(K.u)||[]).filter(u=>u.officeId===CU.officeId&&u.id!==CU.id).map(u=>u.id);
-    return all.filter(p=>p.by===CU.id||p.at?.includes(CU.id)||staffIds.includes(p.by));
-  }
-  return all.filter(p=>p.by===CU.id||p.at?.includes(CU.id));
+  // linked via parties array (ID-based) OR legacy ownerEmail
+  return all.filter(p=>{
+    if(p.parties?.some(pt=>pt.partyId===CU.id))return true;
+    if(p.ownerEmail&&p.ownerEmail===CU.email)return true; // backward compat
+    if(p.by===CU.id)return true;
+    if(p.at?.includes(CU.id))return true;
+    if(CU.role==="office"){
+      const staffIds=(LS.g(K.u)||[]).filter(u=>u.officeId===CU.officeId&&u.id!==CU.id).map(u=>u.id);
+      if(staffIds.includes(p.by))return true;
+    }
+    return false;
+  });
 };
 
 // ── DASHBOARD ──
@@ -1204,6 +1223,35 @@ const rFile=()=>{
         </div>
       </div>
 
+      <!-- Parties card -->
+      ${(()=>{
+        const parties=proj.parties||[];
+        const PROLES={owner:{l:"مالك",c:"#1A3F6B",bg:"#E6EEF8"},developer:{l:"مطور",c:"#4A1A6B",bg:"#EEE6F8"},office:{l:"مكتب هندسي",c:"#1B7A4A",bg:"#E3F5EC"},broker:{l:"وسيط",c:"#B7770D",bg:"#FEF3DC"},representative:{l:"وكيل",c:"#8896A4",bg:"#F4F5F7"}};
+        return`<div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;">أطراف المشروع</div>
+            ${can?`<button onclick="openManageParties('${proj.id}')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--n8);font-weight:700;font-family:Cairo,sans-serif;">+ إضافة</button>`:""}
+          </div>
+          ${parties.length===0?`<div style="text-align:center;padding:10px;color:var(--t3);font-size:11px;">لا توجد أطراف مرتبطة</div>`:""}
+          ${parties.map(pt=>{
+            const rc=PROLES[pt.role]||{l:pt.role,c:"#8896A4",bg:"#F4F5F7"};
+            const ini=(pt.name||"؟").split(" ").slice(0,2).map(w=>w[0]||"").join("");
+            return`<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--bdl);">
+              <div style="width:34px;height:34px;border-radius:50%;background:${rc.bg};border:1.5px solid ${rc.c}30;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:${rc.c};flex-shrink:0;">${ini}</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${pt.name||"—"}</div>
+                <div style="display:flex;align-items:center;gap:5px;margin-top:2px;">
+                  <span style="font-size:9px;font-weight:700;background:${rc.bg};color:${rc.c};border-radius:5px;padding:1px 6px;">${rc.l}</span>
+                  ${pt.partyId?`<span style="font-size:9px;color:var(--gr);">● مرتبط</span>`:`<span style="font-size:9px;color:var(--t3);">خارجي</span>`}
+                </div>
+              </div>
+              ${pt.phone?`<a href="tel:${pt.phone}" style="color:var(--t3);text-decoration:none;font-size:14px;" title="${pt.phone}">📞</a>`:""}
+              ${can?`<button onclick="removeParty('${proj.id}','${pt.partyId||pt.name}')" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:15px;padding:2px;">×</button>`:""}
+            </div>`;
+          }).join("")}
+        </div>`;
+      })()}
+
       <!-- Project info -->
       <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;padding:15px;box-shadow:0 1px 3px rgba(0,0,0,.06);">
         <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;">بيانات المشروع</div>
@@ -1259,6 +1307,167 @@ const rFile=()=>{
   </div>`;
 
   $("fc").innerHTML=html;
+};
+
+// ── PARTIES MANAGEMENT ──
+const PARTY_ROLES=[
+  {k:"owner",      l:"مالك عقار",      c:"#1A3F6B"},
+  {k:"developer",  l:"مطور عقاري",     c:"#4A1A6B"},
+  {k:"office",     l:"مكتب هندسي",     c:"#1B7A4A"},
+  {k:"broker",     l:"وسيط / سمسار",   c:"#B7770D"},
+  {k:"representative",l:"وكيل قانوني", c:"#8896A4"},
+];
+
+const openManageParties=id=>{
+  const proj=(LS.g(K.p)||[]).find(p=>p.id===id);
+  if(!proj)return;
+  const users=LS.g(K.u)||[];
+  const el=document.createElement("div");
+  el.id="m-parties";
+  el.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:16px;";
+  const renderModal=()=>{
+    const parties=proj.parties||[];
+    el.innerHTML=`
+    <div style="background:var(--w);border-radius:16px;width:500px;max-width:100%;max-height:90vh;overflow-y:auto;">
+      <div style="padding:20px 22px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;">
+        <div><div style="font-size:15px;font-weight:800;color:var(--t1);">أطراف المشروع</div><div style="font-size:11px;color:var(--t3);margin-top:2px;">${proj.id} · ${proj.ownerName}</div></div>
+        <button onclick="document.getElementById('m-parties').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--t3);">✕</button>
+      </div>
+
+      <!-- Current parties list -->
+      <div style="padding:16px 20px;border-bottom:1px solid var(--bdl);">
+        ${parties.length===0?`<div style="text-align:center;padding:16px;color:var(--t3);font-size:12px;">لا توجد أطراف مضافة بعد</div>`:""}
+        ${parties.map((pt,i)=>{
+          const rc=PARTY_ROLES.find(r=>r.k===pt.role)||{l:pt.role,c:"#8896A4"};
+          return`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bdl);">
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:700;color:var(--t1);">${pt.name}</div>
+              <div style="display:flex;gap:6px;margin-top:3px;align-items:center;flex-wrap:wrap;">
+                <span style="font-size:9px;font-weight:700;background:${rc.c}15;color:${rc.c};border-radius:5px;padding:2px 7px;">${rc.l}</span>
+                ${pt.nationalId?`<span style="font-size:9px;color:var(--t3);">ر.ق: ${pt.nationalId}</span>`:""}
+                ${pt.phone?`<span style="font-size:9px;color:var(--t3);">📞 ${pt.phone}</span>`:""}
+                ${pt.partyId?`<span style="font-size:9px;color:var(--gr);font-weight:700;">● حساب مرتبط</span>`:`<span style="font-size:9px;color:var(--am);">خارجي</span>`}
+              </div>
+            </div>
+            <button onclick="removePartyByIndex('${id}',${i})" style="background:none;border:1px solid var(--rdl);border-radius:7px;color:var(--rd);cursor:pointer;padding:4px 10px;font-size:11px;font-family:Cairo,sans-serif;">إزالة</button>
+          </div>`;
+        }).join("")}
+      </div>
+
+      <!-- Add party form -->
+      <div style="padding:18px 20px;">
+        <div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:12px;">إضافة طرف جديد</div>
+        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+          ${PARTY_ROLES.map(r=>`<button id="pr-${r.k}" onclick="selPRole('${r.k}')" class="btn btn-gh btn-sm" style="font-size:11px;">${r.l}</button>`).join("")}
+        </div>
+        <!-- Search registered user -->
+        <div style="background:var(--w2);border:1px solid var(--bdl);border-radius:10px;padding:12px;margin-bottom:10px;">
+          <div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:7px;">بحث في المستخدمين المسجلين</div>
+          <div style="display:flex;gap:6px;">
+            <input id="pt-search" class="fi" placeholder="ابحث بالاسم أو البريد..." oninput="searchPartyUser()" style="flex:1;"/>
+          </div>
+          <div id="pt-results" style="margin-top:8px;max-height:120px;overflow-y:auto;"></div>
+        </div>
+        <!-- Or add external -->
+        <div style="background:var(--w2);border:1px solid var(--bdl);border-radius:10px;padding:12px;">
+          <div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:7px;">أو أضف طرف خارجي (بدون حساب)</div>
+          <div class="fw">
+            <div class="fg"><label class="fl">الاسم <span class="rq">*</span></label><input class="fi" id="pt-name" placeholder="الاسم الكامل"/></div>
+            <div class="fg"><label class="fl">رقم الهاتف</label><input class="fi" id="pt-phone" placeholder="01xxxxxxxxx" dir="ltr"/></div>
+          </div>
+          <div class="fw">
+            <div class="fg"><label class="fl">الرقم القومي</label><input class="fi" id="pt-nid" placeholder="14 رقم" maxlength="14"/></div>
+            <div class="fg" style="display:flex;align-items:flex-end;"><button class="btn btn-p" style="width:100%;" onclick="addExternalParty('${id}')">+ إضافة</button></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    // highlight selected role
+    selPRole(_selRole||"owner");
+  };
+  document.body.appendChild(el);
+  renderModal();
+};
+
+let _selRole="owner";
+const selPRole=r=>{
+  _selRole=r;
+  PARTY_ROLES.forEach(x=>{
+    const b=document.getElementById("pr-"+x.k);
+    if(b){b.className=`btn btn-sm ${x.k===r?"btn-p":"btn-gh"}`;b.style.fontSize="11px";}
+  });
+};
+
+const searchPartyUser=()=>{
+  const q=document.getElementById("pt-search")?.value?.trim().toLowerCase();
+  const res=document.getElementById("pt-results");
+  if(!q||!res){if(res)res.innerHTML="";return;}
+  const users=(LS.g(K.u)||[]).filter(u=>u.name?.toLowerCase().includes(q)||u.email?.toLowerCase().includes(q));
+  if(!users.length){res.innerHTML=`<div style="font-size:11px;color:var(--t3);padding:6px;">لا توجد نتائج</div>`;return;}
+  res.innerHTML=users.slice(0,5).map(u=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 8px;background:var(--w);border:1px solid var(--bdl);border-radius:7px;margin-bottom:4px;cursor:pointer;" onclick="addRegisteredParty('${u.id}')">
+      <div style="flex:1;"><div style="font-size:12px;font-weight:700;color:var(--t1);">${u.name}</div><div style="font-size:10px;color:var(--t3);">${u.email} · ${u.role}</div></div>
+      <span style="font-size:11px;color:var(--n8);font-weight:700;">+ ربط</span>
+    </div>`).join("");
+};
+
+const addRegisteredParty=(uid)=>{
+  const projId=document.getElementById("m-parties")?.querySelector("[onclick*='removePartyByIndex']")?.getAttribute("onclick")?.match(/'([^']+)'/)?.[1]||CPJ;
+  const projs=LS.g(K.p)||[];
+  const proj=projs.find(p=>p.id===projId||p.id===CPJ);
+  if(!proj)return;
+  if(!proj.parties)proj.parties=[];
+  if(proj.parties.some(pt=>pt.partyId===uid)){toast("هذا المستخدم مضاف بالفعل","warn");return;}
+  const u=(LS.g(K.u)||[]).find(x=>x.id===uid);
+  if(!u)return;
+  proj.parties.push({partyId:uid,role:_selRole,name:u.name,phone:u.phone||"",nationalId:"",addedAt:new Date().toISOString().slice(0,10),addedBy:CU.id,type:"registered"});
+  if(!proj.timeline)proj.timeline=[];
+  proj.timeline.push({date:new Date().toISOString().slice(0,10),event:`إضافة ${u.name} كـ ${PARTY_ROLES.find(r=>r.k===_selRole)?.l||_selRole}`,by:CU.name,icon:"👤"});
+  LS.s(K.p,projs);
+  toast(`✓ تم ربط ${u.name}`);
+  openManageParties(proj.id);rFile();
+};
+
+const addExternalParty=(projId)=>{
+  const name=document.getElementById("pt-name")?.value?.trim();
+  if(!name){toast("أدخل اسم الطرف","err");return;}
+  const projs=LS.g(K.p)||[];
+  const proj=projs.find(p=>p.id===projId);
+  if(!proj)return;
+  if(!proj.parties)proj.parties=[];
+  const phone=document.getElementById("pt-phone")?.value?.trim()||"";
+  const nid=document.getElementById("pt-nid")?.value?.trim()||"";
+  proj.parties.push({partyId:null,role:_selRole,name,phone,nationalId:nid,addedAt:new Date().toISOString().slice(0,10),addedBy:CU.id,type:"external"});
+  if(!proj.timeline)proj.timeline=[];
+  proj.timeline.push({date:new Date().toISOString().slice(0,10),event:`إضافة ${name} كـ ${PARTY_ROLES.find(r=>r.k===_selRole)?.l||_selRole} (خارجي)`,by:CU.name,icon:"👤"});
+  LS.s(K.p,projs);
+  toast(`✓ تم إضافة ${name}`);
+  openManageParties(projId);rFile();
+};
+
+const removePartyByIndex=(projId,idx)=>{
+  if(!confirm("إزالة هذا الطرف من المشروع؟"))return;
+  const projs=LS.g(K.p)||[];
+  const proj=projs.find(p=>p.id===projId);
+  if(!proj||!proj.parties)return;
+  const removed=proj.parties.splice(idx,1)[0];
+  if(!proj.timeline)proj.timeline=[];
+  proj.timeline.push({date:new Date().toISOString().slice(0,10),event:`إزالة ${removed?.name||"طرف"} من المشروع`,by:CU.name,icon:"🗑"});
+  LS.s(K.p,projs);
+  toast("تم الإزالة");
+  openManageParties(projId);rFile();
+};
+
+const removeParty=(projId,partyIdOrName)=>{
+  const projs=LS.g(K.p)||[];
+  const proj=projs.find(p=>p.id===projId);
+  if(!proj||!proj.parties)return;
+  const idx=proj.parties.findIndex(pt=>pt.partyId===partyIdOrName||pt.name===partyIdOrName);
+  if(idx===-1)return;
+  if(!confirm("إزالة هذا الطرف؟"))return;
+  proj.parties.splice(idx,1);
+  LS.s(K.p,projs);
+  rFile();toast("تم الإزالة");
 };
 
 const openEditProj=id=>{
@@ -1558,8 +1767,18 @@ const svPF=()=>{
     devStatus:PFrm.devStatus||"قيد التخطيط",marketStatus:PFrm.marketStatus||"غير محدد",
     pricePerMeter:Number(PFrm.pricePerMeter)||0,note:PFrm.note||"",
     isCompound:isC,totalUnits:Number(PFrm.totalUnits)||0,
-    compoundModels:isC?(PFrm.models||[]):[],stages
+    compoundModels:isC?(PFrm.models||[]):[],stages,
+    parties:[],
+    timeline:[]
   };
+  // Auto-link owner if email matches a registered user
+  const ownerUser=(LS.g(K.u)||[]).find(u=>u.email&&u.email===proj.ownerEmail);
+  if(ownerUser){
+    proj.parties.push({partyId:ownerUser.id,role:"owner",name:ownerUser.name,phone:ownerUser.phone||"",addedAt:proj.createdAt,addedBy:CU.id,type:"registered"});
+  } else if(proj.ownerEmail||proj.ownerName){
+    proj.parties.push({partyId:null,role:"owner",name:proj.ownerName,nationalId:proj.nationalId||"",phone:"",addedAt:proj.createdAt,addedBy:CU.id,type:"external"});
+  }
+  proj.timeline.push({date:proj.createdAt,event:"إنشاء الملف",by:CU.name,icon:"🗂"});
   const list=LS.g(K.p)||[];list.unshift(proj);LS.s(K.p,list);
   addNotif(`تم إنشاء مشروع جديد: ${proj.ownerName}`,"info",proj.id);
   cm("mnp");openProj(proj.id);toast("✓ تم إنشاء المشروع — الكود: "+proj.id);
