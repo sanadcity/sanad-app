@@ -618,6 +618,11 @@ const initData=()=>{
   if(!LS.g(K.seq))LS.s(K.seq,{});
   if(!LS.g(K.notif))LS.s(K.notif,[]);
   if(!LS.g(K.tasks))LS.s(K.tasks,[]);
+  // migrate users without code
+  const users2=LS.g(K.u)||[];
+  let uChanged=false;
+  users2.forEach(u=>{if(!u.code){u.code=genUserCode(u.role);uChanged=true;}});
+  if(uChanged)LS.s(K.u,users2);
   // migrate old stage labels
   const LABEL_MAP={"الاستحواذ على الأرض":"ملكية العقار"};
   const projs=LS.g(K.p)||[];
@@ -751,6 +756,13 @@ let CU=null,CPJ=null,PF="all",SQ="",PS=1,PFrm={},SS=null,LANG="ar";
 const CC=p=>p>=80?"#1B7A4A":p>=50?"#C9A84C":p>=30?"#B7770D":"#C0392B";
 const fmtM=v=>v>=1e9?`${(v/1e9).toFixed(2)} مليار ج`:v>=1e6?`${(v/1e6).toFixed(1)} م ج`:`${(v||0).toLocaleString()} ج`;
 const genId=c=>{const cc=CTC[c]||c.replace(/[أإآ]/g,"ا").replace(/\s+/g,"").substring(0,3).toUpperCase()||"OTH";const sq=LS.g(K.seq)||{};sq[cc]=(sq[cc]||0)+1;LS.s(K.seq,sq);return`SND-${cc}-${new Date().getFullYear()}-${String(sq[cc]).padStart(4,"0")}`;};
+const ROLE_PREFIX={admin:"ADM",staff:"STF",office:"OFF",client:"CLT",developer:"DEV",broker:"BRK"};
+const genUserCode=role=>{
+  const pfx=ROLE_PREFIX[role]||"USR";
+  const sq=LS.g(K.seq)||{};
+  const k="UC_"+pfx;sq[k]=(sq[k]||0)+1;LS.s(K.seq,sq);
+  return`${pfx}-${String(sq[k]).padStart(3,"0")}`;
+};
 const calcC=p=>{const all=p.stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]);const req=all.filter(d=>d.req);return req.length?Math.round(req.filter(d=>d.up).length/req.length*100):0;};
 const calcSC=s=>{const all=[...(s.docs||[]),...(s.cd||[])];return all.length?Math.round(all.filter(d=>d.up).length/all.length*100):0;};
 const curI=p=>{for(let i=0;i<p.stages.length;i++){const all=[...(p.stages[i].docs||[]),...(p.stages[i].cd||[])];if(all.filter(d=>d.req).some(d=>!d.up))return i;}return p.stages.length-1;};
@@ -1897,8 +1909,9 @@ const rUsers=()=>{
     ${pending.map(u=>`<div class="pr"><div style="flex:1;min-width:0;"><div class="pr-name">${u.name}</div><div class="pr-sub">${u.email} · ${rp(u.role)}</div></div><button class="btn btn-gr btn-sm" onclick="apU('${u.id}')">✓ قبول</button><button class="btn btn-d btn-sm" onclick="rjU('${u.id}')">✗ رفض</button></div>`).join("")}<div style="height:16px;"></div>`;
   }
   html+=`<div style="font-size:14px;font-weight:800;color:var(--t1);margin-bottom:10px;">المستخدمون النشطون (${active.length})</div>
-  <div class="card" style="overflow:hidden;"><table class="tbl"><thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الدور</th><th>تاريخ التسجيل</th><th>إجراء</th></tr></thead><tbody>
+  <div class="card" style="overflow:hidden;"><table class="tbl"><thead><tr><th>الكود</th><th>الاسم</th><th>البريد الإلكتروني</th><th>الدور</th><th>تاريخ التسجيل</th><th>إجراء</th></tr></thead><tbody>
   ${active.map(u=>`<tr>
+    <td style="font-family:monospace;font-size:11px;font-weight:700;color:var(--gold);letter-spacing:.05em;">${u.code||"—"}</td>
     <td style="font-weight:700;color:var(--t1);">${u.name}</td>
     <td style="font-size:11px;color:var(--t3);">${u.email}</td>
     <td>${rp(u.role)}</td>
@@ -1907,7 +1920,7 @@ const rUsers=()=>{
   </tr>`).join("")}</tbody></table></div>`;
   $("us").innerHTML=html;
 };
-const apU=id=>{LS.s(K.u,(LS.g(K.u)||[]).map(u=>u.id===id?{...u,status:"active"}:u));rUsers();rDash();updBdg();toast("تم قبول المستخدم ✓");};
+const apU=id=>{LS.s(K.u,(LS.g(K.u)||[]).map(u=>u.id===id?{...u,status:"active",code:u.code||genUserCode(u.role)}:u));rUsers();rDash();updBdg();toast("تم قبول المستخدم ✓");};
 const rjU=id=>{LS.s(K.u,(LS.g(K.u)||[]).map(u=>u.id===id?{...u,status:"rejected"}:u));rUsers();updBdg();toast("تم رفض الطلب","info");};
 const suU=id=>{if(!confirm("تعليق هذا المستخدم؟"))return;LS.s(K.u,(LS.g(K.u)||[]).map(u=>u.id===id?{...u,status:"suspended"}:u));rUsers();toast("تم التعليق","warn");};
 
