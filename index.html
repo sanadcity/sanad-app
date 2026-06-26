@@ -618,6 +618,12 @@ const initData=()=>{
   if(!LS.g(K.seq))LS.s(K.seq,{});
   if(!LS.g(K.notif))LS.s(K.notif,[]);
   if(!LS.g(K.tasks))LS.s(K.tasks,[]);
+  // migrate old stage labels
+  const LABEL_MAP={"الاستحواذ على الأرض":"ملكية العقار"};
+  const projs=LS.g(K.p)||[];
+  let changed=false;
+  projs.forEach(p=>(p.stages||[]).forEach(s=>{if(LABEL_MAP[s.label]){s.label=LABEL_MAP[s.label];changed=true;}}));
+  if(changed)LS.s(K.p,projs);
 };
 
 // ── STAGES ──
