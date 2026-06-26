@@ -1899,25 +1899,37 @@ const rSvcs=()=>{
 const uSvc=(id,status)=>{LS.s(K.svc,(LS.g(K.svc)||[]).map(s=>s.id===id?{...s,status}:s));rSvcs();updBdg();toast(status==="done"?"تم إنجاز الطلب ✓":"تم الإلغاء","info");};
 
 // ── USERS (admin only) ──
+let UF="all";
+const ROLE_COLORS={admin:{bg:"#F0EDF8",border:"#4A1A6B"},staff:{bg:"#E6EEF8",border:"#1A3F6B"},office:{bg:"#E3F5EC",border:"#1B7A4A"},client:{bg:"#FEF3DC",border:"#B7770D"},developer:{bg:"#EEE6F8",border:"#4A1A6B"},broker:{bg:"#F4F5F7",border:"#8896A4"}};
 const rUsers=()=>{
   const users=LS.g(K.u)||[];
   const pending=users.filter(u=>u.status==="pending");
-  const active=users.filter(u=>u.status==="active");
+  const allActive=users.filter(u=>u.status==="active");
+  const active=UF==="all"?allActive:allActive.filter(u=>u.role===UF);
+  const roles=[...new Set(allActive.map(u=>u.role))];
   let html="";
   if(pending.length){
     html+=`<div style="font-size:14px;font-weight:800;color:var(--t1);margin-bottom:10px;">طلبات الانضمام المعلقة (${pending.length})</div>
     ${pending.map(u=>`<div class="pr"><div style="flex:1;min-width:0;"><div class="pr-name">${u.name}</div><div class="pr-sub">${u.email} · ${rp(u.role)}</div></div><button class="btn btn-gr btn-sm" onclick="apU('${u.id}')">✓ قبول</button><button class="btn btn-d btn-sm" onclick="rjU('${u.id}')">✗ رفض</button></div>`).join("")}<div style="height:16px;"></div>`;
   }
-  html+=`<div style="font-size:14px;font-weight:800;color:var(--t1);margin-bottom:10px;">المستخدمون النشطون (${active.length})</div>
-  <div class="card" style="overflow:hidden;"><table class="tbl"><thead><tr><th>الكود</th><th>الاسم</th><th>البريد الإلكتروني</th><th>الدور</th><th>تاريخ التسجيل</th><th>إجراء</th></tr></thead><tbody>
-  ${active.map(u=>`<tr>
-    <td style="font-family:monospace;font-size:11px;font-weight:700;color:var(--gold);letter-spacing:.05em;">${u.code||"—"}</td>
+  // filter bar
+  html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+    <div style="font-size:14px;font-weight:800;color:var(--t1);">المستخدمون النشطون (${active.length}/${allActive.length})</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button onclick="UF='all';rUsers()" class="btn btn-sm ${UF==='all'?'btn-p':'btn-gh'}" style="font-size:11px;">الكل (${allActive.length})</button>
+      ${roles.map(r=>`<button onclick="UF='${r}';rUsers()" class="btn btn-sm ${UF===r?'btn-p':'btn-gh'}" style="font-size:11px;">${rp(r)} (${allActive.filter(u=>u.role===r).length})</button>`).join("")}
+    </div>
+  </div>`;
+  const ROLE_L={admin:"مدير النظام",staff:"موظف",office:"مكتب هندسي",client:"عميل / مالك",developer:"مطور عقاري",broker:"وسيط"};
+  html+=`<div class="card" style="overflow:hidden;"><table class="tbl"><thead><tr><th>الكود</th><th>الاسم</th><th>البريد الإلكتروني</th><th>الدور</th><th>تاريخ التسجيل</th><th>إجراء</th></tr></thead><tbody>
+  ${active.map(u=>{const rc=ROLE_COLORS[u.role]||{bg:"#F4F5F7",border:"#8896A4"};return`<tr style="background:${rc.bg};border-right:3px solid ${rc.border};">
+    <td style="font-family:monospace;font-size:11px;font-weight:800;color:var(--gold);letter-spacing:.05em;">${u.code||"—"}</td>
     <td style="font-weight:700;color:var(--t1);">${u.name}</td>
     <td style="font-size:11px;color:var(--t3);">${u.email}</td>
-    <td>${rp(u.role)}</td>
+    <td><span style="font-size:11px;font-weight:700;color:${rc.border};">${ROLE_L[u.role]||u.role}</span></td>
     <td style="font-size:11px;color:var(--t3);">${u.created||"—"}</td>
     <td>${u.role!=="admin"?`<button onclick="suU('${u.id}')" class="btn btn-d btn-xs">تعليق</button>`:`<span style='color:var(--t3);font-size:11px;'>مدير</span>`}</td>
-  </tr>`).join("")}</tbody></table></div>`;
+  </tr>`;}).join("")}</tbody></table></div>`;
   $("us").innerHTML=html;
 };
 const apU=id=>{LS.s(K.u,(LS.g(K.u)||[]).map(u=>u.id===id?{...u,status:"active",code:u.code||genUserCode(u.role)}:u));rUsers();rDash();updBdg();toast("تم قبول المستخدم ✓");};
