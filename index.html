@@ -2044,7 +2044,7 @@ const openPassport=projId=>{
       <div style="width:28px;height:28px;border-radius:50%;background:${s.done?"#1B7A4A":s===currentStage?"#1C2D4A":"#e0e0e0"};display:flex;align-items:center;justify-content:center;">
         <span style="color:#fff;font-size:11px;">${s.done?"✓":s===currentStage?"●":"○"}</span>
       </div>
-      <div style="font-size:8px;text-align:center;color:${s.done?"#1B7A4A":s===currentStage?"#1C2D4A":"#999"};font-weight:${s.done||s===currentStage?"700":"400"};max-width:52px;line-height:1.3;">${s.name}</div>
+      <div style="font-size:8px;text-align:center;color:${s.done?"#1B7A4A":s===currentStage?"#1C2D4A":"#999"};font-weight:${s.done||s===currentStage?"700":"400"};max-width:52px;line-height:1.3;">${s.label||s.name||""}</div>
     </div>
     ${s!==stages[stages.length-1]?`<div style="flex:1;height:2px;background:${s.done?"#1B7A4A":"#e0e0e0"};margin-top:14px;max-width:30px;"></div>`:""}
   `).join("");
@@ -2101,7 +2101,7 @@ const openPassport=projId=>{
           </div>
           ${currentStage?`<div style="margin-top:14px;padding:10px 14px;background:#EBF2FB;border-radius:8px;border-right:3px solid #1C2D4A;">
             <div style="font-size:9px;color:#666;">المرحلة الحالية</div>
-            <div style="font-size:13px;font-weight:800;color:#1C2D4A;margin-top:2px;">${currentStage.name}</div>
+            <div style="font-size:13px;font-weight:800;color:#1C2D4A;margin-top:2px;">${currentStage.label||currentStage.name||"—"}</div>
             ${proj.nextAction?`<div style="font-size:10px;color:#555;margin-top:4px;">الإجراء المنتظر: ${proj.nextAction}</div>`:""}
           </div>`:""}
         </div>
@@ -2128,16 +2128,16 @@ const openPassport=projId=>{
           <div style="background:#fff;border-radius:12px;border:1px solid #eee;overflow:hidden;">
             <div style="padding:12px 14px;border-bottom:1px solid #f0f0f0;font-size:10px;font-weight:700;color:#888;letter-spacing:.1em;">أطراف المشروع</div>
             <div style="padding:12px 14px;display:flex;flex-direction:column;gap:8px;">
-              ${parties.length?parties.map(pt=>`
-                <div style="display:flex;align-items:center;gap:8px;">
-                  <div style="width:30px;height:30px;border-radius:50%;background:#f0f2f5;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">
-                    ${pt.role==="مالك"?"👤":pt.role==="وكيل"?"🤝":pt.role==="مكتب"?"🏢":"👷"}
-                  </div>
+              ${parties.length?parties.map(pt=>{
+                const rc=PARTY_ROLES.find(r=>r.k===pt.role)||{l:pt.role,c:"#8896A4"};
+                const icon=pt.role==="owner"?"👤":pt.role==="developer"?"👷":pt.role==="office"?"🏢":pt.role==="broker"?"🤝":"👤";
+                return`<div style="display:flex;align-items:center;gap:8px;">
+                  <div style="width:30px;height:30px;border-radius:50%;background:#f0f2f5;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">${icon}</div>
                   <div>
                     <div style="font-size:11px;font-weight:700;color:#1a1a1a;">${pt.name}</div>
-                    <div style="font-size:9px;color:#888;">${pt.role}</div>
+                    <div style="font-size:9px;color:#888;">${rc.l}</div>
                   </div>
-                </div>`).join(""):`<div style="font-size:11px;color:#aaa;text-align:center;padding:10px;">${proj.ownerName}</div>`}
+                </div>`;}).join(""):`<div style="font-size:11px;color:#aaa;text-align:center;padding:10px;">${proj.ownerName}</div>`}
             </div>
           </div>
         </div>
@@ -2153,13 +2153,13 @@ const openPassport=projId=>{
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             ${stages.map(s=>{
-              const req=( s.docs||[]).filter(d=>d.req).length;
+              const req=(s.docs||[]).filter(d=>d.req).length;
               const up=(s.docs||[]).filter(d=>d.req&&d.up).length;
               if(!req)return"";
               const done=up===req;
               return`<div style="display:flex;align-items:center;gap:5px;background:${done?"#E3F5EC":"#FEF3DC"};border-radius:6px;padding:4px 10px;">
                 <span style="font-size:9px;">${done?"✅":"📋"}</span>
-                <span style="font-size:10px;font-weight:600;color:${done?"#1B7A4A":"#B7770D"};">${s.name}</span>
+                <span style="font-size:10px;font-weight:600;color:${done?"#1B7A4A":"#B7770D"};">${s.label||s.name||"—"}</span>
                 <span style="font-size:9px;color:#888;">${up}/${req}</span>
               </div>`;
             }).join("")}
@@ -2209,8 +2209,12 @@ const printPassport=()=>{
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <style>
       *{margin:0;padding:0;box-sizing:border-box;}
-      body{font-family:Cairo,sans-serif;background:#f5f6f8;padding:24px;direction:rtl;}
-      @media print{body{background:#fff;padding:0;} @page{margin:15mm;}}
+      body{font-family:Cairo,sans-serif;background:#f5f6f8;padding:20px;direction:rtl;}
+      @media print{
+        body{background:#fff;padding:0;}
+        @page{margin:12mm;size:A4;}
+        div{page-break-inside:avoid;}
+      }
     </style>
   </head><body>${body.innerHTML}</body></html>`);
   w.document.close();
