@@ -652,7 +652,7 @@ const STAGES=[
     {key:"d4",label:"موافقة الجهاز المحلي",req:true},
     {key:"d5",label:"قرار التخصيص",req:true}
   ]},
-  {key:"land",label:"ملكية العقار",icon:"📍",color:"#1A3F6B",docs:[
+  {key:"land",label:"ملكية العقار",icon:"🏠",color:"#1A3F6B",docs:[
     {key:"l0",label:"إخطار التخصيص",req:true},
     {key:"l1",label:"محضر استلام الأرض",req:true},
     {key:"l_wak",label:"توكيل رسمي — المالك الأصلي (إن وجد)",req:false},
@@ -675,13 +675,13 @@ const STAGES=[
     {key:"p8",label:"طلب الترخيص",req:true},
     {key:"p9",label:"رخصة البناء",req:true}
   ]},
-  {key:"design",label:"التصاميم الهندسية",icon:"✏",color:"#3D5A8A",docs:[
+  {key:"design",label:"التصاميم الهندسية",icon:"📐",color:"#3D5A8A",docs:[
     {key:"des1",label:"الرسومات المعمارية المعتمدة",req:true},
     {key:"des2",label:"رسومات الهيكل الخرساني",req:true},
     {key:"des3",label:"المخططات التفصيلية",req:false},
     {key:"des4",label:"تقرير الحساب الإنشائي",req:false}
   ]},
-  {key:"excavation",label:"جسات التربة والحفر",icon:"⬡",color:"#8A5A1C",docs:[
+  {key:"excavation",label:"جسات التربة والحفر",icon:"⛏",color:"#8A5A1C",docs:[
     {key:"e1",label:"تصريح الحفر",req:true},
     {key:"e2",label:"موافقة شركة الغاز",req:true},
     {key:"e3",label:"عقد مقاولة الحفر",req:true},
@@ -700,7 +700,7 @@ const STAGES=[
     {key:"m3",label:"طلب دخول المياه",req:true},
     {key:"m4",label:"طلب دخول الغاز",req:false}
   ]},
-  {key:"exterior",label:"التشطيبات الخارجية",icon:"🏛",color:"#2D5A8A",docs:[
+  {key:"exterior",label:"التشطيبات الخارجية",icon:"🎨",color:"#2D5A8A",docs:[
     {key:"ex1",label:"شهادة إتمام الواجهات",req:false},
     {key:"ex2",label:"موافقة التشطيب الخارجي",req:false}
   ]},
@@ -708,7 +708,7 @@ const STAGES=[
     {key:"in1",label:"شهادة إتمام التشطيبات الداخلية",req:false},
     {key:"in2",label:"محضر الفحص الداخلي",req:false}
   ]},
-  {key:"handover",label:"التسليم والتسجيل",icon:"✅",color:"#1B7A4A",docs:[
+  {key:"handover",label:"التسليم والتسجيل",icon:"🔑",color:"#1B7A4A",docs:[
     {key:"h1",label:"شهادة إتمام البناء",req:true},
     {key:"h2",label:"شهادة صلاحية السكن",req:true},
     {key:"h3",label:"محضر الاستلام النهائي",req:true}
@@ -1213,13 +1213,25 @@ const rFile=()=>{
   let html=`
   <!-- PIN: المرحلة الحالية -->
   ${(proj.currentStage&&proj.currentStage!=="—")||proj.nextAction?`
-  <div style="background:linear-gradient(135deg,var(--n8),var(--n9));border-radius:12px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-    <div style="font-size:22px;">📍</div>
-    <div style="flex:1;min-width:0;">
-      ${proj.currentStage&&proj.currentStage!=="—"?`<div style="font-size:11px;color:var(--gold);font-weight:700;letter-spacing:.05em;margin-bottom:3px;">المرحلة الحالية</div><div style="font-size:15px;font-weight:800;color:#fff;">${proj.currentStage}</div>`:""}
-      ${proj.nextAction?`<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:4px;">⏳ ${proj.nextAction}</div>`:""}
+  <div style="background:linear-gradient(135deg,var(--n8),var(--n9));border-radius:14px;padding:16px 18px;margin-bottom:14px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <div style="font-size:20px;">📍</div>
+      <div>
+        <div style="font-size:9px;color:var(--gold);font-weight:700;letter-spacing:.1em;">المرحلة الحالية</div>
+        <div style="font-size:15px;font-weight:900;color:#fff;">${proj.currentStage&&proj.currentStage!=="—"?proj.currentStage:"—"}</div>
+      </div>
+      ${proj.serviceReason&&proj.serviceReason!=="مشروع كامل"?`<span style="margin-right:auto;background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.3);border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;color:var(--gold);">${proj.serviceReason}</span>`:""}
     </div>
-    ${proj.serviceReason&&proj.serviceReason!=="مشروع كامل"?`<div style="background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--gold);">${proj.serviceReason}</div>`:""}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      ${proj.nextAction?`<div style="background:rgba(255,255,255,.06);border-radius:8px;padding:9px 11px;">
+        <div style="font-size:9px;color:rgba(255,255,255,.35);margin-bottom:3px;">المطلوب</div>
+        <div style="font-size:11px;font-weight:700;color:#fff;">${proj.nextAction}</div>
+      </div>`:""}
+      ${(()=>{const resp=(proj.parties||[]).find(p=>["office","staff"].includes(p.role));return resp?`<div style="background:rgba(255,255,255,.06);border-radius:8px;padding:9px 11px;">
+        <div style="font-size:9px;color:rgba(255,255,255,.35);margin-bottom:3px;">المسؤول الحالي</div>
+        <div style="font-size:11px;font-weight:700;color:#fff;">${resp.name}</div>
+      </div>`:"";})()}
+    </div>
   </div>`:""}
 
   <!-- TOP BAR -->
@@ -1337,14 +1349,84 @@ const rFile=()=>{
         ${proj.pricePerMeter&&proj.area?`<div style="margin-top:10px;background:linear-gradient(135deg,var(--gl),#fff);border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:10px;"><div style="font-size:9px;color:var(--gd);font-weight:700;margin-bottom:2px;">💰 التقدير المالي</div><div style="font-size:16px;font-weight:800;color:var(--n8);font-family:monospace;">${fmtM(proj.area*proj.pricePerMeter)}</div><div style="font-size:9px;color:var(--gd);margin-top:2px;">${Number(proj.pricePerMeter).toLocaleString()} ج/م²</div></div>`:""}
       </div>
 
-      <!-- Legal -->
-      <div style="background:${comp>=80?"var(--grl)":"var(--aml)"};border:1px solid ${comp>=80?"rgba(27,122,74,.2)":"rgba(183,119,13,.2)"};border-radius:10px;padding:11px 13px;display:flex;align-items:center;gap:9px;">
-        <span style="font-size:18px;">${comp>=80?"✅":comp>=50?"⚠":"🔴"}</span>
-        <div>
-          <div style="font-size:12px;font-weight:700;color:${comp>=80?"var(--gr)":"var(--am)"};">${comp>=80?"صحة قانونية جيدة":comp>=50?"تحتاج مراجعة":"يحتاج مستندات عاجلة"}</div>
-          <div style="font-size:10px;color:var(--t3);">الإنجاز: ${comp}%</div>
-        </div>
-      </div>
+      <!-- HEALTH SCORE -->
+      ${(()=>{
+        const totalD=proj.stages.flatMap(s=>s.docs||[]).filter(d=>d.req).length;
+        const upD=proj.stages.flatMap(s=>s.docs||[]).filter(d=>d.req&&d.up).length;
+        const docScore=totalD?Math.round(upD/totalD*100):0;
+        const stageScore=proj.stages.length?Math.round(completedCount/proj.stages.length*100):0;
+        const poaOk=(proj.poas||[]).length===0||(proj.poas||[]).every(p=>!p.expiryDate||p.expiryDate>=new Date().toISOString().slice(0,10));
+        const poaScore=poaOk?100:60;
+        const overall=Math.round(docScore*0.5+stageScore*0.35+poaScore*0.15);
+        const hlabel=overall>=85?"ممتاز":overall>=65?"جيد":overall>=40?"يحتاج مراجعة":"عاجل";
+        const hcolor=overall>=85?"var(--gr)":overall>=65?"var(--bl)":overall>=40?"var(--am)":"var(--rd)";
+        const hbg=overall>=85?"var(--grl)":overall>=65?"var(--bll)":overall>=40?"var(--aml)":"var(--rdl)";
+        const scoreBar=(label,val,color)=>`<div style="margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+            <span style="font-size:9px;color:var(--t3);">${label}</span>
+            <span style="font-size:9px;font-weight:700;color:${color};">${val}%</span>
+          </div>
+          <div style="height:4px;background:var(--bdl);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${val}%;background:${color};border-radius:3px;"></div>
+          </div>
+        </div>`;
+        return`<div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.1em;">Project Health</div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:18px;font-weight:900;color:${hcolor};">${overall}</span>
+              <span style="font-size:9px;font-weight:700;background:${hbg};color:${hcolor};border-radius:5px;padding:2px 7px;">${hlabel}</span>
+            </div>
+          </div>
+          ${scoreBar("المستندات",docScore,docScore>=80?"var(--gr)":docScore>=50?"var(--am)":"var(--rd)")}
+          ${scoreBar("تقدم المراحل",stageScore,"var(--bl)")}
+          ${scoreBar("التوكيلات",poaScore,poaOk?"var(--gr)":"var(--am)")}
+        </div>`;
+      })()}
+
+      <!-- MISSING DOCS -->
+      ${(()=>{
+        const missing=proj.stages.flatMap(s=>(s.docs||[]).filter(d=>d.req&&!d.up).map(d=>({label:d.label,stage:s.label})));
+        if(!missing.length)return`<div style="background:var(--grl);border:1px solid rgba(27,122,74,.2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:8px;"><span style="font-size:16px;">✅</span><div style="font-size:12px;font-weight:700;color:var(--gr);">جميع المستندات المطلوبة مكتملة</div></div>`;
+        return`<div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+          <div style="padding:10px 14px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.1em;">المستندات الناقصة</div>
+            <span style="background:var(--rdl);color:var(--rd);border-radius:10px;font-size:9px;font-weight:700;padding:2px 7px;">${missing.length}</span>
+          </div>
+          <div style="padding:8px 14px;max-height:160px;overflow-y:auto;">
+            ${missing.map(d=>`<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid var(--bdl);">
+              <div style="width:6px;height:6px;border-radius:50%;background:var(--rd);flex-shrink:0;"></div>
+              <div style="flex:1;">
+                <div style="font-size:10px;font-weight:600;color:var(--t1);">${d.label}</div>
+                <div style="font-size:9px;color:var(--t3);">${d.stage}</div>
+              </div>
+            </div>`).join("")}
+          </div>
+        </div>`;
+      })()}
+
+      <!-- ACTIVITY FEED -->
+      ${(()=>{
+        const feed=(proj.timeline||[]).slice().reverse().slice(0,6);
+        if(!feed.length)return"";
+        const now=new Date().toISOString().slice(0,10);
+        return`<div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+          <div style="padding:10px 14px;border-bottom:1px solid var(--bdl);font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.1em;">آخر النشاطات</div>
+          <div style="padding:6px 14px;">
+            ${feed.map((t,i)=>`<div style="display:flex;gap:10px;padding:7px 0;${i<feed.length-1?"border-bottom:1px solid var(--bdl);":""}">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:0;flex-shrink:0;">
+                <div style="width:26px;height:26px;border-radius:50%;background:var(--w2);border:1px solid var(--bdl);display:flex;align-items:center;justify-content:center;font-size:12px;">${t.icon||"●"}</div>
+                ${i<feed.length-1?`<div style="width:1px;flex:1;background:var(--bdl);min-height:8px;margin-top:2px;"></div>`:""}
+              </div>
+              <div style="flex:1;padding-bottom:${i<feed.length-1?"6px":"0"};">
+                <div style="font-size:11px;font-weight:600;color:var(--t1);">${t.event}</div>
+                ${t.stage?`<div style="font-size:9px;color:var(--bl);margin-top:1px;">${t.stage}</div>`:""}
+                <div style="font-size:9px;color:var(--t3);margin-top:2px;">${t.date===now?"اليوم":t.date||""}${t.time?" · "+t.time:""}${t.by?" · "+t.by:""}</div>
+              </div>
+            </div>`).join("")}
+          </div>
+        </div>`;
+      })()}
     </div>
 
     <!-- RIGHT COL: documents -->
@@ -1717,8 +1799,13 @@ const hUp=(sk,dk,isC,inp)=>{
   const r=new FileReader();
   r.onload=e=>{
     const p=gP();if(!p)return;
-    const upd=arr=>arr.map(d=>d.key===dk?{...d,up:{name:file.name,type:file.type,size:(file.size/1024).toFixed(0)+"KB",data:e.target.result,date:new Date().toISOString().slice(0,10)}}:d);
+    const now=new Date();
+    const upd=arr=>arr.map(d=>d.key===dk?{...d,up:{name:file.name,type:file.type,size:(file.size/1024).toFixed(0)+"KB",data:e.target.result,date:now.toISOString().slice(0,10)}}:d);
     p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
+    const stageLbl=p.stages.find(s=>s.key===sk)?.label||sk;
+    const docLbl=p.stages.find(s=>s.key===sk)?.docs?.find(d=>d.key===dk)?.label||file.name;
+    if(!p.timeline)p.timeline=[];
+    p.timeline.push({date:now.toISOString().slice(0,10),time:now.toLocaleTimeString("ar-EG",{hour:"2-digit",minute:"2-digit"}),event:`رفع "${docLbl}"`,stage:stageLbl,by:CU.name,icon:"📎"});
     svP(p);rFile();
     addNotif(`تم رفع ملف في مشروع ${p.ownerName}`,`info`,p.id,null);
     toast("✓ تم رفع الملف بنجاح");
