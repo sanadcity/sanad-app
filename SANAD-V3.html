@@ -1235,6 +1235,7 @@ const rFile=()=>{
       ${(()=>{const miss=proj.stages?.flatMap(s=>s.docs||[]).filter(d=>d.req&&!d.up).length||0;return miss>0?`<span style="background:var(--rdl);color:var(--rd);border-radius:20px;font-size:10px;font-weight:700;padding:3px 8px;">⚠ ناقص ${miss}</span>`:""})()}
       ${can?`<button class="btn btn-gh btn-sm" onclick="openEditProj('${proj.id}')">✎ تعديل</button>`:""}
       ${can?`<button class="btn btn-gh btn-sm" onclick="openAddTask('${proj.id}')">☑ مهمة</button>`:""}
+      <button class="btn btn-gh btn-sm" onclick="openPassport('${proj.id}')">🪪 سند المشروع</button>
       <button class="btn btn-gh btn-sm" onclick="openSvc()">⚡ طلب خدمة</button>
       ${canDel?`<button class="btn btn-d btn-sm" onclick="delCP()">🗑 حذف</button>`:""}
     </div>
@@ -2020,6 +2021,213 @@ const rSvcs=()=>{
   </tr>`).join("")}</tbody></table></div>`;
 };
 const uSvc=(id,status)=>{LS.s(K.svc,(LS.g(K.svc)||[]).map(s=>s.id===id?{...s,status}:s));rSvcs();updBdg();toast(status==="done"?"تم إنجاز الطلب ✓":"تم الإلغاء","info");};
+// ── PROJECT PASSPORT ──
+const openPassport=projId=>{
+  const projs=LS.g(K.p)||[];
+  const proj=projs.find(p=>p.id===projId);
+  if(!proj)return;
+  const users=LS.g(K.u)||[];
+  const today=new Date().toLocaleDateString("ar-EG",{year:"numeric",month:"long",day:"numeric"});
+  const stages=proj.stages||[];
+  const doneCount=stages.filter(s=>s.done).length;
+  const pct=stages.length?Math.round(doneCount/stages.length*100):0;
+  const currentStage=stages.find(s=>!s.done)||stages[stages.length-1];
+  const parties=(proj.parties||[]);
+  const ownerParty=parties.find(p=>p.role==="مالك")||{name:proj.ownerName};
+  const officeParty=parties.find(p=>p.role==="مكتب");
+  const totalDocs=stages.flatMap(s=>s.docs||[]).filter(d=>d.req).length;
+  const uploadedDocs=stages.flatMap(s=>s.docs||[]).filter(d=>d.req&&d.up).length;
+  const expiredPOA=(proj.poas||[]).filter(p=>p.expiryDate&&p.expiryDate<new Date().toISOString().slice(0,10));
+
+  const stageBar=stages.map(s=>`
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+      <div style="width:28px;height:28px;border-radius:50%;background:${s.done?"#1B7A4A":s===currentStage?"#1C2D4A":"#e0e0e0"};display:flex;align-items:center;justify-content:center;">
+        <span style="color:#fff;font-size:11px;">${s.done?"✓":s===currentStage?"●":"○"}</span>
+      </div>
+      <div style="font-size:8px;text-align:center;color:${s.done?"#1B7A4A":s===currentStage?"#1C2D4A":"#999"};font-weight:${s.done||s===currentStage?"700":"400"};max-width:52px;line-height:1.3;">${s.name}</div>
+    </div>
+    ${s!==stages[stages.length-1]?`<div style="flex:1;height:2px;background:${s.done?"#1B7A4A":"#e0e0e0"};margin-top:14px;max-width:30px;"></div>`:""}
+  `).join("");
+
+  const infoRow=(label,val,pub=true)=>pub&&val&&val!=="—"?`
+    <tr>
+      <td style="padding:7px 10px;font-size:11px;color:#666;border-bottom:1px solid #f0f0f0;white-space:nowrap;">${label}</td>
+      <td style="padding:7px 10px;font-size:11px;font-weight:600;color:#1a1a1a;border-bottom:1px solid #f0f0f0;">${val}</td>
+    </tr>`:"";
+
+  const h=`<div id="m-passport" style="position:fixed;inset:0;background:rgba(10,20,35,.7);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;" onclick="if(event.target===this)closePassport()">
+    <div style="background:#f5f6f8;border-radius:16px;width:100%;max-width:680px;max-height:92vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.35);position:relative;">
+
+      <!-- PRINT TOOLBAR -->
+      <div id="passport-toolbar" style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px;background:#fff;border-radius:16px 16px 0 0;border-bottom:1px solid #e8e8e8;">
+        <div style="font-size:13px;font-weight:700;color:#1C2D4A;">🪪 سند المشروع</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="copyPassportLink('${proj.id}')" style="padding:6px 14px;border-radius:8px;border:1.5px solid #d0d0d0;background:#fff;font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;color:#444;">⎘ نسخ ملخص</button>
+          <button onclick="printPassport()" style="padding:6px 14px;border-radius:8px;border:none;background:#1C2D4A;color:#fff;font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">🖨 طباعة</button>
+          <button onclick="closePassport()" style="width:30px;height:30px;border-radius:8px;border:1.5px solid #e0e0e0;background:#fff;cursor:pointer;font-size:14px;">✕</button>
+        </div>
+      </div>
+
+      <!-- PASSPORT BODY (printable) -->
+      <div id="passport-body" style="padding:24px;font-family:Cairo,sans-serif;direction:rtl;">
+
+        <!-- HEADER -->
+        <div style="background:linear-gradient(135deg,#0D1B2E,#1C2D4A);border-radius:14px;padding:24px 28px;margin-bottom:18px;position:relative;overflow:hidden;">
+          <div style="position:absolute;left:-30px;top:-30px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.04);"></div>
+          <div style="position:absolute;left:20px;bottom:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.03);"></div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;position:relative;">
+            <div>
+              <div style="font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.15em;margin-bottom:6px;">سند · وثيقة المشروع الرقمية</div>
+              <div style="font-size:22px;font-weight:900;color:#fff;line-height:1.2;">${proj.ownerName}</div>
+              <div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:6px;">📍 ${[proj.gov,proj.city,proj.district,proj.neighborhood].filter(Boolean).join(" · ")}</div>
+              <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+                <span style="background:rgba(255,255,255,.12);color:#fff;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;">${proj.id}</span>
+                ${proj.area?`<span style="background:rgba(255,255,255,.12);color:#fff;border-radius:6px;padding:4px 10px;font-size:10px;">📐 ${Number(proj.area).toLocaleString()} م²</span>`:""}
+                ${proj.activity?`<span style="background:rgba(255,255,255,.12);color:#fff;border-radius:6px;padding:4px 10px;font-size:10px;">${proj.activity}</span>`:""}
+              </div>
+            </div>
+            <div style="text-align:center;background:rgba(255,255,255,.08);border-radius:10px;padding:12px 16px;flex-shrink:0;">
+              <div style="font-size:28px;font-weight:900;color:#C9A84C;">${pct}%</div>
+              <div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:2px;">اكتمال المراحل</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STAGE PROGRESS -->
+        <div style="background:#fff;border-radius:12px;padding:18px 20px;margin-bottom:14px;border:1px solid #eee;">
+          <div style="font-size:10px;font-weight:700;color:#888;letter-spacing:.1em;margin-bottom:16px;">تقدم المراحل</div>
+          <div style="display:flex;align-items:flex-start;overflow-x:auto;padding-bottom:4px;">
+            ${stageBar}
+          </div>
+          ${currentStage?`<div style="margin-top:14px;padding:10px 14px;background:#EBF2FB;border-radius:8px;border-right:3px solid #1C2D4A;">
+            <div style="font-size:9px;color:#666;">المرحلة الحالية</div>
+            <div style="font-size:13px;font-weight:800;color:#1C2D4A;margin-top:2px;">${currentStage.name}</div>
+            ${proj.nextAction?`<div style="font-size:10px;color:#555;margin-top:4px;">الإجراء المنتظر: ${proj.nextAction}</div>`:""}
+          </div>`:""}
+        </div>
+
+        <!-- TWO COLUMNS -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+
+          <!-- PROJECT INFO (public) -->
+          <div style="background:#fff;border-radius:12px;border:1px solid #eee;overflow:hidden;">
+            <div style="padding:12px 14px;border-bottom:1px solid #f0f0f0;font-size:10px;font-weight:700;color:#888;letter-spacing:.1em;">بيانات العقار</div>
+            <table style="width:100%;border-collapse:collapse;">
+              ${infoRow("المحافظة",proj.gov)}
+              ${infoRow("المدينة",proj.city)}
+              ${infoRow("الحي / المنطقة",proj.district)}
+              ${infoRow("المجاورة",proj.neighborhood)}
+              ${infoRow("المساحة",proj.area?Number(proj.area).toLocaleString()+" م²":"")}
+              ${infoRow("النشاط",proj.activity)}
+              ${infoRow("الأدوار",proj.floors?proj.floors+" أدوار":"")}
+              ${infoRow("سبب التسجيل",proj.serviceReason)}
+            </table>
+          </div>
+
+          <!-- PARTIES (public - no phone/ID) -->
+          <div style="background:#fff;border-radius:12px;border:1px solid #eee;overflow:hidden;">
+            <div style="padding:12px 14px;border-bottom:1px solid #f0f0f0;font-size:10px;font-weight:700;color:#888;letter-spacing:.1em;">أطراف المشروع</div>
+            <div style="padding:12px 14px;display:flex;flex-direction:column;gap:8px;">
+              ${parties.length?parties.map(pt=>`
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="width:30px;height:30px;border-radius:50%;background:#f0f2f5;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">
+                    ${pt.role==="مالك"?"👤":pt.role==="وكيل"?"🤝":pt.role==="مكتب"?"🏢":"👷"}
+                  </div>
+                  <div>
+                    <div style="font-size:11px;font-weight:700;color:#1a1a1a;">${pt.name}</div>
+                    <div style="font-size:9px;color:#888;">${pt.role}</div>
+                  </div>
+                </div>`).join(""):`<div style="font-size:11px;color:#aaa;text-align:center;padding:10px;">${proj.ownerName}</div>`}
+            </div>
+          </div>
+        </div>
+
+        <!-- DOCUMENTS STATUS -->
+        <div style="background:#fff;border-radius:12px;border:1px solid #eee;padding:16px 18px;margin-bottom:14px;">
+          <div style="font-size:10px;font-weight:700;color:#888;letter-spacing:.1em;margin-bottom:12px;">حالة المستندات</div>
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+            <div style="flex:1;height:8px;background:#f0f0f0;border-radius:10px;overflow:hidden;">
+              <div style="height:100%;width:${totalDocs?Math.round(uploadedDocs/totalDocs*100):0}%;background:linear-gradient(90deg,#1B7A4A,#27ae60);border-radius:10px;transition:width .5s;"></div>
+            </div>
+            <div style="font-size:13px;font-weight:800;color:#1B7A4A;white-space:nowrap;">${uploadedDocs} / ${totalDocs}</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            ${stages.map(s=>{
+              const req=( s.docs||[]).filter(d=>d.req).length;
+              const up=(s.docs||[]).filter(d=>d.req&&d.up).length;
+              if(!req)return"";
+              const done=up===req;
+              return`<div style="display:flex;align-items:center;gap:5px;background:${done?"#E3F5EC":"#FEF3DC"};border-radius:6px;padding:4px 10px;">
+                <span style="font-size:9px;">${done?"✅":"📋"}</span>
+                <span style="font-size:10px;font-weight:600;color:${done?"#1B7A4A":"#B7770D"};">${s.name}</span>
+                <span style="font-size:9px;color:#888;">${up}/${req}</span>
+              </div>`;
+            }).join("")}
+          </div>
+          ${expiredPOA.length?`<div style="margin-top:10px;padding:8px 12px;background:#FDEAEA;border-radius:8px;font-size:10px;color:#C0392B;font-weight:700;">⚠ ${expiredPOA.length} توكيل منتهي الصلاحية — يستلزم التجديد</div>`:""}
+        </div>
+
+        <!-- OWNERSHIP CHAIN (public summary only) -->
+        ${proj.ownerChain?.length?`<div style="background:#fff;border-radius:12px;border:1px solid #eee;padding:16px 18px;margin-bottom:14px;">
+          <div style="font-size:10px;font-weight:700;color:#888;letter-spacing:.1em;margin-bottom:12px;">سلسلة الملكية</div>
+          <div style="display:flex;align-items:center;gap:0;overflow-x:auto;">
+            ${proj.ownerChain.map((o,i)=>`
+              <div style="display:flex;align-items:center;gap:0;flex-shrink:0;">
+                <div style="text-align:center;padding:0 8px;">
+                  <div style="width:34px;height:34px;border-radius:50%;background:${i===proj.ownerChain.length-1?"#1C2D4A":"#e8e8e8"};color:${i===proj.ownerChain.length-1?"#fff":"#666"};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin:0 auto 4px;">${i+1}</div>
+                  <div style="font-size:9px;font-weight:700;color:#333;white-space:nowrap;">${o.name}</div>
+                  <div style="font-size:8px;color:#999;">${o.transferType||""}</div>
+                </div>
+                ${i<proj.ownerChain.length-1?`<div style="width:24px;height:2px;background:#ddd;flex-shrink:0;"></div>`:""}
+              </div>`).join("")}
+          </div>
+        </div>`:""}
+
+        <!-- FOOTER -->
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0 2px;border-top:1px solid #eee;margin-top:4px;">
+          <div>
+            <div style="font-size:11px;font-weight:800;color:#1C2D4A;">سند · منصة إدارة المشاريع العقارية</div>
+            <div style="font-size:9px;color:#aaa;margin-top:2px;">هذه الوثيقة صادرة بتاريخ ${today} — للتحقق من صحتها تواصل مع المكتب المصدر</div>
+          </div>
+          <div style="font-size:9px;color:#ccc;font-family:monospace;">${proj.id}</div>
+        </div>
+
+      </div><!-- /passport-body -->
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML("beforeend",h);
+};
+
+const closePassport=()=>document.getElementById("m-passport")?.remove();
+
+const printPassport=()=>{
+  const body=document.getElementById("passport-body");
+  if(!body)return;
+  const w=window.open("","_blank","width=750,height=900");
+  w.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8">
+    <title>سند المشروع</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+      *{margin:0;padding:0;box-sizing:border-box;}
+      body{font-family:Cairo,sans-serif;background:#f5f6f8;padding:24px;direction:rtl;}
+      @media print{body{background:#fff;padding:0;} @page{margin:15mm;}}
+    </style>
+  </head><body>${body.innerHTML}</body></html>`);
+  w.document.close();
+  setTimeout(()=>{w.print();},600);
+};
+
+const copyPassportLink=projId=>{
+  const projs=LS.g(K.p)||[];
+  const proj=projs.find(p=>p.id===projId);
+  if(!proj)return;
+  const stages=proj.stages||[];
+  const done=stages.filter(s=>s.done).length;
+  const current=stages.find(s=>!s.done);
+  const txt=`🪪 سند المشروع\n━━━━━━━━━━━━━━\nالمالك: ${proj.ownerName}\nالموقع: ${[proj.gov,proj.city,proj.district].filter(Boolean).join(" · ")}\n${proj.area?"المساحة: "+Number(proj.area).toLocaleString()+" م²\n":""}${proj.activity?"النشاط: "+proj.activity+"\n":""}المرحلة الحالية: ${current?.name||"مكتملة"}\nاكتمال المراحل: ${stages.length?Math.round(done/stages.length*100):0}%\n━━━━━━━━━━━━━━\nصادر من: سند · ${new Date().toLocaleDateString("ar-EG")}`;
+  navigator.clipboard?.writeText(txt).then(()=>toast("✓ تم نسخ الملخص")).catch(()=>toast("تعذّر النسخ","warn"));
+};
+
 // ── OWNERSHIP CHAIN ──
 const openAddOwner=projId=>{
   const html=`<div style="display:flex;flex-direction:column;gap:10px;padding:4px 0;">
