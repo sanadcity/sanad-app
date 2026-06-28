@@ -2248,8 +2248,12 @@ const rTasks=()=>{
             </div>
             ${t.desc?`<div style="font-size:10px;color:var(--t3);margin-bottom:7px;line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${t.desc}</div>`:""}
             ${proj?`<div style="font-size:10px;color:var(--bl);background:var(--bll);border-radius:4px;padding:2px 7px;display:inline-block;margin-bottom:6px;">◆ ${proj.ownerName}</div>`:""}
+            ${t.place||t.schedDate?`<div style="display:flex;gap:6px;margin-bottom:5px;flex-wrap:wrap;">
+              ${t.schedDate?`<span style="font-size:9px;background:var(--bll);color:var(--bl);border-radius:4px;padding:2px 7px;font-weight:700;">📅 ${t.schedDate}</span>`:""}
+              ${t.place?`<span style="font-size:9px;background:var(--w2);color:var(--t2);border-radius:4px;padding:2px 7px;border:1px solid var(--bdl);">📍 ${t.place}</span>`:""}
+            </div>`:""}
             <div style="display:flex;align-items:center;justify-content:space-between;">
-              <div style="font-size:10px;color:${late?"var(--rd)":"var(--t3)"};">${late?"⚠ ":""}${t.dueDate||"—"}</div>
+              <div style="font-size:10px;color:${late?"var(--rd)":"var(--t3)"};">${late?"⚠ ":""}${t.dueDate?`تسليم: ${t.dueDate}`:"—"}</div>
               <div style="font-size:10px;font-weight:600;color:var(--t2);">${assignee?assignee.name.split(" ")[0]:"غير محدد"}</div>
             </div>
             <div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap;">
@@ -2309,7 +2313,9 @@ const openTaskDetail=id=>{
         ${t.desc?`<div style="background:var(--w2);border-radius:8px;padding:12px;font-size:12px;color:var(--t2);line-height:1.7;">${t.desc}</div>`:""}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <div style="background:var(--w2);border-radius:8px;padding:10px;"><div style="font-size:9px;color:var(--t3);margin-bottom:3px;">المسؤول</div><div style="font-size:12px;font-weight:700;color:var(--t1);">${assignee?assignee.name:"غير محدد"}</div></div>
-          <div style="background:var(--w2);border-radius:8px;padding:10px;"><div style="font-size:9px;color:var(--t3);margin-bottom:3px;">تاريخ الاستحقاق</div><div style="font-size:12px;font-weight:700;color:${isLate(t)?"var(--rd)":"var(--t1)"};">${t.dueDate||"—"}</div></div>
+          <div style="background:var(--w2);border-radius:8px;padding:10px;"><div style="font-size:9px;color:var(--t3);margin-bottom:3px;">تاريخ التسليم</div><div style="font-size:12px;font-weight:700;color:${isLate(t)?"var(--rd)":"var(--t1)"};">${t.dueDate||"—"}</div></div>
+          ${t.schedDate?`<div style="background:var(--bll);border-radius:8px;padding:10px;"><div style="font-size:9px;color:var(--t3);margin-bottom:3px;">يوم التنفيذ</div><div style="font-size:12px;font-weight:700;color:var(--bl);">📅 ${t.schedDate}</div></div>`:""}
+          ${t.place?`<div style="background:var(--w2);border-radius:8px;padding:10px;"><div style="font-size:9px;color:var(--t3);margin-bottom:3px;">المكان / الجهة</div><div style="font-size:12px;font-weight:700;color:var(--t1);">📍 ${t.place}</div></div>`:""}
           <div style="background:var(--w2);border-radius:8px;padding:10px;"><div style="font-size:9px;color:var(--t3);margin-bottom:3px;">المشروع</div><div style="font-size:12px;font-weight:700;color:var(--t1);">${proj?proj.ownerName:"—"}</div></div>
           <div style="background:var(--w2);border-radius:8px;padding:10px;"><div style="font-size:9px;color:var(--t3);margin-bottom:3px;">أنشئت بواسطة</div><div style="font-size:12px;font-weight:700;color:var(--t1);">${users.find(u=>u.id===t.createdBy)?.name||"—"}</div></div>
         </div>
@@ -2350,7 +2356,13 @@ const openAddTask=(presetProjId)=>{
           </div>
         </div>
         <div class="fw">
-          <div class="fg"><label class="fl">تاريخ الاستحقاق</label><input class="fi" id="tk-due" type="date" min="${today}" oninput="tkDateHint(this.value)"/>
+          <div class="fg"><label class="fl">يوم التنفيذ</label><input class="fi" id="tk-sched" type="date" oninput="tkDateHint(this.value,'tk-sched-hint')"/>
+            <div id="tk-sched-hint" style="font-size:10px;margin-top:3px;color:var(--t3);"></div>
+          </div>
+          <div class="fg"><label class="fl">المكان / الجهة</label><input class="fi" id="tk-place" placeholder="مثال: نقابة المهندسين، جهاز أكتوبر"/></div>
+        </div>
+        <div class="fw">
+          <div class="fg"><label class="fl">تاريخ التسليم</label><input class="fi" id="tk-due" type="date" min="${today}" oninput="tkDateHint(this.value,'tk-due-hint')"/>
             <div id="tk-due-hint" style="font-size:10px;margin-top:3px;color:var(--t3);"></div>
           </div>
           <div class="fg"><label class="fl">المشروع (اختياري)</label>
@@ -2370,13 +2382,13 @@ const openAddTask=(presetProjId)=>{
   document.body.insertAdjacentHTML("beforeend",h);
 };
 
-const tkDateHint=v=>{
-  const el=document.getElementById("tk-due-hint");
+const tkDateHint=(v,hintId="tk-due-hint")=>{
+  const el=document.getElementById(hintId);
   if(!el||!v)return;
   const today=new Date().toISOString().slice(0,10);
   const diff=Math.ceil((new Date(v)-new Date(today))/(1000*60*60*24));
-  if(diff<0)el.innerHTML=`<span style="color:var(--rd);">⚠ تاريخ في الماضي — ستُضاف مباشرة كمتأخرة</span>`;
-  else if(diff===0)el.innerHTML=`<span style="color:var(--am);">⚡ اليوم — آخر موعد</span>`;
+  if(diff<0)el.innerHTML=`<span style="color:var(--rd);">⚠ تاريخ في الماضي</span>`;
+  else if(diff===0)el.innerHTML=`<span style="color:var(--am);">⚡ اليوم</span>`;
   else if(diff<=3)el.innerHTML=`<span style="color:var(--am);">خلال ${diff} أيام</span>`;
   else el.innerHTML=`<span style="color:var(--gr);">خلال ${diff} يوم</span>`;
 };
@@ -2387,12 +2399,14 @@ const saveTask=()=>{
   const assignedTo=document.getElementById("tk-user")?.value;
   const priority=document.getElementById("tk-pri")?.value||"med";
   const dueDate=document.getElementById("tk-due")?.value;
+  const schedDate=document.getElementById("tk-sched")?.value;
+  const place=document.getElementById("tk-place")?.value?.trim();
   const projId=document.getElementById("tk-proj")?.value;
   if(!title||!assignedTo){toast("يرجى تعبئة العنوان والمسؤول","err");return;}
   const today=new Date().toISOString().slice(0,10);
   const initStatus=dueDate&&dueDate<today?"late":"new";
   const tasks=LS.g(K.tasks)||[];
-  tasks.push({id:"tk"+Date.now(),title,desc,assignedTo,priority,dueDate,projId,status:initStatus,createdBy:CU.id,createdAt:today});
+  tasks.push({id:"tk"+Date.now(),title,desc,assignedTo,priority,dueDate,schedDate,place,projId,status:initStatus,createdBy:CU.id,createdAt:today});
   LS.s(K.tasks,tasks);
   document.getElementById("m-add-task")?.remove();
   addNotif(`مهمة جديدة: ${title}`,"info","",assignedTo);

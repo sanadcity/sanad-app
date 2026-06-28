@@ -1211,17 +1211,6 @@ const rFile=()=>{
   }).join("");
 
   let html=`
-  <!-- PIN: المرحلة الحالية -->
-  ${(proj.currentStage&&proj.currentStage!=="—")||proj.nextAction?`
-  <div style="background:linear-gradient(135deg,var(--n8),var(--n9));border-radius:12px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-    <div style="font-size:22px;">📍</div>
-    <div style="flex:1;min-width:0;">
-      ${proj.currentStage&&proj.currentStage!=="—"?`<div style="font-size:11px;color:var(--gold);font-weight:700;letter-spacing:.05em;margin-bottom:3px;">المرحلة الحالية</div><div style="font-size:15px;font-weight:800;color:#fff;">${proj.currentStage}</div>`:""}
-      ${proj.nextAction?`<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:4px;">⏳ ${proj.nextAction}</div>`:""}
-    </div>
-    ${proj.serviceReason&&proj.serviceReason!=="مشروع كامل"?`<div style="background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--gold);">${proj.serviceReason}</div>`:""}
-  </div>`:""}
-
   <!-- TOP BAR -->
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
     <button class="btn btn-gh btn-sm" onclick="showPage('projs')">← العودة</button>
@@ -1232,7 +1221,6 @@ const rFile=()=>{
     <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
       ${pill(proj.devStatus||"—",DSC[proj.devStatus]||"#8896A4")}
       ${proj.marketStatus&&proj.marketStatus!=="غير محدد"?pill(proj.marketStatus,MSC[proj.marketStatus]||"#8896A4"):""}
-      ${(()=>{const miss=proj.stages?.flatMap(s=>s.docs||[]).filter(d=>d.req&&!d.up).length||0;return miss>0?`<span style="background:var(--rdl);color:var(--rd);border-radius:20px;font-size:10px;font-weight:700;padding:3px 8px;">⚠ ناقص ${miss}</span>`:""})()}
       ${can?`<button class="btn btn-gh btn-sm" onclick="openEditProj('${proj.id}')">✎ تعديل</button>`:""}
       ${can?`<button class="btn btn-gh btn-sm" onclick="openAddTask('${proj.id}')">☑ مهمة</button>`:""}
       <button class="btn btn-gh btn-sm" onclick="openSvc()">⚡ طلب خدمة</button>
@@ -1323,8 +1311,6 @@ const rFile=()=>{
         ${[
           ["الرقم القومي",proj.nationalId||"—"],
           ["المحافظة",proj.gov||"—"],
-          ["المجاورة",proj.neighborhood||"—"],
-          ["سبب التسجيل",proj.serviceReason||"—"],
           ["النشاط",proj.activity||"—"],
           ["الأدوار",proj.floors?proj.floors+" أدوار":"—"],
           ["مصعد",proj.hasElevator?"نعم ✓":"لا"],
@@ -1361,73 +1347,6 @@ const rFile=()=>{
           </div>`:""}
         </div>
       </div>
-
-      <!-- OWNERSHIP CHAIN (land stage only) -->
-      ${stage.key==="land"?`
-      <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);">
-        <div style="padding:12px 14px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;">
-          <div style="font-size:12px;font-weight:800;color:var(--t1);">⛓ سلسلة الملكية</div>
-          ${can?`<button class="btn btn-p btn-xs" onclick="openAddOwner('${proj.id}')">+ إضافة</button>`:""}
-        </div>
-        <div style="padding:12px 14px;">
-          ${(proj.ownerChain||[]).length===0?`<div style="text-align:center;color:var(--t3);font-size:11px;padding:12px;">لا توجد سجلات — أضف المالك الأصلي أولاً</div>`:""}
-          ${(proj.ownerChain||[]).map((o,i)=>`
-          <div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">
-            <div style="width:26px;height:26px;border-radius:50%;background:${i===((proj.ownerChain||[]).length-1)?"var(--n8)":"var(--bdl)"};color:${i===((proj.ownerChain||[]).length-1)?"#fff":"var(--t2)"};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">${i+1}</div>
-            <div style="flex:1;background:${i===((proj.ownerChain||[]).length-1)?"var(--bll)":"var(--w2)"};border:1px solid ${i===((proj.ownerChain||[]).length-1)?"rgba(26,63,107,.2)":"var(--bdl)"};border-radius:9px;padding:10px 12px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-                <div style="font-size:12px;font-weight:800;color:var(--t1);">${o.name}</div>
-                <div style="display:flex;gap:5px;align-items:center;">
-                  <span style="font-size:9px;font-weight:700;background:var(--gl);color:var(--gd);border-radius:5px;padding:1px 6px;">${o.transferType||"—"}</span>
-                  ${i===((proj.ownerChain||[]).length-1)?`<span style="font-size:9px;font-weight:700;background:var(--bll);color:var(--bl);border-radius:5px;padding:1px 6px;">المالك الحالي</span>`:""}
-                  ${can?`<button onclick="removeOwner('${proj.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:13px;padding:0;">×</button>`:""}
-                </div>
-              </div>
-              <div style="font-size:10px;color:var(--t3);">${o.date||""} ${o.docType?"· "+o.docType:""}</div>
-              <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;">
-                ${["idFront","idBack","doc"].map(fk=>{
-                  const fl=o.files?.[fk];
-                  const lbl=fk==="idFront"?"بطاقة وجه":fk==="idBack"?"بطاقة ظهر":"مستند الملكية";
-                  if(fl)return`<button onclick="previewFile('${fl.data}','${fl.name}','${fl.type||""}')" class="btn btn-gh btn-xs">👁 ${lbl}</button>`;
-                  if(!can)return`<span style="font-size:9px;color:var(--t3);background:var(--w2);border-radius:5px;padding:2px 6px;">${lbl}: غير مرفوع</span>`;
-                  return`<label class="btn btn-gh btn-xs" style="cursor:pointer;">📎 ${lbl}<input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="uploadOwnerFile('${proj.id}',${i},'${fk}',this)"/></label>`;
-                }).join("")}
-              </div>
-            </div>
-          </div>`).join("")}
-        </div>
-      </div>
-
-      <!-- POWER OF ATTORNEYS -->
-      <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);">
-        <div style="padding:12px 14px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;">
-          <div style="font-size:12px;font-weight:800;color:var(--t1);">📋 التوكيلات</div>
-          ${can?`<button class="btn btn-p btn-xs" onclick="openAddPOA('${proj.id}')">+ إضافة</button>`:""}
-        </div>
-        <div style="padding:12px 14px;">
-          ${(proj.poas||[]).length===0?`<div style="text-align:center;color:var(--t3);font-size:11px;padding:12px;">لا توجد توكيلات مسجلة</div>`:""}
-          ${(proj.poas||[]).map((p,i)=>{
-            const today=new Date().toISOString().slice(0,10);
-            const expired=p.expiryDate&&p.expiryDate<today;
-            return`<div style="background:${expired?"var(--rdl)":"var(--w2)"};border:1px solid ${expired?"rgba(192,57,43,.2)":"var(--bdl)"};border-radius:9px;padding:10px 12px;margin-bottom:8px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;">
-                <div style="font-size:12px;font-weight:800;color:var(--t1);">${p.name}</div>
-                <div style="display:flex;gap:5px;align-items:center;">
-                  ${expired?`<span style="font-size:9px;font-weight:700;background:var(--rdl);color:var(--rd);border-radius:5px;padding:1px 6px;">منتهي</span>`:`<span style="font-size:9px;font-weight:700;background:var(--grl);color:var(--gr);border-radius:5px;padding:1px 6px;">ساري</span>`}
-                  ${can?`<button onclick="removePOA('${proj.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:13px;">×</button>`:""}
-                </div>
-              </div>
-              <div style="font-size:10px;color:${expired?"var(--rd)":"var(--t3)"};margin-top:3px;">ينتهي: ${p.expiryDate||"—"} ${p.poaType?"· "+p.poaType:""}</div>
-              ${expired?`<div style="font-size:10px;color:var(--rd);font-weight:700;margin-top:4px;">⚠ التوكيل منتهي — يحتاج تجديد</div>`:""}
-              <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;">
-                ${p.files?.doc?`<button onclick="previewFile('${p.files.doc.data}','${p.files.doc.name}','${p.files.doc.type||""}')" class="btn btn-gh btn-xs">👁 التوكيل</button>`:(can?`<label class="btn btn-gh btn-xs" style="cursor:pointer;">📎 رفع التوكيل<input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="uploadPOAFile('${proj.id}',${i},'doc',this)"/></label>`:`<span style="font-size:9px;color:var(--t3);">التوكيل: غير مرفوع</span>`)}
-                ${p.files?.idFront?`<button onclick="previewFile('${p.files.idFront.data}','${p.files.idFront.name}','${p.files.idFront.type||""}')" class="btn btn-gh btn-xs">👁 بطاقة وجه</button>`:(can?`<label class="btn btn-gh btn-xs" style="cursor:pointer;">📎 بطاقة وجه<input type="file" accept=".jpg,.jpeg,.png" style="display:none;" onchange="uploadPOAFile('${proj.id}',${i},'idFront',this)"/></label>`:"")}
-                ${p.files?.idBack?`<button onclick="previewFile('${p.files.idBack.data}','${p.files.idBack.name}','${p.files.idBack.type||""}')" class="btn btn-gh btn-xs">👁 بطاقة ظهر</button>`:(can?`<label class="btn btn-gh btn-xs" style="cursor:pointer;">📎 بطاقة ظهر<input type="file" accept=".jpg,.jpeg,.png" style="display:none;" onchange="uploadPOAFile('${proj.id}',${i},'idBack',this)"/></label>`:"")}
-              </div>
-            </div>`;
-          }).join("")}
-        </div>
-      </div>`:""}
 
       <!-- Stage navigation -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
@@ -1754,7 +1673,7 @@ const delCP=()=>{
 // ── NEW PROJECT WIZARD ──
 const openNP=()=>{
   PS=1;
-  PFrm={type:"normal",activity:"سكني",gov:"",city:"",district:"",neighborhood:"",devStatus:"قيد التخطيط",marketStatus:"غير محدد",serviceReason:"مشروع كامل",currentStage:"—",nextAction:"",hasElevator:false,hasBasement:false,hasPool:false,hasPergola:false,models:[{name:"نموذج A",count:"",area:""}],agents:[]};
+  PFrm={type:"normal",activity:"سكني",gov:"",city:"",devStatus:"قيد التخطيط",marketStatus:"غير محدد",hasElevator:false,hasBasement:false,hasPool:false,hasPergola:false,models:[{name:"نموذج A",count:"",area:""}],agents:[]};
   rPM();$("mnp").classList.remove("hid");
 };
 
@@ -1805,7 +1724,6 @@ const rPM=()=>{
     </div>
     <div class="fw">
       <div class="fg"><label class="fl">الحي / المنطقة <span class="rq">*</span></label><input class="fi" id="pd" value="${PFrm.district||""}" placeholder="الحي أو المنطقة"/></div>
-      <div class="fg"><label class="fl">المجاورة</label><input class="fi" id="pnb" value="${PFrm.neighborhood||""}" placeholder="مثال: المجاورة 3"/></div>
     </div>
 
     <div class="fw">
@@ -1837,11 +1755,6 @@ const rPM=()=>{
       <div class="fg"><label class="fl">سعر المتر تقديري (ج.م)</label><input class="fi" id="ppm" type="number" value="${PFrm.pricePerMeter||""}" placeholder="18000"/></div>
       <div class="fg"><label class="fl">البريد الإلكتروني للمالك</label><input class="fi" id="pem" type="email" value="${PFrm.ownerEmail||""}" placeholder="owner@email.com"/></div>
     </div>
-    <div class="fw">
-      <div class="fg"><label class="fl">سبب التسجيل</label><select class="fs" id="psr">${["مشروع كامل","ترخيص","تصالح","شهادة إشراف","تقرير تربة","مجمعة عشرية","رفع مساحي","تعديل ترخيص","توصيل مرافق","استشارة فقط"].map(v=>`<option ${PFrm.serviceReason===v?"selected":""}>${v}</option>`).join("")}</select></div>
-      <div class="fg"><label class="fl">المرحلة الحالية</label><select class="fs" id="pcs">${["—","ملكية العقار","التراخيص والتصاريح","الرسومات والمخططات","التنفيذ والإنشاء","المرافق والتشغيل","التسليم والإشغال"].map(v=>`<option ${PFrm.currentStage===v?"selected":""}>${v}</option>`).join("")}</select></div>
-    </div>
-    <div class="fg"><label class="fl">الإجراء المنتظر حالياً</label><input class="fi" id="pna" value="${PFrm.nextAction||""}" placeholder="مثال: انتظار تقرير التربة، سداد رسوم النقابة..."/></div>
     <div class="fg"><label class="fl">ملاحظات</label><textarea class="fi" id="pno" rows="3" placeholder="أي ملاحظات إضافية...">${PFrm.note||""}</textarea></div>`;
     foot=`<button class="btn btn-gh" onclick="pvPS()">‹ رجوع</button><div style="flex:1;"></div>${isC?`<button class="btn btn-p" onclick="nxPS()">التالي ‹</button>`:`<button class="btn btn-gr" onclick="svPF()">✓ إنشاء المشروع</button>`}`;
   }
@@ -1891,7 +1804,7 @@ const nxPS=()=>{
     PFrm.ownerName=o;PFrm.nationalId=nid;
     PFrm.type=$("pt")?.value||"normal";PFrm.activity=$("pa")?.value||"سكني";
     PFrm.city=city2;PFrm.gov=$("pgov")?.value||PFrm.gov||"";
-    PFrm.district=d;PFrm.neighborhood=$("pnb")?.value||"";PFrm.plot=pl;PFrm.area=ar;
+    PFrm.district=d;PFrm.plot=pl;PFrm.area=ar;
     PFrm.authorityCode=$("pau")?.value||"";PFrm.floors=$("pfl")?.value||"";
     PFrm.hasElevator=$("pel2")?.checked||false;
     PFrm.hasBasement=$("pbas")?.checked||false;
@@ -1903,9 +1816,6 @@ const nxPS=()=>{
     PFrm.marketStatus=$("pms")?.value||"غير محدد";
     PFrm.pricePerMeter=$("ppm")?.value||"";
     PFrm.ownerEmail=$("pem")?.value||"";
-    PFrm.serviceReason=$("psr")?.value||"مشروع كامل";
-    PFrm.currentStage=$("pcs")?.value||"—";
-    PFrm.nextAction=$("pna")?.value||"";
     PFrm.note=$("pno")?.value||"";
   }
   PS++;rPM();
@@ -1916,7 +1826,7 @@ const uMd=(i,k,v)=>{PFrm.models[i][k]=v;};
 const rMd=i=>{PFrm.models.splice(i,1);rPM();};
 
 const svPF=()=>{
-  if(PS===2){PFrm.devStatus=$("pds")?.value||"قيد التخطيط";PFrm.marketStatus=$("pms")?.value||"غير محدد";PFrm.pricePerMeter=$("ppm")?.value||"";PFrm.ownerEmail=$("pem")?.value||"";PFrm.serviceReason=$("psr")?.value||"مشروع كامل";PFrm.currentStage=$("pcs")?.value||"—";PFrm.nextAction=$("pna")?.value||"";PFrm.note=$("pno")?.value||"";}
+  if(PS===2){PFrm.devStatus=$("pds")?.value||"قيد التخطيط";PFrm.marketStatus=$("pms")?.value||"غير محدد";PFrm.pricePerMeter=$("ppm")?.value||"";PFrm.ownerEmail=$("pem")?.value||"";PFrm.note=$("pno")?.value||"";}
   if(PS===3)PFrm.totalUnits=$("pun")?.value||"";
   const isC=PFrm.type==="compound";
   const stages=STAGES
@@ -1937,14 +1847,13 @@ const svPF=()=>{
     agents:PFrm.agents||[],
     ownerEmail:PFrm.ownerEmail||"",
     type:PFrm.type,activity:PFrm.activity,
-    gov:PFrm.gov||"",city:PFrm.city,district:PFrm.district,neighborhood:PFrm.neighborhood||"",plot:PFrm.plot,
+    gov:PFrm.gov||"",city:PFrm.city,district:PFrm.district,plot:PFrm.plot,
     area:Number(PFrm.area)||0,
     authorityCode:PFrm.authorityCode||"",floors:Number(PFrm.floors)||0,
     hasElevator:PFrm.hasElevator||false,hasBasement:PFrm.hasBasement||false,
     hasPool:PFrm.hasPool||false,hasPergola:PFrm.hasPergola||false,
     devStatus:PFrm.devStatus||"قيد التخطيط",marketStatus:PFrm.marketStatus||"غير محدد",
     pricePerMeter:Number(PFrm.pricePerMeter)||0,note:PFrm.note||"",
-    serviceReason:PFrm.serviceReason||"مشروع كامل",currentStage:PFrm.currentStage||"—",nextAction:PFrm.nextAction||"",
     isCompound:isC,totalUnits:Number(PFrm.totalUnits)||0,
     compoundModels:isC?(PFrm.models||[]):[],stages,
     parties:[],
@@ -2020,125 +1929,6 @@ const rSvcs=()=>{
   </tr>`).join("")}</tbody></table></div>`;
 };
 const uSvc=(id,status)=>{LS.s(K.svc,(LS.g(K.svc)||[]).map(s=>s.id===id?{...s,status}:s));rSvcs();updBdg();toast(status==="done"?"تم إنجاز الطلب ✓":"تم الإلغاء","info");};
-// ── OWNERSHIP CHAIN ──
-const openAddOwner=projId=>{
-  const html=`<div style="display:flex;flex-direction:column;gap:10px;padding:4px 0;">
-    <input id="oc-name" placeholder="اسم المالك" class="inp" style="font-size:13px;"/>
-    <select id="oc-type" class="inp" style="font-size:13px;">
-      <option value="">نوع الانتقال</option>
-      <option>شراء</option><option>ورثة</option><option>قرار</option><option>هبة</option><option>مزاد</option>
-    </select>
-    <input id="oc-date" type="date" class="inp" style="font-size:13px;"/>
-    <input id="oc-doctype" placeholder="نوع المستند (مثل: صك، عقد بيع)" class="inp" style="font-size:13px;"/>
-  </div>`;
-  showModal("إضافة مالك إلى سلسلة الملكية",html,`
-    <button class="btn btn-p" onclick="saveOwner('${projId}')">حفظ</button>
-    <button class="btn btn-gh" onclick="closeModal()">إلغاء</button>
-  `);
-};
-const saveOwner=projId=>{
-  const name=document.getElementById("oc-name")?.value?.trim();
-  if(!name){toast("أدخل اسم المالك","warn");return;}
-  const projs=LS.g(K.p)||[];
-  const proj=projs.find(p=>p.id===projId);
-  if(!proj)return;
-  if(!proj.ownerChain)proj.ownerChain=[];
-  proj.ownerChain.push({
-    name,
-    transferType:document.getElementById("oc-type")?.value||"",
-    date:document.getElementById("oc-date")?.value||"",
-    docType:document.getElementById("oc-doctype")?.value||"",
-    files:{}
-  });
-  LS.s(K.p,projs);
-  closeModal();
-  openProj(projId);
-  toast("تم إضافة المالك");
-};
-const removeOwner=(projId,idx)=>{
-  if(!confirm("حذف هذا المالك؟"))return;
-  const projs=LS.g(K.p)||[];
-  const proj=projs.find(p=>p.id===projId);
-  if(!proj||!proj.ownerChain)return;
-  proj.ownerChain.splice(idx,1);
-  LS.s(K.p,projs);
-  openProj(projId);
-};
-const uploadOwnerFile=(projId,idx,fk,input)=>{
-  const file=input.files?.[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const projs=LS.g(K.p)||[];
-    const proj=projs.find(p=>p.id===projId);
-    if(!proj||!proj.ownerChain?.[idx])return;
-    if(!proj.ownerChain[idx].files)proj.ownerChain[idx].files={};
-    proj.ownerChain[idx].files[fk]={data:e.target.result,name:file.name,type:file.type};
-    LS.s(K.p,projs);
-    openProj(projId);
-    toast("تم رفع الملف");
-  };
-  reader.readAsDataURL(file);
-};
-
-// ── POWER OF ATTORNEYS ──
-const openAddPOA=projId=>{
-  const html=`<div style="display:flex;flex-direction:column;gap:10px;padding:4px 0;">
-    <input id="poa-name" placeholder="اسم الوكيل" class="inp" style="font-size:13px;"/>
-    <select id="poa-type" class="inp" style="font-size:13px;">
-      <option value="">نوع التوكيل</option>
-      <option>وكيل مالك</option><option>وكيل إداري</option><option>وكيل عام</option>
-    </select>
-    <label style="font-size:11px;color:var(--t3);">تاريخ انتهاء التوكيل</label>
-    <input id="poa-exp" type="date" class="inp" style="font-size:13px;"/>
-  </div>`;
-  showModal("إضافة توكيل",html,`
-    <button class="btn btn-p" onclick="savePOA('${projId}')">حفظ</button>
-    <button class="btn btn-gh" onclick="closeModal()">إلغاء</button>
-  `);
-};
-const savePOA=projId=>{
-  const name=document.getElementById("poa-name")?.value?.trim();
-  if(!name){toast("أدخل اسم الوكيل","warn");return;}
-  const projs=LS.g(K.p)||[];
-  const proj=projs.find(p=>p.id===projId);
-  if(!proj)return;
-  if(!proj.poas)proj.poas=[];
-  proj.poas.push({
-    name,
-    poaType:document.getElementById("poa-type")?.value||"",
-    expiryDate:document.getElementById("poa-exp")?.value||"",
-    files:{}
-  });
-  LS.s(K.p,projs);
-  closeModal();
-  openProj(projId);
-  toast("تم إضافة التوكيل");
-};
-const removePOA=(projId,idx)=>{
-  if(!confirm("حذف هذا التوكيل؟"))return;
-  const projs=LS.g(K.p)||[];
-  const proj=projs.find(p=>p.id===projId);
-  if(!proj||!proj.poas)return;
-  proj.poas.splice(idx,1);
-  LS.s(K.p,projs);
-  openProj(projId);
-};
-const uploadPOAFile=(projId,idx,fk,input)=>{
-  const file=input.files?.[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const projs=LS.g(K.p)||[];
-    const proj=projs.find(p=>p.id===projId);
-    if(!proj||!proj.poas?.[idx])return;
-    if(!proj.poas[idx].files)proj.poas[idx].files={};
-    proj.poas[idx].files[fk]={data:e.target.result,name:file.name,type:file.type};
-    LS.s(K.p,projs);
-    openProj(projId);
-    toast("تم رفع الملف");
-  };
-  reader.readAsDataURL(file);
-};
-
 const waFwdSvc=r=>{
   const waC=LS.g(K.wa)||[];
   if(!waC.length){toast("لا توجد جهات تواصل واتساب — أضفها من الإعدادات","warn");return;}
@@ -2248,12 +2038,8 @@ const rTasks=()=>{
             </div>
             ${t.desc?`<div style="font-size:10px;color:var(--t3);margin-bottom:7px;line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${t.desc}</div>`:""}
             ${proj?`<div style="font-size:10px;color:var(--bl);background:var(--bll);border-radius:4px;padding:2px 7px;display:inline-block;margin-bottom:6px;">◆ ${proj.ownerName}</div>`:""}
-            ${t.place||t.schedDate?`<div style="display:flex;gap:6px;margin-bottom:5px;flex-wrap:wrap;">
-              ${t.schedDate?`<span style="font-size:9px;background:var(--bll);color:var(--bl);border-radius:4px;padding:2px 7px;font-weight:700;">📅 ${t.schedDate}</span>`:""}
-              ${t.place?`<span style="font-size:9px;background:var(--w2);color:var(--t2);border-radius:4px;padding:2px 7px;border:1px solid var(--bdl);">📍 ${t.place}</span>`:""}
-            </div>`:""}
             <div style="display:flex;align-items:center;justify-content:space-between;">
-              <div style="font-size:10px;color:${late?"var(--rd)":"var(--t3)"};">${late?"⚠ ":""}${t.dueDate?`تسليم: ${t.dueDate}`:"—"}</div>
+              <div style="font-size:10px;color:${late?"var(--rd)":"var(--t3)"};">${late?"⚠ ":""}${t.dueDate||"—"}</div>
               <div style="font-size:10px;font-weight:600;color:var(--t2);">${assignee?assignee.name.split(" ")[0]:"غير محدد"}</div>
             </div>
             <div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap;">
@@ -2313,9 +2099,7 @@ const openTaskDetail=id=>{
         ${t.desc?`<div style="background:var(--w2);border-radius:8px;padding:12px;font-size:12px;color:var(--t2);line-height:1.7;">${t.desc}</div>`:""}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <div style="background:var(--w2);border-radius:8px;padding:10px;"><div style="font-size:9px;color:var(--t3);margin-bottom:3px;">المسؤول</div><div style="font-size:12px;font-weight:700;color:var(--t1);">${assignee?assignee.name:"غير محدد"}</div></div>
-          <div style="background:var(--w2);border-radius:8px;padding:10px;"><div style="font-size:9px;color:var(--t3);margin-bottom:3px;">تاريخ التسليم</div><div style="font-size:12px;font-weight:700;color:${isLate(t)?"var(--rd)":"var(--t1)"};">${t.dueDate||"—"}</div></div>
-          ${t.schedDate?`<div style="background:var(--bll);border-radius:8px;padding:10px;"><div style="font-size:9px;color:var(--t3);margin-bottom:3px;">يوم التنفيذ</div><div style="font-size:12px;font-weight:700;color:var(--bl);">📅 ${t.schedDate}</div></div>`:""}
-          ${t.place?`<div style="background:var(--w2);border-radius:8px;padding:10px;"><div style="font-size:9px;color:var(--t3);margin-bottom:3px;">المكان / الجهة</div><div style="font-size:12px;font-weight:700;color:var(--t1);">📍 ${t.place}</div></div>`:""}
+          <div style="background:var(--w2);border-radius:8px;padding:10px;"><div style="font-size:9px;color:var(--t3);margin-bottom:3px;">تاريخ الاستحقاق</div><div style="font-size:12px;font-weight:700;color:${isLate(t)?"var(--rd)":"var(--t1)"};">${t.dueDate||"—"}</div></div>
           <div style="background:var(--w2);border-radius:8px;padding:10px;"><div style="font-size:9px;color:var(--t3);margin-bottom:3px;">المشروع</div><div style="font-size:12px;font-weight:700;color:var(--t1);">${proj?proj.ownerName:"—"}</div></div>
           <div style="background:var(--w2);border-radius:8px;padding:10px;"><div style="font-size:9px;color:var(--t3);margin-bottom:3px;">أنشئت بواسطة</div><div style="font-size:12px;font-weight:700;color:var(--t1);">${users.find(u=>u.id===t.createdBy)?.name||"—"}</div></div>
         </div>
@@ -2356,13 +2140,7 @@ const openAddTask=(presetProjId)=>{
           </div>
         </div>
         <div class="fw">
-          <div class="fg"><label class="fl">يوم التنفيذ</label><input class="fi" id="tk-sched" type="date" oninput="tkDateHint(this.value,'tk-sched-hint')"/>
-            <div id="tk-sched-hint" style="font-size:10px;margin-top:3px;color:var(--t3);"></div>
-          </div>
-          <div class="fg"><label class="fl">المكان / الجهة</label><input class="fi" id="tk-place" placeholder="مثال: نقابة المهندسين، جهاز أكتوبر"/></div>
-        </div>
-        <div class="fw">
-          <div class="fg"><label class="fl">تاريخ التسليم</label><input class="fi" id="tk-due" type="date" min="${today}" oninput="tkDateHint(this.value,'tk-due-hint')"/>
+          <div class="fg"><label class="fl">تاريخ الاستحقاق</label><input class="fi" id="tk-due" type="date" min="${today}" oninput="tkDateHint(this.value)"/>
             <div id="tk-due-hint" style="font-size:10px;margin-top:3px;color:var(--t3);"></div>
           </div>
           <div class="fg"><label class="fl">المشروع (اختياري)</label>
@@ -2382,13 +2160,13 @@ const openAddTask=(presetProjId)=>{
   document.body.insertAdjacentHTML("beforeend",h);
 };
 
-const tkDateHint=(v,hintId="tk-due-hint")=>{
-  const el=document.getElementById(hintId);
+const tkDateHint=v=>{
+  const el=document.getElementById("tk-due-hint");
   if(!el||!v)return;
   const today=new Date().toISOString().slice(0,10);
   const diff=Math.ceil((new Date(v)-new Date(today))/(1000*60*60*24));
-  if(diff<0)el.innerHTML=`<span style="color:var(--rd);">⚠ تاريخ في الماضي</span>`;
-  else if(diff===0)el.innerHTML=`<span style="color:var(--am);">⚡ اليوم</span>`;
+  if(diff<0)el.innerHTML=`<span style="color:var(--rd);">⚠ تاريخ في الماضي — ستُضاف مباشرة كمتأخرة</span>`;
+  else if(diff===0)el.innerHTML=`<span style="color:var(--am);">⚡ اليوم — آخر موعد</span>`;
   else if(diff<=3)el.innerHTML=`<span style="color:var(--am);">خلال ${diff} أيام</span>`;
   else el.innerHTML=`<span style="color:var(--gr);">خلال ${diff} يوم</span>`;
 };
@@ -2399,14 +2177,12 @@ const saveTask=()=>{
   const assignedTo=document.getElementById("tk-user")?.value;
   const priority=document.getElementById("tk-pri")?.value||"med";
   const dueDate=document.getElementById("tk-due")?.value;
-  const schedDate=document.getElementById("tk-sched")?.value;
-  const place=document.getElementById("tk-place")?.value?.trim();
   const projId=document.getElementById("tk-proj")?.value;
   if(!title||!assignedTo){toast("يرجى تعبئة العنوان والمسؤول","err");return;}
   const today=new Date().toISOString().slice(0,10);
   const initStatus=dueDate&&dueDate<today?"late":"new";
   const tasks=LS.g(K.tasks)||[];
-  tasks.push({id:"tk"+Date.now(),title,desc,assignedTo,priority,dueDate,schedDate,place,projId,status:initStatus,createdBy:CU.id,createdAt:today});
+  tasks.push({id:"tk"+Date.now(),title,desc,assignedTo,priority,dueDate,projId,status:initStatus,createdBy:CU.id,createdAt:today});
   LS.s(K.tasks,tasks);
   document.getElementById("m-add-task")?.remove();
   addNotif(`مهمة جديدة: ${title}`,"info","",assignedTo);
