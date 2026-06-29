@@ -619,11 +619,11 @@ const uploadToST=(file,projId,stageKey,docKey)=>new Promise((resolve,reject)=>{
   const doUpload=blob=>{
     const task=ST.ref(path).put(blob,{contentType:file.type});
     task.on("state_changed",null,reject,()=>{
-      task.snapshot.ref.getDownloadURL().then(url=>resolve({
-        url,path,name:file.name,type:file.type,
+      const bucket="sanad-city.firebasestorage.app";
+      const url=`https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(path)}?alt=media`;
+      resolve({url,path,name:file.name,type:file.type,
         size:(blob.size/1024).toFixed(0)+"KB",
-        date:new Date().toISOString().slice(0,10)
-      })).catch(reject);
+        date:new Date().toISOString().slice(0,10)});
     });
   };
   if(file.type.startsWith("image/")){
@@ -1841,7 +1841,8 @@ const hUp=(sk,dk,isC,inp)=>{
     toast("✓ تم رفع الملف بنجاح");
   }).catch(err=>{
     console.error("upload error:",err);
-    toast("✗ فشل الرفع — تحقق من الاتصال","err");
+    const msg=err?.code||err?.message||"unknown";
+    toast(`✗ فشل: ${msg}`,"err");
   });
 };
 
