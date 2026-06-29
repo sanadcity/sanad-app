@@ -500,7 +500,19 @@ body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--t1);-webkit
       </div>
 
       <div class="page hid" id="pg-contacts">
-        <div style="font-size:20px;font-weight:800;color:var(--t1);margin-bottom:20px;">العملاء والملاك</div>
+        <div style="font-size:20px;font-weight:800;color:var(--t1);margin-bottom:14px;">العملاء والملاك</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
+          <input id="ct-q" placeholder="🔍 بحث باسم أو رقم قومي..." oninput="rContacts()" style="flex:1;min-width:180px;border:1px solid var(--bdl);border-radius:8px;padding:7px 12px;font-size:12px;font-family:Cairo,sans-serif;background:var(--w);color:var(--t1);outline:none;"/>
+          <select id="ct-status" onchange="rContacts()" style="border:1px solid var(--bdl);border-radius:8px;padding:7px 12px;font-size:12px;font-family:Cairo,sans-serif;background:var(--w);color:var(--t1);outline:none;cursor:pointer;">
+            <option value="">كل الحالات</option>
+            <option>قيد التخطيط</option><option>قيد الترخيص</option><option>قيد التنفيذ</option>
+            <option>مكتمل — تصالح</option><option>مكتمل — تراخيص</option><option>موقوف</option>
+          </select>
+          <select id="ct-city" onchange="rContacts()" style="border:1px solid var(--bdl);border-radius:8px;padding:7px 12px;font-size:12px;font-family:Cairo,sans-serif;background:var(--w);color:var(--t1);outline:none;cursor:pointer;">
+            <option value="">كل المدن</option>
+          </select>
+          <button onclick="document.getElementById('ct-q').value='';document.getElementById('ct-status').value='';document.getElementById('ct-city').value='';rContacts();" style="border:1px solid var(--bdl);border-radius:8px;padding:7px 12px;font-size:12px;font-family:Cairo,sans-serif;background:var(--w);color:var(--t3);cursor:pointer;">✕ إعادة</button>
+        </div>
         <div id="ct"></div>
       </div>
 
@@ -2591,14 +2603,30 @@ const suU=id=>{if(!confirm("تعليق هذا المستخدم؟"))return;LS.s(K
 
 // ── CONTACTS ──
 const rContacts=()=>{
-  const projs=myP();const el=$("ct");
-  if(!projs.length){el.innerHTML=`<div class="card"><div class="empty"><div class="ei">◉</div><div class="et">لا يوجد عملاء</div></div></div>`;return;}
+  const allProjs=myP();const el=$("ct");
+  // populate city dropdown
+  const cityEl=document.getElementById("ct-city");
+  if(cityEl){
+    const cities=[...new Set(allProjs.map(p=>p.city).filter(Boolean))].sort();
+    const cur=cityEl.value;
+    cityEl.innerHTML=`<option value="">كل المدن</option>`+cities.map(c=>`<option ${c===cur?"selected":""}>${c}</option>`).join("");
+  }
+  const q=(document.getElementById("ct-q")?.value||"").trim().toLowerCase();
+  const sf=document.getElementById("ct-status")?.value||"";
+  const cf=document.getElementById("ct-city")?.value||"";
+  const projs=allProjs.filter(p=>{
+    if(sf&&p.devStatus!==sf)return false;
+    if(cf&&p.city!==cf)return false;
+    if(q&&!(p.ownerName+p.nationalId+p.plot+p.city).toLowerCase().includes(q))return false;
+    return true;
+  });
+  if(!projs.length){el.innerHTML=`<div class="card"><div class="empty"><div class="ei">◉</div><div class="et">${allProjs.length?"لا توجد نتائج للفلتر المحدد":"لا يوجد عملاء"}</div></div></div>`;return;}
   el.innerHTML=`<div class="card" style="overflow:hidden;"><table class="tbl"><thead><tr><th>المالك</th><th>الرقم القومي</th><th>الموقع</th><th>القطعة</th><th>الحالة</th><th>الإنجاز</th><th></th></tr></thead><tbody>
   ${projs.map(p=>{const comp=calcC(p),cc=CC(comp);return`<tr>
     <td><div style="font-weight:700;color:var(--t1);">${p.ownerName}</div>${p.ownerEmail?`<div style="font-size:10px;color:var(--t3);">${p.ownerEmail}</div>`:""}</td>
     <td style="font-size:11px;font-family:monospace;color:var(--t2);">${p.nationalId||"—"}</td>
-    <td style="font-size:12px;color:var(--t2);">${p.city} · ${p.district}</td>
-    <td style="font-size:12px;color:var(--t2);">${p.plot}</td>
+    <td style="font-size:12px;color:var(--t2);">${[p.city,p.district].filter(Boolean).join(" · ")||"—"}</td>
+    <td style="font-size:12px;color:var(--t2);">${p.plot||"—"}</td>
     <td>${pill(p.devStatus||"—",DSC[p.devStatus]||"#8896A4")}</td>
     <td style="min-width:120px;"><div style="display:flex;align-items:center;gap:7px;"><div class="pb" style="flex:1;"><div class="pbf" style="width:${comp}%;background:${cc};"></div></div><span style="font-size:10px;color:${cc};font-weight:700;font-family:monospace;">${comp}%</span></div></td>
     <td><button onclick="openProj('${p.id}')" class="btn btn-gh btn-xs">↗ فتح</button></td>
