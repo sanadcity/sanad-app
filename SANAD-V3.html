@@ -613,7 +613,7 @@ const pullDB=async()=>{try{const s=await DB.collection("sanad").get();s.forEach(
 // ── STORAGE HELPERS ──
 const LS={
   g:k=>{try{return JSON.parse(localStorage.getItem(k)||"null")}catch{return null}},
-  s:(k,v)=>{localStorage.setItem(k,JSON.stringify(v));pushDB(k,v);},
+  s:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));pushDB(k,v);}catch(e){if(e.name==="QuotaExceededError"||e.code===22){toast("⚠ مساحة التخزين ممتلئة — احذف ملفات قديمة أو جرب متصفحاً آخر","err");}else{console.error("LS.s error",e);}}},
   d:k=>{localStorage.removeItem(k);DB.collection("sanad").doc(k).delete().catch(()=>{});}
 };
 const K={u:"snd_u4",p:"snd_p4",svc:"snd_s4",seq:"snd_q4",ss:"snd_ss4",rm:"snd_rm4",wa:"snd_wa4",lang:"snd_lang4",logo:"snd_logo4",notif:"snd_ntf4",tasks:"snd_tk4"};
@@ -1792,24 +1792,40 @@ const tgS=k=>{const b=$("sb-"+k),a=$("sa-"+k);const h=b.classList.contains("hid"
 const gP=()=>(LS.g(K.p)||[]).find(p=>p.id===CPJ);
 const svP=p=>{p.lastUpdated=new Date().toISOString().slice(0,10);LS.s(K.p,(LS.g(K.p)||[]).map(x=>x.id===p.id?p:x));};
 
+const compressImg=(file,cb)=>{
+  if(!file.type.startsWith("image/")){const r=new FileReader();r.onload=e=>cb(e.target.result,file.name,file.type,file.size);r.readAsDataURL(file);return;}
+  const img=new Image();
+  const url=URL.createObjectURL(file);
+  img.onload=()=>{
+    URL.revokeObjectURL(url);
+    const MAX=1400;
+    let w=img.width,h=img.height;
+    if(w>MAX||h>MAX){const s=Math.min(MAX/w,MAX/h);w=Math.round(w*s);h=Math.round(h*s);}
+    const c=document.createElement("canvas");c.width=w;c.height=h;
+    c.getContext("2d").drawImage(img,0,0,w,h);
+    const data=c.toDataURL("image/jpeg",0.78);
+    const sz=Math.round(data.length*0.75);
+    cb(data,file.name.replace(/\.[^.]+$/,".jpg"),"image/jpeg",sz);
+  };
+  img.src=url;
+};
+
 const hUp=(sk,dk,isC,inp)=>{
   const file=inp.files[0];if(!file)return;
-  if(file.size>20*1024*1024){toast("الملف أكبر من 20MB","err");return;}
-  const r=new FileReader();
-  r.onload=e=>{
+  if(file.size>25*1024*1024){toast("الملف أكبر من 25MB","err");return;}
+  compressImg(file,(data,name,type,sz)=>{
     const p=gP();if(!p)return;
     const now=new Date();
-    const upd=arr=>arr.map(d=>d.key===dk?{...d,up:{name:file.name,type:file.type,size:(file.size/1024).toFixed(0)+"KB",data:e.target.result,date:now.toISOString().slice(0,10)}}:d);
+    const upd=arr=>arr.map(d=>d.key===dk?{...d,up:{name,type,size:(sz/1024).toFixed(0)+"KB",data,date:now.toISOString().slice(0,10)}}:d);
     p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
     const stageLbl=p.stages.find(s=>s.key===sk)?.label||sk;
-    const docLbl=p.stages.find(s=>s.key===sk)?.docs?.find(d=>d.key===dk)?.label||file.name;
+    const docLbl=p.stages.find(s=>s.key===sk)?.docs?.find(d=>d.key===dk)?.label||name;
     if(!p.timeline)p.timeline=[];
     p.timeline.push({date:now.toISOString().slice(0,10),time:now.toLocaleTimeString("ar-EG",{hour:"2-digit",minute:"2-digit"}),event:`رفع "${docLbl}"`,stage:stageLbl,by:CU.name,icon:"📎"});
     svP(p);rFileKeep();
-    addNotif(`تم رفع ملف في مشروع ${p.ownerName}`,`info`,p.id,null);
+    addNotif(`تم رفع ملف في مشروع ${p.ownerName}`,"info",p.id,null);
     toast("✓ تم رفع الملف بنجاح");
-  };
-  r.readAsDataURL(file);
+  });
 };
 
 // حذف ملف — لازم تأكيد
