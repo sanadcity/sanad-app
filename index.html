@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
@@ -607,8 +608,31 @@ firebase.initializeApp({
   appId:"1:632767112371:web:187166ea157815edd93cc6"
 });
 const DB=firebase.firestore();
+const ST=firebase.storage();
 const pushDB=(k,v)=>DB.collection("sanad").doc(k).set({v:JSON.stringify(v)}).catch(()=>{});
 const pullDB=async()=>{try{const s=await DB.collection("sanad").get();s.forEach(d=>{try{localStorage.setItem(d.id,d.data().v||"null");}catch{}});}catch(e){console.warn("offline",e);}};
+
+// رفع ملف لـ Firebase Storage — يرجع {url, name, type, size}
+const uploadToST=(file,projId,stageKey,docKey)=>new Promise((resolve,reject)=>{
+  const ext=file.name.split(".").pop()||"bin";
+  const path=`projects/${projId}/${stageKey}/${docKey}_${Date.now()}.${ext}`;
+  const ref=ST.ref(path);
+  const task=ref.put(file);
+  task.on("state_changed",
+    snap=>{/* progress if needed */},
+    err=>reject(err),
+    ()=>task.snapshot.ref.getDownloadURL().then(url=>resolve({
+      url,path,
+      name:file.name,
+      type:file.type,
+      size:(file.size/1024).toFixed(0)+"KB",
+      date:new Date().toISOString().slice(0,10)
+    })).catch(reject)
+  );
+});
+
+// حذف ملف من Storage
+const deleteFromST=path=>{if(path)ST.ref(path).delete().catch(()=>{});};
 
 // ── STORAGE HELPERS ──
 const LS={
@@ -1186,9 +1210,9 @@ const rFile=()=>{
         </div>
         <div style="background:var(--grl);border-radius:7px;padding:8px 10px;display:flex;align-items:center;gap:8px;">
           <span style="font-size:16px;">${doc.up.type?.includes("pdf")?"📄":"🖼"}</span>
-          <div style="flex:1;min-width:0;"><div style="font-size:11px;font-weight:700;color:var(--gr);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${doc.up.name}</div><div style="font-size:9px;color:var(--gr);opacity:.7;">${doc.up.size} · ${doc.up.date}</div></div>
-          <button onclick="previewFile('${doc.up.data}','${doc.up.name}','${doc.up.type||""}')" class="btn btn-gh btn-xs" title="معاينة">👁</button>
-          <a href="${doc.up.data}" download="${doc.up.name}" class="btn btn-gh btn-xs" title="تحميل">⬇</a>
+          <div style="flex:1;min-width:0;"><div style="font-size:11px;font-weight:700;color:var(--gr);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${doc.up.name}</div><div style="font-size:9px;color:var(--gr);opacity:.7;">${doc.up.size||""} · ${doc.up.date||""}</div></div>
+          <button onclick="previewFile('${doc.up.url||doc.up.data}','${doc.up.name}','${doc.up.type||""}')" class="btn btn-gh btn-xs" title="معاينة">👁</button>
+          <a href="${doc.up.url||doc.up.data}" download="${doc.up.name}" target="_blank" class="btn btn-gh btn-xs" title="تحميل">⬇</a>
           ${can?`<button onclick="rF('${stage.key}','${doc.key}',${isC})" class="btn btn-d btn-xs">🗑</button>`:""}
         </div>
         ${can?`<input style="margin-top:7px;width:100%;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;color:var(--t2);outline:none;font-family:Cairo,sans-serif;background:transparent;" placeholder="ملاحظة..." value="${(doc.note||"").replace(/"/g,"&quot;")}" onchange="sN('${stage.key}','${doc.key}',${isC},this.value)"/>`:""}
@@ -1374,7 +1398,7 @@ const rFile=()=>{
               </div>
               <div style="font-size:10px;color:var(--t3);">${o.date||""} ${o.docType?"· "+o.docType:""}</div>
               <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;">
-                ${["idFront","idBack","doc"].map(fk=>{const fl=o.files?.[fk];const lbl=fk==="idFront"?"بطاقة وجه":fk==="idBack"?"بطاقة ظهر":"مستند الملكية";if(fl)return\`<button onclick="previewFile('\${fl.data}','\${fl.name}','\${fl.type||""}')" class="btn btn-gh btn-xs">👁 \${lbl}</button>\`;if(!can)return\`<span style="font-size:9px;color:var(--t3);background:var(--w2);border-radius:5px;padding:2px 6px;">\${lbl}: غير مرفوع</span>\`;return\`<label class="btn btn-gh btn-xs" style="cursor:pointer;">📎 \${lbl}<input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="uploadOwnerFile('\${proj.id}',\${i},'\${fk}',this)"/></label>\`;}).join("")}
+                ${["idFront","idBack","doc"].map(fk=>{const fl=o.files?.[fk];const lbl=fk==="idFront"?"بطاقة وجه":fk==="idBack"?"بطاقة ظهر":"مستند الملكية";if(fl)return\`<button onclick="previewFile('\${fl.url||fl.data}','\${fl.name}','\${fl.type||""}')" class="btn btn-gh btn-xs">👁 \${lbl}</button>\`;if(!can)return\`<span style="font-size:9px;color:var(--t3);background:var(--w2);border-radius:5px;padding:2px 6px;">\${lbl}: غير مرفوع</span>\`;return\`<label class="btn btn-gh btn-xs" style="cursor:pointer;">📎 \${lbl}<input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="uploadOwnerFile('\${proj.id}',\${i},'\${fk}',this)"/></label>\`;}).join("")}
               </div>
             </div>
           </div>`).join("")}
@@ -1387,7 +1411,7 @@ const rFile=()=>{
         </div>
         <div style="padding:12px 16px;">
           ${(proj.poas||[]).length===0?`<div style="text-align:center;color:var(--t3);font-size:11px;padding:12px;">لا توجد توكيلات مسجلة</div>`:""}
-          ${(proj.poas||[]).map((p,i)=>{const today=new Date().toISOString().slice(0,10);const expired=p.expiryDate&&p.expiryDate<today;return`<div style="background:${expired?"var(--rdl)":"var(--w2)"};border:1px solid ${expired?"rgba(192,57,43,.2)":"var(--bdl)"};border-radius:9px;padding:10px 12px;margin-bottom:8px;"><div style="display:flex;align-items:center;justify-content:space-between;"><div style="font-size:12px;font-weight:800;color:var(--t1);">${p.name}</div><div style="display:flex;gap:5px;align-items:center;">${expired?`<span style="font-size:9px;font-weight:700;background:var(--rdl);color:var(--rd);border-radius:5px;padding:1px 6px;">منتهي</span>`:`<span style="font-size:9px;font-weight:700;background:var(--grl);color:var(--gr);border-radius:5px;padding:1px 6px;">ساري</span>`}${can?`<button onclick="removePOA('${proj.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:13px;">×</button>`:""}</div></div><div style="font-size:10px;color:${expired?"var(--rd)":"var(--t3)"};margin-top:3px;">ينتهي: ${p.expiryDate||"—"} ${p.poaType?"· "+p.poaType:""}</div>${expired?`<div style="font-size:10px;color:var(--rd);font-weight:700;margin-top:4px;">⚠ يحتاج تجديد</div>`:""}</div>`;}).join("")}
+          ${(proj.poas||[]).map((p,i)=>{const today=new Date().toISOString().slice(0,10);const expired=p.expiryDate&&p.expiryDate<today;return`<div style="background:${expired?"var(--rdl)":"var(--w2)"};border:1px solid ${expired?"rgba(192,57,43,.2)":"var(--bdl)"};border-radius:9px;padding:10px 12px;margin-bottom:8px;"><div style="display:flex;align-items:center;justify-content:space-between;"><div style="font-size:12px;font-weight:800;color:var(--t1);">${p.name}</div><div style="display:flex;gap:5px;align-items:center;">${expired?`<span style="font-size:9px;font-weight:700;background:var(--rdl);color:var(--rd);border-radius:5px;padding:1px 6px;">منتهي</span>`:`<span style="font-size:9px;font-weight:700;background:var(--grl);color:var(--gr);border-radius:5px;padding:1px 6px;">ساري</span>`}${can?`<button onclick="removePOA('${proj.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:13px;">×</button>`:""}</div></div><div style="font-size:10px;color:${expired?"var(--rd)":"var(--t3)"};margin-top:3px;">ينتهي: ${p.expiryDate||"—"} ${p.poaType?"· "+p.poaType:""}</div>${expired?`<div style="font-size:10px;color:var(--rd);font-weight:700;margin-top:4px;">⚠ يحتاج تجديد</div>`:""}<div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;">${["doc","idFront","idBack"].map(fk=>{const lbl=fk==="doc"?"التوكيل":fk==="idFront"?"بطاقة وجه":"بطاقة ظهر";const fl=p.files?.[fk];if(fl)return\`<button onclick="previewFile('\${fl.url||fl.data}','\${fl.name}','\${fl.type||""}')" class="btn btn-gh btn-xs">👁 \${lbl}</button>\`;if(!can)return"";return\`<label class="btn btn-gh btn-xs" style="cursor:pointer;">📎 \${lbl}<input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="uploadPOAFile('\${proj.id}',\${i},'\${fk}',this)"/></label>\`;}).join("")}</div></div>`;}).join("")}
         </div>
       </div>`:""}
 
@@ -1792,39 +1816,25 @@ const tgS=k=>{const b=$("sb-"+k),a=$("sa-"+k);const h=b.classList.contains("hid"
 const gP=()=>(LS.g(K.p)||[]).find(p=>p.id===CPJ);
 const svP=p=>{p.lastUpdated=new Date().toISOString().slice(0,10);LS.s(K.p,(LS.g(K.p)||[]).map(x=>x.id===p.id?p:x));};
 
-const compressImg=(file,cb)=>{
-  if(!file.type.startsWith("image/")){const r=new FileReader();r.onload=e=>cb(e.target.result,file.name,file.type,file.size);r.readAsDataURL(file);return;}
-  const img=new Image();
-  const url=URL.createObjectURL(file);
-  img.onload=()=>{
-    URL.revokeObjectURL(url);
-    const MAX=1400;
-    let w=img.width,h=img.height;
-    if(w>MAX||h>MAX){const s=Math.min(MAX/w,MAX/h);w=Math.round(w*s);h=Math.round(h*s);}
-    const c=document.createElement("canvas");c.width=w;c.height=h;
-    c.getContext("2d").drawImage(img,0,0,w,h);
-    const data=c.toDataURL("image/jpeg",0.78);
-    const sz=Math.round(data.length*0.75);
-    cb(data,file.name.replace(/\.[^.]+$/,".jpg"),"image/jpeg",sz);
-  };
-  img.src=url;
-};
-
 const hUp=(sk,dk,isC,inp)=>{
   const file=inp.files[0];if(!file)return;
-  if(file.size>25*1024*1024){toast("الملف أكبر من 25MB","err");return;}
-  compressImg(file,(data,name,type,sz)=>{
-    const p=gP();if(!p)return;
+  if(file.size>50*1024*1024){toast("الملف أكبر من 50MB","err");return;}
+  const p=gP();if(!p)return;
+  toast("⏳ جاري الرفع...","info");
+  uploadToST(file,p.id,sk,dk).then(up=>{
     const now=new Date();
-    const upd=arr=>arr.map(d=>d.key===dk?{...d,up:{name,type,size:(sz/1024).toFixed(0)+"KB",data,date:now.toISOString().slice(0,10)}}:d);
+    const upd=arr=>arr.map(d=>d.key===dk?{...d,up}:d);
     p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
     const stageLbl=p.stages.find(s=>s.key===sk)?.label||sk;
-    const docLbl=p.stages.find(s=>s.key===sk)?.docs?.find(d=>d.key===dk)?.label||name;
+    const docLbl=p.stages.find(s=>s.key===sk)?.docs?.find(d=>d.key===dk)?.label||file.name;
     if(!p.timeline)p.timeline=[];
     p.timeline.push({date:now.toISOString().slice(0,10),time:now.toLocaleTimeString("ar-EG",{hour:"2-digit",minute:"2-digit"}),event:`رفع "${docLbl}"`,stage:stageLbl,by:CU.name,icon:"📎"});
     svP(p);rFileKeep();
     addNotif(`تم رفع ملف في مشروع ${p.ownerName}`,"info",p.id,null);
     toast("✓ تم رفع الملف بنجاح");
+  }).catch(err=>{
+    console.error("upload err",err);
+    toast("✗ فشل الرفع — تحقق من الاتصال","err");
   });
 };
 
@@ -1832,7 +1842,12 @@ const hUp=(sk,dk,isC,inp)=>{
 const rF=(sk,dk,isC)=>{
   if(!confirm("⚠ هل أنت متأكد من حذف هذا الملف؟\nلا يمكن التراجع عن هذا الإجراء."))return;
   const p=gP();if(!p)return;
-  const upd=arr=>arr.map(d=>d.key===dk?{...d,up:null}:d);
+  // حذف من Storage إن وجد path
+  const stg=p.stages.find(s=>s.key===sk);
+  const arr=isC?(stg?.cd||[]):(stg?.docs||[]);
+  const doc=arr.find(d=>d.key===dk);
+  if(doc?.up?.path)deleteFromST(doc.up.path);
+  const upd=a=>a.map(d=>d.key===dk?{...d,up:null}:d);
   p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
   svP(p);rFileKeep();
   addNotif(`تم حذف ملف من مشروع ${p.ownerName}`,"warn",p.id,null);
@@ -2464,18 +2479,15 @@ const removeOwner=(projId,idx)=>{
 };
 const uploadOwnerFile=(projId,idx,fk,input)=>{
   const file=input.files?.[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
+  toast("⏳ جاري الرفع...","info");
+  uploadToST(file,projId,`owner_${idx}`,fk).then(up=>{
     const projs=LS.g(K.p)||[];
     const proj=projs.find(p=>p.id===projId);
     if(!proj||!proj.ownerChain?.[idx])return;
     if(!proj.ownerChain[idx].files)proj.ownerChain[idx].files={};
-    proj.ownerChain[idx].files[fk]={data:e.target.result,name:file.name,type:file.type};
-    LS.s(K.p,projs);
-    openProj(projId);
-    toast("تم رفع الملف");
-  };
-  reader.readAsDataURL(file);
+    proj.ownerChain[idx].files[fk]={url:up.url,path:up.path,name:up.name,type:up.type};
+    LS.s(K.p,projs);openProj(projId);toast("✓ تم رفع الملف");
+  }).catch(()=>toast("✗ فشل الرفع","err"));
 };
 
 // ── POWER OF ATTORNEYS ──
@@ -2523,18 +2535,15 @@ const removePOA=(projId,idx)=>{
 };
 const uploadPOAFile=(projId,idx,fk,input)=>{
   const file=input.files?.[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
+  toast("⏳ جاري الرفع...","info");
+  uploadToST(file,projId,`poa_${idx}`,fk).then(up=>{
     const projs=LS.g(K.p)||[];
     const proj=projs.find(p=>p.id===projId);
     if(!proj||!proj.poas?.[idx])return;
     if(!proj.poas[idx].files)proj.poas[idx].files={};
-    proj.poas[idx].files[fk]={data:e.target.result,name:file.name,type:file.type};
-    LS.s(K.p,projs);
-    openProj(projId);
-    toast("تم رفع الملف");
-  };
-  reader.readAsDataURL(file);
+    proj.poas[idx].files[fk]={url:up.url,path:up.path,name:up.name,type:up.type};
+    LS.s(K.p,projs);openProj(projId);toast("✓ تم رفع الملف");
+  }).catch(()=>toast("✗ فشل الرفع","err"));
 };
 
 const waFwdSvc=r=>{
