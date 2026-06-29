@@ -608,34 +608,44 @@ firebase.initializeApp({
   appId:"1:632767112371:web:187166ea157815edd93cc6"
 });
 const DB=firebase.firestore();
+const ST=firebase.storage();
 const pushDB=(k,v)=>DB.collection("sanad").doc(k).set({v:JSON.stringify(v)}).catch(()=>{});
 const pullDB=async()=>{try{const s=await DB.collection("sanad").get();s.forEach(d=>{try{localStorage.setItem(d.id,d.data().v||"null");}catch{}});}catch(e){console.warn("offline",e);}};
 
-// ── FILE STORAGE: Firestore "files" collection (bypasses localStorage limit) ──
-// كل ملف doc منفصل: files/{fileId} = {data, name, type, size, date, projId}
+// ── FILE STORAGE: Firebase Storage ──
 const uploadToST=(file,projId,stageKey,docKey)=>new Promise((resolve,reject)=>{
-  const compress=(f,cb)=>{
-    if(!f.type.startsWith("image/")){const r=new FileReader();r.onload=e=>cb(e.target.result);r.readAsDataURL(f);return;}
-    const img=new Image(),url=URL.createObjectURL(f);
+  const ext=file.name.split(".").pop()||"bin";
+  const path=`projects/${projId}/${stageKey}/${docKey}_${Date.now()}.${ext}`;
+  const doUpload=blob=>{
+    const ref=ST.ref(path);
+    const task=ref.put(blob,{contentType:file.type});
+    task.on("state_changed",null,reject,()=>{
+      task.snapshot.ref.getDownloadURL().then(url=>resolve({
+        url,path,
+        name:file.name,
+        type:file.type,
+        size:(blob.size/1024).toFixed(0)+"KB",
+        date:new Date().toISOString().slice(0,10)
+      })).catch(reject);
+    });
+  };
+  // ضغط الصور قبل الرفع
+  if(file.type.startsWith("image/")){
+    const img=new Image(),objUrl=URL.createObjectURL(file);
     img.onload=()=>{
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(objUrl);
       const MAX=1400;let w=img.width,h=img.height;
       if(w>MAX||h>MAX){const s=Math.min(MAX/w,MAX/h);w=Math.round(w*s);h=Math.round(h*s);}
       const c=document.createElement("canvas");c.width=w;c.height=h;
       c.getContext("2d").drawImage(img,0,0,w,h);
-      cb(c.toDataURL("image/jpeg",0.78));
-    };img.src=url;
-  };
-  compress(file,data=>{
-    const fileId=`f_${projId}_${stageKey}_${docKey}_${Date.now()}`;
-    const meta={name:file.name,type:file.type,size:(file.size/1024).toFixed(0)+"KB",date:new Date().toISOString().slice(0,10),projId};
-    DB.collection("files").doc(fileId).set({data,meta})
-      .then(()=>resolve({fileId,url:data,name:file.name,type:file.type,size:meta.size,date:meta.date}))
-      .catch(reject);
-  });
+      c.toBlob(blob=>doUpload(blob),"image/jpeg",0.82);
+    };img.src=objUrl;
+  } else {
+    doUpload(file);
+  }
 });
 
-const deleteFromST=fileId=>{if(fileId)DB.collection("files").doc(fileId).delete().catch(()=>{});};
+const deleteFromST=path=>{if(path)ST.ref(path).delete().catch(()=>{});};
 
 // ── STORAGE HELPERS ──
 const LS={
@@ -1849,7 +1859,7 @@ const rF=(sk,dk,isC)=>{
   const stg=p.stages.find(s=>s.key===sk);
   const arr=isC?(stg?.cd||[]):(stg?.docs||[]);
   const doc=arr.find(d=>d.key===dk);
-  if(doc?.up?.fileId)deleteFromST(doc.up.fileId);
+  if(doc?.up?.path)deleteFromST(doc.up.path);
   const upd=a=>a.map(d=>d.key===dk?{...d,up:null}:d);
   p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
   svP(p);rFileKeep();
