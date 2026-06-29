@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
@@ -607,8 +608,37 @@ firebase.initializeApp({
   appId:"1:632767112371:web:187166ea157815edd93cc6"
 });
 const DB=firebase.firestore();
+const ST=firebase.storage();
 const pushDB=(k,v)=>DB.collection("sanad").doc(k).set({v:JSON.stringify(v)}).catch(()=>{});
 const pullDB=async()=>{try{const s=await DB.collection("sanad").get();s.forEach(d=>{try{localStorage.setItem(d.id,d.data().v||"null");}catch{}});}catch(e){console.warn("offline",e);}};
+
+// ── FIREBASE STORAGE: رفع الملفات ──
+const uploadToST=(file,projId,stageKey,docKey)=>new Promise((resolve,reject)=>{
+  const ext=file.name.split(".").pop()||"bin";
+  const path=`projects/${projId}/${stageKey}/${docKey}_${Date.now()}.${ext}`;
+  const doUpload=blob=>{
+    const task=ST.ref(path).put(blob,{contentType:file.type});
+    task.on("state_changed",null,reject,()=>{
+      task.snapshot.ref.getDownloadURL().then(url=>resolve({
+        url,path,name:file.name,type:file.type,
+        size:(blob.size/1024).toFixed(0)+"KB",
+        date:new Date().toISOString().slice(0,10)
+      })).catch(reject);
+    });
+  };
+  if(file.type.startsWith("image/")){
+    const img=new Image(),objUrl=URL.createObjectURL(file);
+    img.onload=()=>{
+      URL.revokeObjectURL(objUrl);
+      const MAX=1400;let w=img.width,h=img.height;
+      if(w>MAX||h>MAX){const s=Math.min(MAX/w,MAX/h);w=Math.round(w*s);h=Math.round(h*s);}
+      const cv=document.createElement("canvas");cv.width=w;cv.height=h;
+      cv.getContext("2d").drawImage(img,0,0,w,h);
+      cv.toBlob(b=>doUpload(b),"image/jpeg",0.82);
+    };img.src=objUrl;
+  } else { doUpload(file); }
+});
+const deleteFromST=path=>{if(path)ST.ref(path).delete().catch(()=>{});};
 
 // ── STORAGE HELPERS ──
 const LS={
@@ -1795,31 +1825,36 @@ const svP=p=>{p.lastUpdated=new Date().toISOString().slice(0,10);LS.s(K.p,(LS.g(
 
 const hUp=(sk,dk,isC,inp)=>{
   const file=inp.files[0];if(!file)return;
-  if(file.size>20*1024*1024){toast("الملف أكبر من 20MB","err");return;}
-  const r=new FileReader();
-  r.onload=e=>{
-    const p=gP();if(!p)return;
+  if(file.size>50*1024*1024){toast("الملف أكبر من 50MB","err");return;}
+  const p=gP();if(!p)return;
+  toast("⏳ جاري الرفع...","info");
+  uploadToST(file,p.id,sk,dk).then(up=>{
     const now=new Date();
-    const upd=arr=>arr.map(d=>d.key===dk?{...d,up:{name:file.name,type:file.type,size:(file.size/1024).toFixed(0)+"KB",data:e.target.result,date:now.toISOString().slice(0,10)}}:d);
+    const upd=arr=>arr.map(d=>d.key===dk?{...d,up}:d);
     p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
     const stageLbl=p.stages.find(s=>s.key===sk)?.label||sk;
     const docLbl=p.stages.find(s=>s.key===sk)?.docs?.find(d=>d.key===dk)?.label||file.name;
     if(!p.timeline)p.timeline=[];
     p.timeline.push({date:now.toISOString().slice(0,10),time:now.toLocaleTimeString("ar-EG",{hour:"2-digit",minute:"2-digit"}),event:`رفع "${docLbl}"`,stage:stageLbl,by:CU.name,icon:"📎"});
-    svP(p);rFile();
-    addNotif(`تم رفع ملف في مشروع ${p.ownerName}`,`info`,p.id,null);
+    svP(p);rFileKeep();
+    addNotif(`تم رفع ملف في مشروع ${p.ownerName}`,"info",p.id,null);
     toast("✓ تم رفع الملف بنجاح");
-  };
-  r.readAsDataURL(file);
+  }).catch(err=>{
+    console.error("upload error:",err);
+    toast("✗ فشل الرفع — تحقق من الاتصال","err");
+  });
 };
 
 // حذف ملف — لازم تأكيد
 const rF=(sk,dk,isC)=>{
   if(!confirm("⚠ هل أنت متأكد من حذف هذا الملف؟\nلا يمكن التراجع عن هذا الإجراء."))return;
   const p=gP();if(!p)return;
+  const stg=p.stages.find(s=>s.key===sk);
+  const doc=(isC?(stg?.cd||[]):(stg?.docs||[])).find(d=>d.key===dk);
+  if(doc?.up?.path)deleteFromST(doc.up.path);
   const upd=arr=>arr.map(d=>d.key===dk?{...d,up:null}:d);
   p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
-  svP(p);rFile();
+  svP(p);rFileKeep();
   addNotif(`تم حذف ملف من مشروع ${p.ownerName}`,"warn",p.id,null);
   toast("تم حذف الملف","info");
 };
@@ -2448,18 +2483,15 @@ const removeOwner=(projId,idx)=>{
 };
 const uploadOwnerFile=(projId,idx,fk,input)=>{
   const file=input.files?.[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
+  toast("⏳ جاري الرفع...","info");
+  uploadToST(file,projId,`owner_${idx}`,fk).then(up=>{
     const projs=LS.g(K.p)||[];
     const proj=projs.find(p=>p.id===projId);
     if(!proj||!proj.ownerChain?.[idx])return;
     if(!proj.ownerChain[idx].files)proj.ownerChain[idx].files={};
-    proj.ownerChain[idx].files[fk]={data:e.target.result,name:file.name,type:file.type};
-    LS.s(K.p,projs);
-    openProj(projId);
-    toast("تم رفع الملف");
-  };
-  reader.readAsDataURL(file);
+    proj.ownerChain[idx].files[fk]={url:up.url,path:up.path,name:up.name,type:up.type};
+    LS.s(K.p,projs);openProj(projId);toast("✓ تم رفع الملف");
+  }).catch(()=>toast("✗ فشل الرفع","err"));
 };
 
 // ── POWER OF ATTORNEYS ──
@@ -2507,18 +2539,15 @@ const removePOA=(projId,idx)=>{
 };
 const uploadPOAFile=(projId,idx,fk,input)=>{
   const file=input.files?.[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
+  toast("⏳ جاري الرفع...","info");
+  uploadToST(file,projId,`poa_${idx}`,fk).then(up=>{
     const projs=LS.g(K.p)||[];
     const proj=projs.find(p=>p.id===projId);
     if(!proj||!proj.poas?.[idx])return;
     if(!proj.poas[idx].files)proj.poas[idx].files={};
-    proj.poas[idx].files[fk]={data:e.target.result,name:file.name,type:file.type};
-    LS.s(K.p,projs);
-    openProj(projId);
-    toast("تم رفع الملف");
-  };
-  reader.readAsDataURL(file);
+    proj.poas[idx].files[fk]={url:up.url,path:up.path,name:up.name,type:up.type};
+    LS.s(K.p,projs);openProj(projId);toast("✓ تم رفع الملف");
+  }).catch(()=>toast("✗ فشل الرفع","err"));
 };
 
 const waFwdSvc=r=>{
