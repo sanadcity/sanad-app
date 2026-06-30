@@ -710,7 +710,9 @@ const STAGES=[
     {key:"p4",label:"موافقة بيئية",req:false,cond:"comm"},
     {key:"p5",label:"موافقة مرورية",req:false,cond:"comm"},
     {key:"p6",label:"وثيقة المجمعة",req:false},
-    {key:"p7",label:"عقد مقاولة المصعد",req:false,cond:"elev"},
+    {key:"p7",label:"عقد مقاولة المصعد",req:true,cond:"elev"},
+    {key:"p7b",label:"وثيقة تأمين المصعد",req:true,cond:"elev"},
+    {key:"p7c",label:"تقرير استشاري المصعد",req:true,cond:"elev"},
     {key:"p8",label:"طلب الترخيص",req:true},
     {key:"p9",label:"رخصة البناء",req:true}
   ]},
