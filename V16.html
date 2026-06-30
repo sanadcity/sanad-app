@@ -678,6 +678,22 @@ const initData=()=>{
   const projs=LS.g(K.p)||[];
   let changed=false;
   projs.forEach(p=>(p.stages||[]).forEach(s=>{if(LABEL_MAP[s.label]){s.label=LABEL_MAP[s.label];changed=true;}}));
+  // migrate: add بيان صلاحية الموقع as first doc in permits stage if missing
+  projs.forEach(p=>{
+    const ps=p.stages?.find(s=>s.key==="permits");
+    if(ps&&!ps.docs?.find(d=>d.key==="p0")){
+      ps.docs=[{key:"p0",label:"بيان صلاحية الموقع",req:true,up:null,note:""},...(ps.docs||[])];
+      changed=true;
+    }
+  });
+  // migrate: add elevator docs if missing
+  projs.forEach(p=>{
+    if(!p.hasElevator)return;
+    const ps=p.stages?.find(s=>s.key==="permits");
+    if(!ps)return;
+    if(!ps.docs?.find(d=>d.key==="p7b")){ps.docs=[...(ps.docs||[]),{key:"p7b",label:"وثيقة تأمين المصعد",req:true,up:null,note:"",cond:"elev"}];changed=true;}
+    if(!ps.docs?.find(d=>d.key==="p7c")){ps.docs=[...(ps.docs||[]),{key:"p7c",label:"تقرير استشاري المصعد",req:true,up:null,note:"",cond:"elev"}];changed=true;}
+  });
   if(changed)LS.s(K.p,projs);
 };
 
