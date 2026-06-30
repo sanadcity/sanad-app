@@ -676,7 +676,14 @@ const initData=()=>{
   // migrate old stage labels
   const LABEL_MAP={"الاستحواذ على الأرض":"ملكية العقار"};
   // migrate old doc labels
-  const DOC_LABEL_MAP={"شهادة إشراف الحفر":"شهادة إشراف","التصميمات الإنشائية والمعمارية":"التصميمات الإنشائية"};
+  const DOC_LABEL_MAP={
+    "شهادة إشراف الحفر":"شهادة إشراف",
+    "التصميمات الإنشائية والمعمارية":"التصميمات الإنشائية",
+    "الرسومات الإنشائية":"التصميمات الإنشائية",
+    "التصاميم الإنشائية والمعمارية":"التصميمات الإنشائية",
+    "وثيقة المجمعة":"وثيقة تأمين المجمعة / تقرير استشاري",
+    "وثيقة المجمعه":"وثيقة تأمين المجمعة / تقرير استشاري",
+  };
   const projs=LS.g(K.p)||[];
   let changed=false;
   projs.forEach(p=>(p.stages||[]).forEach(s=>{
@@ -731,7 +738,7 @@ const STAGES=[
     {key:"p3",label:"موافقة الدفاع المدني",req:false,cond:"comm"},
     {key:"p4",label:"موافقة بيئية",req:false,cond:"comm"},
     {key:"p5",label:"موافقة مرورية",req:false,cond:"comm"},
-    {key:"p6",label:"وثيقة المجمعة",req:false},
+    {key:"p6",label:"وثيقة تأمين المجمعة / تقرير استشاري",req:false},
     {key:"p7",label:"عقد مقاولة المصعد",req:true,cond:"elev"},
     {key:"p7b",label:"وثيقة تأمين المصعد",req:true,cond:"elev"},
     {key:"p7c",label:"تقرير استشاري المصعد",req:true,cond:"elev"},
