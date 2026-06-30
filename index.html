@@ -675,9 +675,15 @@ const initData=()=>{
   if(uChanged)LS.s(K.u,users2);
   // migrate old stage labels
   const LABEL_MAP={"الاستحواذ على الأرض":"ملكية العقار"};
+  // migrate old doc labels
+  const DOC_LABEL_MAP={"شهادة إشراف الحفر":"شهادة إشراف","التصميمات الإنشائية والمعمارية":"التصميمات الإنشائية"};
   const projs=LS.g(K.p)||[];
   let changed=false;
-  projs.forEach(p=>(p.stages||[]).forEach(s=>{if(LABEL_MAP[s.label]){s.label=LABEL_MAP[s.label];changed=true;}}));
+  projs.forEach(p=>(p.stages||[]).forEach(s=>{
+    if(LABEL_MAP[s.label]){s.label=LABEL_MAP[s.label];changed=true;}
+    (s.docs||[]).forEach(d=>{if(DOC_LABEL_MAP[d.label]){d.label=DOC_LABEL_MAP[d.label];changed=true;}});
+    (s.cd||[]).forEach(d=>{if(DOC_LABEL_MAP[d.label]){d.label=DOC_LABEL_MAP[d.label];changed=true;}});
+  }));
   // migrate: add بيان صلاحية الموقع as first doc in permits stage if missing
   projs.forEach(p=>{
     const ps=p.stages?.find(s=>s.key==="permits");
