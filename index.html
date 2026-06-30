@@ -1232,11 +1232,11 @@ const rFile=()=>{
         ${can?`<input style="margin-top:7px;width:100%;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;color:var(--t2);outline:none;font-family:Cairo,sans-serif;background:transparent;" placeholder="ملاحظة..." value="${(doc.note||"").replace(/"/g,"&quot;")}" onchange="sN('${stage.key}','${doc.key}',${isC},this.value)"/>`:""}
       </div>`;
     return`
-      <div style="background:var(--w);border:1.5px solid ${doc.req?"rgba(192,57,43,.2)":"var(--bdl)"};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+      <div style="background:var(--w);border:1.5px solid ${doc.req?"rgba(192,57,43,.2)":isC?"rgba(201,168,76,.35)":"var(--bdl)"};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-          <div style="width:8px;height:8px;border-radius:50%;background:${doc.req?"#C0392B":"#8896A4"};flex-shrink:0;"></div>
-          <div style="font-size:12px;font-weight:${doc.req?700:500};color:var(--t1);flex:1;">${doc.label}</div>
-          ${doc.req?pill("مطلوب","#C0392B"):""}
+          <div style="width:8px;height:8px;border-radius:50%;background:${doc.req?"#C0392B":isC?"#B7770D":"#8896A4"};flex-shrink:0;"></div>
+          <div style="font-size:12px;font-weight:700;color:var(--t1);flex:1;">${doc.label}</div>
+          ${doc.req?pill("مطلوب","#C0392B"):isC?pill("مخصص","#B7770D"):""}
           ${isC&&can?`<button onclick="rCD('${stage.key}','${doc.key}')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px;">×</button>`:""}
         </div>
         ${can?`<label style="display:flex;flex-direction:column;align-items:center;gap:4px;border:1.5px dashed var(--bdl);border-radius:8px;padding:12px;text-align:center;cursor:pointer;background:var(--w2);" for="up-${stage.key}-${doc.key}">
