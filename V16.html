@@ -700,6 +700,28 @@ const initData=()=>{
       changed=true;
     }
   });
+  // migrate: restructure land stage docs
+  projs.forEach(p=>{
+    const ls=p.stages?.find(s=>s.key==="land");
+    if(!ls)return;
+    // remove كراسة الاشتراطات
+    const before=ls.docs?.length||0;
+    ls.docs=(ls.docs||[]).filter(d=>d.key!=="l3");
+    if(ls.docs.length!==before)changed=true;
+    // rename old labels
+    const landMap={
+      "صورة الرقم القومي — المالك (وجه)":"المالك الأول — صورة البطاقة (وجه)",
+      "صورة الرقم القومي — المالك (ظهر)":"المالك الأول — صورة البطاقة (ظهر)",
+      "صورة الرقم القومي — الوكيل (وجه) (إن وجد)":"المالك الثاني — صورة البطاقة (وجه)",
+      "صورة الرقم القومي — الوكيل (ظهر) (إن وجد)":"المالك الثاني — صورة البطاقة (ظهر)",
+      "توكيل رسمي — المالك الأصلي (إن وجد)":"المالك الثاني — توكيل رسمي",
+      "عقد الملكية / العقد الابتدائي":"المالك الثاني — عقد البيع",
+    };
+    (ls.docs||[]).forEach(d=>{if(landMap[d.label]){d.label=landMap[d.label];changed=true;}});
+    // add new docs if missing
+    if(!ls.docs?.find(d=>d.key==="l4a")){ls.docs=[...(ls.docs||[]),{key:"l4a",label:"المالك الأول — عقد الهيئة / الجهاز",req:true,up:null,note:""}];changed=true;}
+    if(!ls.docs?.find(d=>d.key==="l5b")){ls.docs=[...(ls.docs||[]),{key:"l5b",label:"المالك الثاني — عقد البيع",req:false,up:null,note:""}];changed=true;}
+  });
   // migrate: add elevator docs if missing
   projs.forEach(p=>{
     if(!p.hasElevator)return;
@@ -721,16 +743,16 @@ const STAGES=[
     {key:"d5",label:"قرار التخصيص",req:true}
   ]},
   {key:"land",label:"ملكية العقار",icon:"🏠",color:"#1A3F6B",docs:[
+    {key:"l2",label:"كروكي الأرض",req:true},
     {key:"l0",label:"إخطار التخصيص",req:true},
     {key:"l1",label:"محضر استلام الأرض",req:true},
-    {key:"l_wak",label:"توكيل رسمي — المالك الأصلي (إن وجد)",req:false},
-    {key:"l2",label:"كروكي الأرض",req:true},
-    {key:"l3",label:"كراسة الاشتراطات",req:true},
-    {key:"l4a",label:"صورة الرقم القومي — المالك (وجه)",req:true},
-    {key:"l4b",label:"صورة الرقم القومي — المالك (ظهر)",req:true},
-    {key:"l5a",label:"صورة الرقم القومي — الوكيل (وجه) (إن وجد)",req:false},
-    {key:"l5b",label:"صورة الرقم القومي — الوكيل (ظهر) (إن وجد)",req:false},
-    {key:"l6",label:"عقد الملكية / العقد الابتدائي",req:true},
+    {key:"l4a",label:"المالك الأول — عقد الهيئة / الجهاز",req:true},
+    {key:"l4b",label:"المالك الأول — صورة البطاقة (وجه)",req:true},
+    {key:"l4c",label:"المالك الأول — صورة البطاقة (ظهر)",req:true},
+    {key:"l5a",label:"المالك الثاني — توكيل رسمي",req:false},
+    {key:"l5b",label:"المالك الثاني — عقد البيع",req:false},
+    {key:"l5c",label:"المالك الثاني — صورة البطاقة (وجه)",req:false},
+    {key:"l5d",label:"المالك الثاني — صورة البطاقة (ظهر)",req:false},
   ]},
   {key:"permits",label:"التراخيص والتصاريح",icon:"📋",color:"#C9A84C",docs:[
     {key:"p0",label:"بيان صلاحية الموقع",req:true},
