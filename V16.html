@@ -730,6 +730,57 @@ const initData=()=>{
     if(!ps.docs?.find(d=>d.key==="p7b")){ps.docs=[...(ps.docs||[]),{key:"p7b",label:"وثيقة تأمين المصعد",req:true,up:null,note:"",cond:"elev"}];changed=true;}
     if(!ps.docs?.find(d=>d.key==="p7c")){ps.docs=[...(ps.docs||[]),{key:"p7c",label:"تقرير استشاري المصعد",req:true,up:null,note:"",cond:"elev"}];changed=true;}
   });
+  // migrate: restructure stages to new schema (v2)
+  const NEW_ORDER=["decree","land","design","permits","exec","finish","utilities","delivery","ops"];
+  const REMOVE_OLD=["excavation","foundations","mep","exterior","interior","handover"];
+  const mkDocs=defs=>defs.map(d=>({...d,up:null,note:""}));
+  projs.forEach(p=>{
+    if(!p.stages)return;
+    // fix design label
+    const ds=p.stages.find(s=>s.key==="design");
+    if(ds&&ds.label==="التصاميم الهندسية"){ds.label="التصميمات الهندسية";changed=true;}
+    // migrate handover → delivery
+    const hs=p.stages.find(s=>s.key==="handover");
+    if(hs&&!p.stages.find(s=>s.key==="delivery")){
+      p.stages.push({key:"delivery",label:"التسليم والمطابقة",icon:"✅",color:"#1B7A4A",docs:hs.docs||[],cd:hs.cd||[]});
+      changed=true;
+    }
+    // remove old stages
+    const before=p.stages.length;
+    p.stages=p.stages.filter(s=>!REMOVE_OLD.includes(s.key));
+    if(p.stages.length!==before)changed=true;
+    // add missing new stages
+    const stgDefs={
+      exec:STAGES.find(s=>s.key==="exec"),
+      finish:STAGES.find(s=>s.key==="finish"),
+      utilities:STAGES.find(s=>s.key==="utilities"),
+      delivery:STAGES.find(s=>s.key==="delivery"),
+      ops:STAGES.find(s=>s.key==="ops"),
+    };
+    ["exec","finish","utilities","delivery","ops"].forEach(k=>{
+      if(!p.stages.find(s=>s.key===k)&&stgDefs[k]){
+        p.stages.push({...stgDefs[k],docs:mkDocs(stgDefs[k].docs),cd:[]});
+        changed=true;
+      }
+    });
+    // update ops docs if old structure
+    const os=p.stages.find(s=>s.key==="ops");
+    if(os&&os.docs?.length<=2&&!os.docs?.find(d=>d.key==="o3")){
+      os.docs=[
+        ...(os.docs||[]),
+        {key:"o3",label:"الكتالوجات",req:false,up:null,note:""},
+        {key:"o4",label:"سجلات الصيانة",req:false,up:null,note:""},
+        {key:"o5",label:"البلاغات",req:false,up:null,note:""},
+      ];
+      changed=true;
+    }
+    // reorder stages to match NEW_ORDER
+    p.stages.sort((a,b)=>{
+      const ai=NEW_ORDER.indexOf(a.key);
+      const bi=NEW_ORDER.indexOf(b.key);
+      return (ai===-1?999:ai)-(bi===-1?999:bi);
+    });
+  });
   if(changed)LS.s(K.p,projs);
 };
 
@@ -754,7 +805,13 @@ const STAGES=[
     {key:"l5c",label:"المالك الثاني — صورة البطاقة (وجه)",req:false},
     {key:"l5d",label:"المالك الثاني — صورة البطاقة (ظهر)",req:false},
   ]},
-  {key:"permits",label:"التراخيص والتصاريح",icon:"📋",color:"#C9A84C",docs:[
+  {key:"design",label:"التصميمات الهندسية",icon:"📐",color:"#3D5A8A",docs:[
+    {key:"des1",label:"الرسومات المعمارية المعتمدة",req:true},
+    {key:"des2",label:"التصميمات الإنشائية",req:true},
+    {key:"des3",label:"المخططات التفصيلية",req:false},
+    {key:"des4",label:"تقرير الحساب الإنشائي",req:false}
+  ]},
+  {key:"permits",label:"التراخيص والتصاريح",icon:"📑",color:"#C9A84C",docs:[
     {key:"p0",label:"بيان صلاحية الموقع",req:true},
     {key:"p1",label:"تقرير تربة معتمد",req:true},
     {key:"p2",label:"تقرير استشاري معتمد",req:true},
@@ -768,47 +825,59 @@ const STAGES=[
     {key:"p8",label:"طلب الترخيص",req:true},
     {key:"p9",label:"رخصة البناء",req:true}
   ]},
-  {key:"design",label:"التصاميم الهندسية",icon:"📐",color:"#3D5A8A",docs:[
-    {key:"des1",label:"الرسومات المعمارية المعتمدة",req:true},
-    {key:"des2",label:"التصميمات الإنشائية",req:true},
-    {key:"des3",label:"المخططات التفصيلية",req:false},
-    {key:"des4",label:"تقرير الحساب الإنشائي",req:false}
+  {key:"exec",label:"التنفيذ والتوثيق",icon:"🏗",color:"#5A3A1C",docs:[
+    {key:"ex1",label:"عقد المقاول",req:true},
+    {key:"ex2",label:"أوامر الإسناد",req:false},
+    {key:"ex3",label:"تصاريح التنفيذ",req:false},
+    {key:"ex4",label:"اختبارات الخرسانة",req:false},
+    {key:"ex5",label:"محاضر الصب",req:false},
+    {key:"ex6",label:"الضمانات",req:false}
   ]},
-  {key:"excavation",label:"جسات التربة والحفر",icon:"⛏",color:"#8A5A1C",docs:[
-    {key:"e1",label:"تصريح الحفر",req:true},
-    {key:"e2",label:"موافقة شركة الغاز",req:true},
-    {key:"e3",label:"عقد مقاولة",req:true},
-    {key:"e4",label:"شهادة إشراف",req:true}
+  {key:"finish",label:"الديكور والتشطيب",icon:"🏡",color:"#6B3A8A",docs:[
+    {key:"fn1",label:"عقد التشطيب",req:false},
+    {key:"fn2",label:"اعتماد الخامات",req:false},
+    {key:"fn3",label:"الضمانات",req:false},
+    {key:"fn4",label:"كتالوجات",req:false},
+    {key:"fn5",label:"محاضر الاستلام",req:false}
   ]},
-  {key:"foundations",label:"الأساسات والخرسانات",icon:"🏗",color:"#5A3A1C",docs:[
-    {key:"f1",label:"شهادة إشراف الأساسات",req:true},
-    {key:"f2",label:"شهادة إشراف — دور ١",req:true},
-    {key:"f3",label:"شهادة إشراف — دور ٢",req:false},
-    {key:"f4",label:"شهادة إشراف — دور ٣",req:false},
-    {key:"f5",label:"شهادة إشراف — دور ٤",req:false}
+  {key:"utilities",label:"المرافق والخدمات",icon:"⚡",color:"#1A6B6B",docs:[
+    {key:"u_e1",label:"الكهرباء — طلب الخدمة",req:false},
+    {key:"u_e2",label:"الكهرباء — موافقة الجهة",req:false},
+    {key:"u_e3",label:"الكهرباء — عقد الخدمة",req:false},
+    {key:"u_e4",label:"الكهرباء — تركيب العداد",req:false},
+    {key:"u_w1",label:"المياه — طلب الخدمة",req:false},
+    {key:"u_w2",label:"المياه — موافقة الجهة",req:false},
+    {key:"u_w3",label:"المياه — عقد الخدمة",req:false},
+    {key:"u_w4",label:"المياه — تركيب العداد",req:false},
+    {key:"u_s1",label:"الصرف الصحي — طلب الخدمة",req:false},
+    {key:"u_s2",label:"الصرف الصحي — موافقة الجهة",req:false},
+    {key:"u_s3",label:"الصرف الصحي — عقد الخدمة",req:false},
+    {key:"u_s4",label:"الصرف الصحي — توصيل الشبكة",req:false},
+    {key:"u_g1",label:"الغاز — طلب الخدمة",req:false},
+    {key:"u_g2",label:"الغاز — موافقة الجهة",req:false},
+    {key:"u_g3",label:"الغاز — عقد الخدمة",req:false},
+    {key:"u_g4",label:"الغاز — تركيب العداد",req:false},
+    {key:"u_t1",label:"الاتصالات — طلب الخدمة",req:false},
+    {key:"u_t2",label:"الاتصالات — موافقة الجهة",req:false},
+    {key:"u_t3",label:"الاتصالات — عقد الخدمة",req:false},
+    {key:"u_t4",label:"الاتصالات — التركيب",req:false},
+    {key:"u_i1",label:"الإنترنت — طلب الخدمة",req:false},
+    {key:"u_i2",label:"الإنترنت — موافقة الجهة",req:false},
+    {key:"u_i3",label:"الإنترنت — عقد الخدمة",req:false},
+    {key:"u_i4",label:"الإنترنت — التركيب",req:false}
   ]},
-  {key:"mep",label:"التمديدات الكهروميكانيكية",icon:"⚡",color:"#1A6B6B",docs:[
-    {key:"m1",label:"شهادة صلاحية المبنى",req:true},
-    {key:"m2",label:"طلب دخول الكهرباء",req:true},
-    {key:"m3",label:"طلب دخول المياه",req:true},
-    {key:"m4",label:"طلب دخول الغاز",req:false}
-  ]},
-  {key:"exterior",label:"التشطيبات الخارجية",icon:"🎨",color:"#2D5A8A",docs:[
-    {key:"ex1",label:"شهادة إتمام الواجهات",req:false},
-    {key:"ex2",label:"موافقة التشطيب الخارجي",req:false}
-  ]},
-  {key:"interior",label:"التشطيبات الداخلية",icon:"🪟",color:"#4A2D7A",docs:[
-    {key:"in1",label:"شهادة إتمام التشطيبات الداخلية",req:false},
-    {key:"in2",label:"محضر الفحص الداخلي",req:false}
-  ]},
-  {key:"handover",label:"التسليم والتسجيل",icon:"🔑",color:"#1B7A4A",docs:[
-    {key:"h1",label:"شهادة إتمام البناء",req:true},
-    {key:"h2",label:"شهادة صلاحية السكن",req:true},
-    {key:"h3",label:"محضر الاستلام النهائي",req:true}
+  {key:"delivery",label:"التسليم والمطابقة",icon:"✅",color:"#1B7A4A",docs:[
+    {key:"dl1",label:"شهادة إتمام الإشراف",req:true},
+    {key:"dl2",label:"شهادة المطابقة",req:true},
+    {key:"dl3",label:"محضر الاستلام النهائي",req:true},
+    {key:"dl4",label:"شهادة صلاحية السكن",req:true}
   ]},
   {key:"ops",label:"التشغيل والصيانة",icon:"🔧",color:"#1C3A6A",docs:[
-    {key:"o1",label:"خطة التشغيل",req:true},
-    {key:"o2",label:"عقد الصيانة الدورية",req:false}
+    {key:"o1",label:"عقود الصيانة",req:false},
+    {key:"o2",label:"الضمانات",req:false},
+    {key:"o3",label:"الكتالوجات",req:false},
+    {key:"o4",label:"سجلات الصيانة",req:false},
+    {key:"o5",label:"البلاغات",req:false}
   ]},
 ];
 
