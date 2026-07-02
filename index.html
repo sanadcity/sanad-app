@@ -1345,9 +1345,12 @@ const rFile=()=>{
     const feeBodyId=`fb-${sk}-${dk}`;
 
     const noteHtml=can?`
-      ${doc.note?`<div id="note-tag-${sk}-${dk}" style="margin-top:6px;background:#FEF9EC;border:1px solid rgba(201,168,76,.3);border-radius:6px;padding:5px 9px;font-size:11px;color:#7A5C00;display:flex;align-items:flex-start;gap:5px;"><span>📝</span><span style="flex:1;">${doc.note.replace(/</g,"&lt;")}</span><button onclick="sN('${sk}','${dk}',${isC},'');document.getElementById('note-tag-${sk}-${dk}').remove();" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:13px;padding:0;">×</button></div>`:`<div id="note-tag-${sk}-${dk}" style="display:none;margin-top:6px;background:#FEF9EC;border:1px solid rgba(201,168,76,.3);border-radius:6px;padding:5px 9px;font-size:11px;color:#7A5C00;"><span>📝</span> <span id="note-text-${sk}-${dk}"></span></div>`}
-      <input id="note-inp-${sk}-${dk}" style="margin-top:6px;width:100%;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;color:var(--t2);outline:none;font-family:Cairo,sans-serif;background:transparent;" placeholder="📝 اكتب ملاحظة واضغط Enter..." value="" onkeydown="if(event.key==='Enter'){event.preventDefault();const v=this.value.trim();if(v){sN('${sk}','${dk}',${isC},v);const t=document.getElementById('note-tag-${sk}-${dk}');if(t){t.style.display='flex';t.innerHTML='<span>📝</span><span style=&quot;flex:1;&quot;>'+v+'</span><button onclick=&quot;sN(&apos;${sk}&apos;,&apos;${dk}&apos;,${isC},&apos;&apos;);this.closest(&apos;[id]&apos;).style.display=&apos;none&apos;&quot; style=&quot;background:none;border:none;cursor:pointer;color:var(--t3);font-size:13px;padding:0;&quot;>×</button>';}this.value='';}}" />
-    `:(doc.note?`<div style="margin-top:6px;background:#FEF9EC;border:1px solid rgba(201,168,76,.3);border-radius:6px;padding:5px 9px;font-size:11px;color:#7A5C00;">📝 ${doc.note.replace(/</g,"&lt;")}</div>`:"");
+      <div id="ntag-${sk}-${dk}" style="display:${doc.note?"flex":"none"};margin-top:6px;align-items:center;gap:6px;background:#FEF9EC;border:1px solid #E8D08A;border-radius:6px;padding:5px 10px;font-size:11px;color:#7A5C00;">
+        <span style="flex-shrink:0;">📝</span><span class="nt" style="flex:1;">${(doc.note||"").replace(/</g,"&lt;")}</span>
+        <button onclick="delNote('${sk}','${dk}',${isC})" style="background:none;border:none;cursor:pointer;color:#B7770D;font-size:15px;line-height:1;padding:0;">×</button>
+      </div>
+      <input style="margin-top:5px;width:25%;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;color:var(--t2);outline:none;font-family:Cairo,sans-serif;background:transparent;" placeholder="ملاحظة..." onkeydown="if(event.key==='Enter'){event.preventDefault();saveNoteFromInput('${sk}','${dk}',${isC},this);}"/>
+    `:(doc.note?`<div style="margin-top:6px;background:#FEF9EC;border:1px solid #E8D08A;border-radius:6px;padding:5px 9px;font-size:11px;color:#7A5C00;">📝 ${doc.note.replace(/</g,"&lt;")}</div>`:"");
 
     const feeHtml=can?`
       <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bdl);">
@@ -2016,6 +2019,8 @@ const rF=(sk,dk,isC)=>{
   toast("تم حذف الملف","info");
 };
 const sN=(sk,dk,isC,note)=>{const p=gP();if(!p)return;const upd=arr=>arr.map(d=>d.key===dk?{...d,note}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);};
+const saveNoteFromInput=(sk,dk,isC,el)=>{const v=el.value.trim();if(!v)return;sN(sk,dk,isC,v);el.value='';const tag=document.getElementById('ntag-'+sk+'-'+dk);if(tag){tag.style.display='flex';tag.querySelector('.nt').textContent=v;}};
+const delNote=(sk,dk,isC)=>{sN(sk,dk,isC,'');const tag=document.getElementById('ntag-'+sk+'-'+dk);if(tag)tag.style.display='none';};
 const sFee=(sk,dk,isC,field,value)=>{const p=gP();if(!p)return;const upd=arr=>arr.map(d=>d.key===dk?{...d,fee:{...(d.fee||{}),enabled:true,[field]:value}}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);};
 const sFeeEnabled=(sk,dk,isC,checked)=>{const p=gP();if(!p)return;const upd=arr=>arr.map(d=>d.key===dk?{...d,fee:{...(d.fee||{}),enabled:checked}}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);const fb=document.getElementById(`fb-${sk}-${dk}`);if(fb)fb.style.display=checked?"flex":"none";};
 const uploadFeeReceipt=(sk,dk,isC,input)=>{const file=input.files?.[0];if(!file)return;const p=gP();if(!p)return;toast("⏳ جاري رفع الإيصال...","info");uploadToST(file,p.id,`fee_${sk}`,dk).then(up=>{const upd=arr=>arr.map(d=>d.key===dk?{...d,fee:{...(d.fee||{}),enabled:true,receipt:{url:up.url,path:up.path,name:up.name,type:up.type}}}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);rFile();toast("✓ تم رفع الإيصال");}).catch(err=>{console.error(err);toast("✗ فشل رفع الإيصال","err");});};
