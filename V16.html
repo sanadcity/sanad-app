@@ -879,6 +879,8 @@ const rp=r=>pill(RL[r]||r,RC[r]||"#8896A4");
 const $=id=>document.getElementById(id);
 const toast=(m,t="ok")=>{const el=$("toast");const ic={ok:"✓",err:"✗",info:"ℹ",warn:"⚠"};const bg={ok:"#0D1B2E",err:"#C0392B",info:"#1A3F6B",warn:"#B7770D"};el.innerHTML=`<span style="font-size:16px;">${ic[t]||"✓"}</span> ${m}`;el.style.background=bg[t]||bg.ok;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),3200);};
 const cm=id=>$(id).classList.add("hid");
+const showModal=(title,body,footer)=>{document.getElementById("dyn-modal")?.remove();const el=document.createElement("div");el.id="dyn-modal";el.className="ov";el.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;";el.innerHTML=`<div class="modal" style="max-width:520px;width:90%;"><div class="mh"><div class="mt">${title}</div><button class="cx" onclick="closeModal()">✕</button></div><div style="padding:20px;">${body}</div><div class="mf">${footer}</div></div>`;document.body.appendChild(el);};
+const closeModal=()=>document.getElementById("dyn-modal")?.remove();
 const sm=(id,m,t)=>{const el=$(id);if(!el)return;el.innerHTML=m?`<div class="amsg ${t}">${m}</div>`:""};
 
 // ── NOTIFICATIONS ──
