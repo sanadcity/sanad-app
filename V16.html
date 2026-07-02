@@ -1271,22 +1271,49 @@ const rFile=()=>{
 
   const docsHtml=allDocs.map(doc=>{
     const isC=(stage.cd||[]).some(d=>d.key===doc.key);
+    const sk=stage.key,dk=doc.key;
+    const fee=doc.fee||{};
+    const feeBodyId=`fb-${sk}-${dk}`;
+
+    const noteHtml=can?`
+      ${doc.note?`<div id="note-tag-${sk}-${dk}" style="margin-top:6px;background:#FEF9EC;border:1px solid rgba(201,168,76,.3);border-radius:6px;padding:5px 9px;font-size:11px;color:#7A5C00;display:flex;align-items:flex-start;gap:5px;"><span>📝</span><span style="flex:1;">${doc.note.replace(/</g,"&lt;")}</span><button onclick="sN('${sk}','${dk}',${isC},'');document.getElementById('note-tag-${sk}-${dk}').remove();" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:13px;padding:0;">×</button></div>`:`<div id="note-tag-${sk}-${dk}" style="display:none;margin-top:6px;background:#FEF9EC;border:1px solid rgba(201,168,76,.3);border-radius:6px;padding:5px 9px;font-size:11px;color:#7A5C00;"><span>📝</span> <span id="note-text-${sk}-${dk}"></span></div>`}
+      <input id="note-inp-${sk}-${dk}" style="margin-top:6px;width:100%;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;color:var(--t2);outline:none;font-family:Cairo,sans-serif;background:transparent;" placeholder="📝 اكتب ملاحظة واضغط Enter..." value="" onkeydown="if(event.key==='Enter'){event.preventDefault();const v=this.value.trim();if(v){sN('${sk}','${dk}',${isC},v);const t=document.getElementById('note-tag-${sk}-${dk}');if(t){t.style.display='flex';t.innerHTML='<span>📝</span><span style=&quot;flex:1;&quot;>'+v+'</span><button onclick=&quot;sN(&apos;${sk}&apos;,&apos;${dk}&apos;,${isC},&apos;&apos;);this.closest(&apos;[id]&apos;).style.display=&apos;none&apos;&quot; style=&quot;background:none;border:none;cursor:pointer;color:var(--t3);font-size:13px;padding:0;&quot;>×</button>';}this.value='';}}" />
+    `:(doc.note?`<div style="margin-top:6px;background:#FEF9EC;border:1px solid rgba(201,168,76,.3);border-radius:6px;padding:5px 9px;font-size:11px;color:#7A5C00;">📝 ${doc.note.replace(/</g,"&lt;")}</div>`:"");
+
+    const feeHtml=can?`
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bdl);">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;">
+          <input type="checkbox" ${fee.enabled?"checked":""} onchange="sFeeEnabled('${sk}','${dk}',${isC},this.checked)" style="cursor:pointer;accent-color:var(--gold);width:13px;height:13px;"/>
+          <span style="font-size:11px;color:var(--t3);">💰 يوجد رسوم لهذا الإجراء</span>
+        </label>
+        <div id="${feeBodyId}" style="display:${fee.enabled?"block":"none"};margin-top:8px;background:var(--w2);border-radius:8px;padding:10px;display:${fee.enabled?"flex":"none"};flex-direction:column;gap:7px;">
+          <input placeholder="💰 قيمة الخدمة (جنيه)" value="${(fee.amount||"").replace(/"/g,"&quot;")}" onchange="sFee('${sk}','${dk}',${isC},'amount',this.value)" style="border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);"/>
+          ${fee.receipt?`<div style="background:var(--grl);border-radius:6px;padding:6px 10px;display:flex;align-items:center;gap:7px;font-size:11px;"><span>🧾</span><span style="flex:1;color:var(--gr);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${fee.receipt.name}</span><a href="${fee.receipt.url||fee.receipt.data}" download="${fee.receipt.name}" class="btn btn-gh btn-xs">⬇</a><button onclick="sFee('${sk}','${dk}',${isC},'receipt',null);rFile();" class="btn btn-d btn-xs">🗑</button></div>`:`<label style="display:flex;align-items:center;gap:6px;border:1.5px dashed var(--bdl);border-radius:6px;padding:7px 10px;cursor:pointer;font-size:11px;color:var(--t3);background:var(--w);">🧾 رفع الإيصال<input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadFeeReceipt('${sk}','${dk}',${isC},this)" style="display:none;"/></label>`}
+          <input type="date" value="${fee.date||""}" onchange="sFee('${sk}','${dk}',${isC},'date',this.value)" style="border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);" title="📅 تاريخ السداد"/>
+          <input placeholder="🏛 جهة السداد" value="${(fee.entity||"").replace(/"/g,"&quot;")}" onchange="sFee('${sk}','${dk}',${isC},'entity',this.value)" style="border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);"/>
+          <select onchange="sFee('${sk}','${dk}',${isC},'method',this.value)" style="border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);">
+            <option value="">💳 طريقة الدفع</option>
+            ${["نقدي","تحويل بنكي","فودافون كاش","إنستاباي"].map(m=>`<option ${fee.method===m?"selected":""}>${m}</option>`).join("")}
+          </select>
+        </div>
+      </div>`:"";
+
     if(doc.up)return`
       <div style="background:var(--w);border:1.5px solid rgba(27,122,74,.25);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
           <div style="width:8px;height:8px;border-radius:50%;background:#1B7A4A;flex-shrink:0;"></div>
           <div style="font-size:12px;font-weight:700;color:var(--t1);flex:1;">${doc.label}</div>
           ${pill("✓ مرفوع","#1B7A4A")}
-          ${isC&&can?`<button onclick="rCD('${stage.key}','${doc.key}')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px;">×</button>`:""}
+          ${isC&&can?`<button onclick="rCD('${sk}','${dk}')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px;">×</button>`:""}
         </div>
         <div style="background:var(--grl);border-radius:7px;padding:8px 10px;display:flex;align-items:center;gap:8px;">
           <span style="font-size:16px;">${doc.up.type?.includes("pdf")?"📄":"🖼"}</span>
           <div style="flex:1;min-width:0;"><div style="font-size:11px;font-weight:700;color:var(--gr);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${doc.up.name}</div><div style="font-size:9px;color:var(--gr);opacity:.7;">${doc.up.size} · ${doc.up.date}</div></div>
           <button onclick="previewFile('${doc.up.url||doc.up.data}','${doc.up.name}','${doc.up.type||""}')" class="btn btn-gh btn-xs" title="معاينة">👁</button>
           <a href="${doc.up.url||doc.up.data}" download="${doc.up.name}" class="btn btn-gh btn-xs" title="تحميل">⬇</a>
-          ${can?`<button onclick="rF('${stage.key}','${doc.key}',${isC})" class="btn btn-d btn-xs">🗑</button>`:""}
+          ${can?`<button onclick="rF('${sk}','${dk}',${isC})" class="btn btn-d btn-xs">🗑</button>`:""}
         </div>
-        ${can?`<input style="margin-top:7px;width:100%;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;color:var(--t2);outline:none;font-family:Cairo,sans-serif;background:transparent;" placeholder="ملاحظة..." value="${(doc.note||"").replace(/"/g,"&quot;")}" onchange="sN('${stage.key}','${doc.key}',${isC},this.value)"/>`:""}
+        ${noteHtml}${feeHtml}
       </div>`;
     return`
       <div style="background:var(--w);border:1.5px solid ${doc.req?"rgba(192,57,43,.2)":isC?"rgba(201,168,76,.35)":"var(--bdl)"};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
@@ -1294,14 +1321,14 @@ const rFile=()=>{
           <div style="width:8px;height:8px;border-radius:50%;background:${doc.req?"#C0392B":isC?"#B7770D":"#8896A4"};flex-shrink:0;"></div>
           <div style="font-size:12px;font-weight:700;color:var(--t1);flex:1;">${doc.label}</div>
           ${doc.req?pill("مطلوب","#C0392B"):isC?pill("مخصص","#B7770D"):""}
-          ${isC&&can?`<button onclick="rCD('${stage.key}','${doc.key}')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px;">×</button>`:""}
+          ${isC&&can?`<button onclick="rCD('${sk}','${dk}')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px;">×</button>`:""}
         </div>
-        ${can?`<label style="display:flex;flex-direction:column;align-items:center;gap:4px;border:1.5px dashed var(--bdl);border-radius:8px;padding:12px;text-align:center;cursor:pointer;background:var(--w2);" for="up-${stage.key}-${doc.key}">
+        ${can?`<label style="display:flex;flex-direction:column;align-items:center;gap:4px;border:1.5px dashed var(--bdl);border-radius:8px;padding:12px;text-align:center;cursor:pointer;background:var(--w2);" for="up-${sk}-${dk}">
           <span style="font-size:20px;opacity:.4;">📤</span>
           <span style="font-size:11px;font-weight:600;color:var(--t2);">رفع الملف</span>
-          <input type="file" id="up-${stage.key}-${doc.key}" accept=".pdf,.jpg,.jpeg,.png,.dwg,.dxf" onchange="hUp('${stage.key}','${doc.key}',${isC},this)" style="display:none;"/>
+          <input type="file" id="up-${sk}-${dk}" accept=".pdf,.jpg,.jpeg,.png,.dwg,.dxf" onchange="hUp('${sk}','${dk}',${isC},this)" style="display:none;"/>
         </label>`:`<div style="background:var(--w2);border-radius:8px;padding:8px;text-align:center;color:var(--t3);font-size:11px;">لم يُرفع بعد</div>`}
-        ${can?`<input style="margin-top:7px;width:100%;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;color:var(--t2);outline:none;font-family:Cairo,sans-serif;background:transparent;" placeholder="ملاحظة اختيارية..." value="${(doc.note||"").replace(/"/g,"&quot;")}" onchange="sN('${stage.key}','${doc.key}',${isC},this.value)"/>`:""}
+        ${noteHtml}${feeHtml}
       </div>`;
   }).join("");
 
@@ -1921,6 +1948,9 @@ const rF=(sk,dk,isC)=>{
   toast("تم حذف الملف","info");
 };
 const sN=(sk,dk,isC,note)=>{const p=gP();if(!p)return;const upd=arr=>arr.map(d=>d.key===dk?{...d,note}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);};
+const sFee=(sk,dk,isC,field,value)=>{const p=gP();if(!p)return;const upd=arr=>arr.map(d=>d.key===dk?{...d,fee:{...(d.fee||{}),enabled:true,[field]:value}}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);};
+const sFeeEnabled=(sk,dk,isC,checked)=>{const p=gP();if(!p)return;const upd=arr=>arr.map(d=>d.key===dk?{...d,fee:{...(d.fee||{}),enabled:checked}}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);const fb=document.getElementById(`fb-${sk}-${dk}`);if(fb)fb.style.display=checked?"flex":"none";};
+const uploadFeeReceipt=(sk,dk,isC,input)=>{const file=input.files?.[0];if(!file)return;const p=gP();if(!p)return;toast("⏳ جاري رفع الإيصال...","info");uploadToST(file,p.id,`fee_${sk}`,dk).then(up=>{const upd=arr=>arr.map(d=>d.key===dk?{...d,fee:{...(d.fee||{}),enabled:true,receipt:{url:up.url,path:up.path,name:up.name,type:up.type}}}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);rFile();toast("✓ تم رفع الإيصال");}).catch(err=>{console.error(err);toast("✗ فشل رفع الإيصال","err");});};
 const aCD=sk=>{const inp=$("cd-"+sk);const label=inp?.value?.trim();if(!label)return;const p=gP();if(!p)return;p.stages=p.stages.map(s=>s.key!==sk?s:{...s,cd:[...(s.cd||[]),{key:"c_"+Date.now(),label,req:false,up:null,note:""}]});inp.value="";svP(p);rFile();toast("تم إضافة المستند");};
 const rCD=(sk,dk)=>{
   if(!confirm("⚠ حذف هذا المستند المخصص؟"))return;
