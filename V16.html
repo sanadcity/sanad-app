@@ -1451,7 +1451,9 @@ const rFile=()=>{
     const noteHtml2=can?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;"><input style="width:100%;border:1px solid var(--bdl);border-radius:6px;padding:4px 8px;font-size:10px;color:var(--t2);outline:none;font-family:Cairo,sans-serif;background:transparent;" placeholder="ملاحظة..." onkeydown="if(event.key==='Enter'){event.preventDefault();saveNoteFromInput('${sk}','${dk}',${isC},this);}"/><div id="ntags-${sk}-${dk}" style="display:flex;flex-wrap:wrap;gap:3px;">${noteTagsHtml2}</div></div>`:(docNotes.length?`<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">${noteTagsHtml2}</div>`:"");
     const upSt=doc.up?.status||(doc.up?"approved":null);
     const isAdmin=["admin","staff"].includes(CU.role);
-    const canDel=["admin","staff"].includes(CU.role)||(CU.role!=="office"&&can);
+    const upStatus=doc.up?.status||(doc.up?"approved":null);
+    const uploadedByMe=doc.up?.uploadedBy===CU.id;
+    const canDel=["admin","staff"].includes(CU.role)||(uploadedByMe&&upStatus==="pending")||(CU.role!=="office"&&can&&upStatus!=="approved");
     const fileActions=()=>`<div style="display:flex;gap:4px;flex-shrink:0;">
       <button onclick="previewFile('${doc.up.url||doc.up.data}','${(doc.up.name||"").replace(/'/g,"\\'")}','${doc.up.type||""}')" class="btn btn-gh btn-xs">👁</button>
       <a href="${doc.up.url||doc.up.data}" download="${doc.up.name}" class="btn btn-gh btn-xs">⬇</a>
@@ -2280,7 +2282,12 @@ const rF=(sk,dk,isC)=>{
     toast("لا يمكنك حذف ملف لم ترفعه","err");return;
   }
   if(!confirm("⚠ هل أنت متأكد من حذف هذا الملف؟\nلا يمكن التراجع عن هذا الإجراء."))return;
-  if(CU.role==="office"&&!["admin","staff"].includes(CU.role)){toast("المكتب المفوَّض لا يمكنه حذف الملفات","err");return;}
+  const stage2=p.stages.find(s=>s.key===sk);
+  const doc2=(isC?(stage2?.cd||[]):(stage2?.docs||[])).find(d=>d.key===dk);
+  const upSt2=doc2?.up?.status||(doc2?.up?"approved":null);
+  const byMe=doc2?.up?.uploadedBy===CU.id;
+  if(!["admin","staff"].includes(CU.role)&&upSt2==="approved"){toast("لا يمكن حذف ملف تمت الموافقة عليه","err");return;}
+  if(CU.role==="office"&&!byMe){toast("لا يمكنك حذف ملف لم ترفعه","err");return;}
   const upd=arr=>arr.map(d=>d.key===dk?{...d,up:null}:d);
   p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
   svP(p);rFile();
