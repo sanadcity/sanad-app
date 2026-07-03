@@ -1767,7 +1767,7 @@ const rFile=()=>{
   const missingCurDocs=curSt?[...(curSt.docs||[]),...(curSt.cd||[])].filter(d=>d.req&&!d.up):[];
   const responsible=(proj.parties||[]).find(pt=>["office","staff"].includes(pt.role));
   const needsAttention=missingCurDocs.length>0||missingReqTotal>2;
-  const locParts=[proj.city,proj.district,proj.plot?"قطعة "+proj.plot:""].filter(Boolean);
+  const locParts=[proj.plot?"قطعة "+proj.plot:"",proj.district,proj.city,proj.governorate].filter(Boolean);
 
   // ── timeline ──
   const timelineHtml=(()=>{
