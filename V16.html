@@ -1503,6 +1503,37 @@ const rFile=()=>{
         </div>`:""}
       </div>
       ${upArea}${noteHtml2}${sk!=="land"&&can?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--bdl);"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;"><input type="checkbox" ${(doc.fee||{}).enabled?"checked":""} onchange="sFeeEnabled('${sk}','${dk}',${isC},this.checked)" style="cursor:pointer;accent-color:var(--gold);width:13px;height:13px;"/><span style="font-size:11px;color:var(--t3);">💰 يوجد رسوم لهذا الإجراء</span></label><div id="fb-${sk}-${dk}" style="display:${(doc.fee||{}).enabled?"flex":"none"};margin-top:6px;background:var(--w2);border-radius:8px;padding:8px;flex-wrap:wrap;gap:6px;align-items:center;"><input placeholder="💰 المبلغ (جنيه)" value="${((doc.fee||{}).amount||"").replace(/"/g,"&quot;")}" onchange="sFee('${sk}','${dk}',${isC},'amount',this.value)" style="flex:1;min-width:90px;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);"/>${(doc.fee||{}).receipt?`<div style="flex:1;min-width:110px;background:var(--grl);border-radius:6px;padding:5px 8px;display:flex;align-items:center;gap:5px;font-size:11px;"><span>🧾</span><span style="flex:1;color:var(--gr);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px;">${doc.fee.receipt.name}</span><a href="${doc.fee.receipt.url||doc.fee.receipt.data}" download="${doc.fee.receipt.name}" class="btn btn-gh btn-xs">⬇</a><button onclick="sFee('${sk}','${dk}',${isC},'receipt',null);rFile();" class="btn btn-d btn-xs">🗑</button></div>`:`<label style="flex:1;min-width:100px;display:flex;align-items:center;justify-content:center;gap:5px;border:1.5px dashed var(--bdl);border-radius:6px;padding:5px 9px;cursor:pointer;font-size:11px;color:var(--t3);background:var(--w);">🧾 رفع الإيصال<input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadFeeReceipt('${sk}','${dk}',${isC},this)" style="display:none;"/></label>`}<input type="date" value="${(doc.fee||{}).date||""}" onchange="sFee('${sk}','${dk}',${isC},'date',this.value)" style="flex:1;min-width:110px;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);"/><select onchange="sFee('${sk}','${dk}',${isC},'method',this.value)" style="flex:1;min-width:100px;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);"><option value="">💳 طريقة الدفع</option>${["نقدي","تحويل بنكي","فودافون كاش","إنستاباي"].map(m=>`<option ${(doc.fee||{}).method===m?"selected":""}>${m}</option>`).join("")}</select></div></div>`:""}
+      ${(()=>{
+        const cs=doc.consultant||{};
+        const cFile=(field,label)=>{
+          const f=cs[field];
+          if(f)return`<div style="background:var(--w);border:1px solid var(--bdl);border-radius:6px;padding:5px;text-align:center;">
+            <div style="font-size:9px;color:var(--t3);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</div>
+            <div style="display:flex;gap:2px;justify-content:center;">
+              <button onclick="previewFile('${f.url||f.data}','${(f.name||"").replace(/'/g,"\\'")}','${f.type||""}')" class="btn btn-gh btn-xs">👁</button>
+              <a href="${f.url||f.data}" download="${f.name}" class="btn btn-gh btn-xs">⬇</a>
+              ${can?`<button onclick="delConsultantDoc('${sk}','${dk}',${isC},'${field}')" class="btn btn-d btn-xs">🗑</button>`:""}
+            </div>
+          </div>`;
+          return can?`<label style="background:var(--w2);border:1.5px dashed var(--bdl);border-radius:6px;padding:5px;cursor:pointer;display:block;text-align:center;">
+            <div style="font-size:9px;color:var(--t3);margin-bottom:2px;">${label}</div>
+            <div style="font-size:11px;color:var(--t3);opacity:.6;">📤</div>
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadConsultantDoc('${sk}','${dk}',${isC},'${field}',this)" style="display:none;"/>
+          </label>`:`<div style="background:var(--w2);border-radius:6px;padding:5px;text-align:center;"><div style="font-size:9px;color:var(--t3);">${label}</div><div style="color:var(--t3);font-size:10px;">—</div></div>`;
+        };
+        if(!cs.enabled&&!can)return"";
+        return`<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--bdl);">
+          ${can?`<label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;margin-bottom:${cs.enabled?"6px":"0"};">
+            <input type="checkbox" ${cs.enabled?"checked":""} onchange="sConsultantEnabled('${sk}','${dk}',${isC},this.checked)" style="cursor:pointer;accent-color:#3D5A8A;width:13px;height:13px;"/>
+            <span style="font-size:11px;color:var(--t3);">👤 يوجد استشاري / مهندس</span>
+          </label>`:(cs.enabled?`<div style="font-size:11px;color:var(--t2);font-weight:700;margin-bottom:6px;">👤 الاستشاري / المهندس</div>`:"")}
+          <div id="cb-${sk}-${dk}" style="display:${cs.enabled?"grid":"none"};grid-template-columns:1fr 1fr 1fr;gap:5px;">
+            ${cFile("karneh","كارنيه النقابة")}
+            ${cFile("taxCard","بطاقة ضريبية")}
+            ${cFile("registry","سجل هندسي / تجاري")}
+          </div>
+        </div>`;
+      })()}
     </div>`;
   };
 
@@ -2399,6 +2430,9 @@ const delNote=(sk,dk,isC,idx)=>{
 };
 const sFee=(sk,dk,isC,field,value)=>{const p=gP();if(!p)return;const upd=arr=>arr.map(d=>d.key===dk?{...d,fee:{...(d.fee||{}),enabled:true,[field]:value}}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);};
 const sFeeEnabled=(sk,dk,isC,checked)=>{const p=gP();if(!p)return;const upd=arr=>arr.map(d=>d.key===dk?{...d,fee:{...(d.fee||{}),enabled:checked}}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);const fb=document.getElementById(`fb-${sk}-${dk}`);if(fb)fb.style.display=checked?"flex":"none";};
+const sConsultantEnabled=(sk,dk,isC,checked)=>{const p=gP();if(!p)return;const upd=arr=>arr.map(d=>d.key===dk?{...d,consultant:{...(d.consultant||{}),enabled:checked}}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);const cb=document.getElementById(`cb-${sk}-${dk}`);if(cb)cb.style.display=checked?"grid":"none";};
+const uploadConsultantDoc=(sk,dk,isC,field,inp)=>{const file=inp.files?.[0];if(!file)return;const p=gP();if(!p)return;toast("⏳ جاري رفع مستند الاستشاري...","info");uploadToST(file,p.id,`consultant_${sk}`,`${dk}_${field}`).then(up=>{const upd=arr=>arr.map(d=>d.key===dk?{...d,consultant:{...(d.consultant||{}),enabled:true,[field]:{url:up.url,path:up.path,name:up.name,type:up.type,size:up.size,date:up.date}}}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);rFile();toast("✓ تم رفع المستند");}).catch(()=>toast("✗ فشل الرفع","err"));};
+const delConsultantDoc=(sk,dk,isC,field)=>{if(!confirm("حذف هذا المستند؟"))return;const p=gP();if(!p)return;const upd=arr=>arr.map(d=>d.key===dk?{...d,consultant:{...(d.consultant||{}),[field]:null}}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);rFile();toast("تم حذف المستند","info");};
 const uploadFeeReceipt=(sk,dk,isC,input)=>{const file=input.files?.[0];if(!file)return;const p=gP();if(!p)return;toast("⏳ جاري رفع الإيصال...","info");uploadToST(file,p.id,`fee_${sk}`,dk).then(up=>{const upd=arr=>arr.map(d=>d.key===dk?{...d,fee:{...(d.fee||{}),enabled:true,receipt:{url:up.url,path:up.path,name:up.name,type:up.type}}}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);rFile();toast("✓ تم رفع الإيصال");}).catch(err=>{console.error(err);toast("✗ فشل رفع الإيصال","err");});};
 // ── LAND OWNERS ──
 const LAND_OWNER_DOCS={
