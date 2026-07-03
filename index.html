@@ -1860,20 +1860,35 @@ const rFile=()=>{
             ${can?`<button onclick="openManageParties('${proj.id}')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--n8);font-weight:700;font-family:Cairo,sans-serif;">+ إضافة</button>`:""}
           </div>
           ${parties.length===0?`<div style="text-align:center;padding:10px;color:var(--t3);font-size:11px;">لا توجد أطراف مرتبطة</div>`:""}
-          ${parties.map(pt=>{
+          ${parties.map((pt,pti)=>{
             const rc=PROLES[pt.role]||{l:pt.role,c:"#8896A4",bg:"#F4F5F7"};
             const ini=(pt.name||"؟").split(" ").slice(0,2).map(w=>w[0]||"").join("");
-            return`<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--bdl);">
-              <div style="width:34px;height:34px;border-radius:50%;background:${rc.bg};border:1.5px solid ${rc.c}30;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:${rc.c};flex-shrink:0;">${ini}</div>
-              <div style="flex:1;min-width:0;">
-                <div style="font-size:12px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${pt.name||"—"}</div>
-                <div style="display:flex;align-items:center;gap:5px;margin-top:2px;">
-                  <span style="font-size:9px;font-weight:700;background:${rc.bg};color:${rc.c};border-radius:5px;padding:1px 6px;">${rc.l}</span>
-                  ${pt.partyId?`<span style="font-size:9px;color:var(--gr);">● مرتبط</span>`:`<span style="font-size:9px;color:var(--t3);">خارجي</span>`}
+            const hasPoa=!!pt.poa;
+            return`<div style="padding:8px 0;border-bottom:1px solid var(--bdl);">
+              <div style="display:flex;align-items:center;gap:9px;">
+                <div style="width:34px;height:34px;border-radius:50%;background:${rc.bg};border:1.5px solid ${rc.c}30;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:${rc.c};flex-shrink:0;">${ini}</div>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:12px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${pt.name||"—"}</div>
+                  <div style="display:flex;align-items:center;gap:5px;margin-top:2px;">
+                    <span style="font-size:9px;font-weight:700;background:${rc.bg};color:${rc.c};border-radius:5px;padding:1px 6px;">${rc.l}</span>
+                    ${pt.partyId?`<span style="font-size:9px;color:var(--gr);">● مرتبط</span>`:`<span style="font-size:9px;color:var(--t3);">خارجي</span>`}
+                  </div>
                 </div>
+                ${pt.phone?`<a href="tel:${pt.phone}" style="color:var(--t3);text-decoration:none;font-size:14px;" title="${pt.phone}">📞</a>`:""}
+                ${can?`<button onclick="removeParty('${proj.id}','${pt.partyId||pt.name}')" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:15px;padding:2px;">×</button>`:""}
               </div>
-              ${pt.phone?`<a href="tel:${pt.phone}" style="color:var(--t3);text-decoration:none;font-size:14px;" title="${pt.phone}">📞</a>`:""}
-              ${can?`<button onclick="removeParty('${proj.id}','${pt.partyId||pt.name}')" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:15px;padding:2px;">×</button>`:""}
+              <div style="margin-top:5px;margin-right:43px;">
+                ${hasPoa?`<div style="display:flex;align-items:center;gap:5px;background:rgba(27,122,74,.07);border:1px solid rgba(27,122,74,.2);border-radius:6px;padding:4px 8px;">
+                  <span style="font-size:10px;color:#1B7A4A;font-weight:700;">📄 توكيل إدارة</span>
+                  <button onclick="previewFile('${pt.poa.url}','${(pt.poa.name||"").replace(/'/g,"\\'")}','${pt.poa.type||""}')" class="btn btn-gh btn-xs">👁</button>
+                  <a href="${pt.poa.url}" download="${pt.poa.name}" class="btn btn-gh btn-xs">⬇</a>
+                  ${can?`<button onclick="delPartyPOA('${proj.id}',${pti})" class="btn btn-d btn-xs">🗑</button>`:""}
+                </div>`
+                :can?`<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:10px;color:var(--t3);border:1px dashed var(--bdl);border-radius:6px;padding:3px 8px;">
+                  📄 رفع توكيل إدارة
+                  <input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadPartyPOA('${proj.id}',${pti},this)" style="display:none;"/>
+                </label>`:""}
+              </div>
             </div>`;
           }).join("")}
         </div>`;
@@ -2227,6 +2242,21 @@ const removePartyByIndex=(projId,idx)=>{
   openManageParties(projId);rFile();
 };
 
+const uploadPartyPOA=(projId,idx,inp)=>{
+  const file=inp.files?.[0];if(!file)return;
+  const projs=LS.g(K.p)||[];const proj=projs.find(p=>p.id===projId);if(!proj)return;
+  toast("⏳ جاري رفع التوكيل...","info");
+  uploadToST(file,projId,`party_poa`,`pt${idx}_${Date.now()}`).then(up=>{
+    proj.parties[idx].poa={url:up.url,path:up.path,name:up.name,type:up.type,size:up.size};
+    LS.s(K.p,projs);rFile();toast("✓ تم رفع التوكيل");
+  }).catch(()=>toast("✗ فشل الرفع","err"));
+};
+const delPartyPOA=(projId,idx)=>{
+  if(!confirm("حذف توكيل الإدارة؟"))return;
+  const projs=LS.g(K.p)||[];const proj=projs.find(p=>p.id===projId);if(!proj)return;
+  proj.parties[idx].poa=null;
+  LS.s(K.p,projs);rFile();toast("تم الحذف","info");
+};
 const removeParty=(projId,partyIdOrName)=>{
   const projs=LS.g(K.p)||[];
   const proj=projs.find(p=>p.id===projId);
@@ -2460,8 +2490,10 @@ const LAND_OWNER_DOCS={
     {key:"idBack",  label:"صورة البطاقة (ظهر)",  req:true},
   ],
   partner:[
-    {key:"poa",         label:"توكيل رسمي", req:false},
-    {key:"saleContract",label:"عقد البيع",  req:false},
+    {key:"saleContract",label:"عقد البيع",         req:false},
+    {key:"idFront",     label:"صورة البطاقة (وجه)",req:false},
+    {key:"idBack",      label:"صورة البطاقة (ظهر)",req:false},
+    {key:"poa",         label:"توكيل رسمي",         req:false},
   ]
 };
 const addLandOwner=(type)=>{
