@@ -1131,17 +1131,23 @@ const restoreFilesFromStorage=async()=>{
   if(btn){btn.disabled=true;btn.textContent="جارٍ الاسترجاع...";}
   const projects=LS.g(K.p)||[];
   let restored=0;
+  const tryList=async(basePath)=>{
+    try{return await ST.ref().child(basePath).listAll();}catch(e){return null;}
+  };
   for(const proj of projects){
-    const projRef=ST.ref().child("projects/"+proj.id);
-    try{
-      const res=await projRef.listAll();
+    // try both path patterns
+    const paths=["projects/"+proj.id, proj.id];
+    for(const base of paths){
+      const res=await tryList(base);
+      if(!res||!res.prefixes.length)continue;
       for(const folderRef of res.prefixes){
         const stageKey=folderRef.name;
-        const filesRes=await folderRef.listAll();
+        const filesRes=await folderRef.listAll().catch(()=>null);
+        if(!filesRes)continue;
         for(const itemRef of filesRes.items){
           const fileName=itemRef.name;
           const docKey=fileName.split("_")[0];
-          const fullPath="projects/"+proj.id+"/"+stageKey+"/"+fileName;
+          const fullPath=base+"/"+stageKey+"/"+fileName;
           const url=`https://firebasestorage.googleapis.com/v0/b/sanad-city.firebasestorage.app/o/${encodeURIComponent(fullPath)}?alt=media`;
           const upObj={url,path:fullPath,name:fileName,type:"application/octet-stream",size:"?",date:""};
           const stage=(proj.stages||[]).find(s=>s.key===stageKey);
@@ -1153,10 +1159,10 @@ const restoreFilesFromStorage=async()=>{
           }
         }
       }
-    }catch(e){console.warn("skip",proj.id);}
+    }
   }
   LS.s(K.p,projects);
-  alert(`✅ تم استرجاع ${restored} ملف`);
+  alert(`✅ تم استرجاع ${restored} ملف — جارٍ إعادة التحميل`);
   location.reload();
 };
 
