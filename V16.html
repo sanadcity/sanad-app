@@ -1933,7 +1933,7 @@ const rFile=()=>{
         else if(chainOwners.length>0)
           owners=chainOwners.map((o,i)=>({name:o.name||"—",sub:i===chainOwners.length-1?"المالك الحالي":o.transferType||"مالك سابق",color:i===chainOwners.length-1?"#1A3F6B":"#8896A4",bg:i===chainOwners.length-1?"#E6EEF8":"#F4F5F7"}));
         else if(proj.ownerName)
-          owners=[{name:proj.ownerName,sub:"مالك مباشر",color:"#1A3F6B",bg:"#E6EEF8"}];
+          owners=[{name:proj.ownerName,sub:proj.isOriginalOwner!==false?"مالك مباشر (من الجهاز)":"المالك الحالي",color:"#1A3F6B",bg:"#E6EEF8"}];
         if(!owners.length)return"";
         return`<div style="background:var(--w);border:2px solid rgba(26,63,107,.25);border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(26,63,107,.08);">
           <div style="font-size:9px;font-weight:700;color:#1A3F6B;letter-spacing:.1em;margin-bottom:10px;">🏠 الملاك</div>
@@ -2762,9 +2762,16 @@ const rPM=()=>{
 
     body=`
     <div class="fw">
-      <div class="fg"><label class="fl">اسم المالك الأصلي <span class="rq">*</span></label><input class="fi" id="po" value="${PFrm.ownerName||""}" placeholder="الاسم الكامل للمالك"/></div>
+      <div class="fg"><label class="fl">اسم المالك <span class="rq">*</span></label><input class="fi" id="po" value="${PFrm.ownerName||""}" placeholder="الاسم الكامل للمالك"/></div>
       <div class="fg"><label class="fl">الرقم القومي للمالك <span class="rq">*</span></label><input class="fi" id="pnid" value="${PFrm.nationalId||""}" placeholder="14 رقم" maxlength="14"/></div>
     </div>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--w2);border:1px solid var(--bdl);border-radius:8px;padding:8px 12px;margin-bottom:12px;">
+      <input type="checkbox" id="p-isoriginal" ${PFrm.isOriginalOwner!==false?"checked":""} style="width:15px;height:15px;accent-color:var(--n8);cursor:pointer;"/>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--t1);">المالك الأصلي من الجهاز / الهيئة</div>
+        <div style="font-size:10px;color:var(--t3);">أزل التحديد لو كان المالك الحالي فقط وليس صاحب عقد الجهاز</div>
+      </div>
+    </label>
 
     <!-- AGENTS (وكلاء) -->
     <div style="background:var(--w2);border:1px solid var(--bdl);border-radius:10px;padding:12px;margin-bottom:14px;">
@@ -2897,6 +2904,7 @@ const nxPS=()=>{
     PFrm.hasBasement=$("pbas")?.checked||false;
     PFrm.hasPool=$("ppoo")?.checked||false;
     PFrm.hasPergola=$("pper")?.checked||false;
+    PFrm.isOriginalOwner=$("p-isoriginal")?.checked!==false;
   }
   if(PS===2){
     PFrm.propertyState=$("pps")?.value||"أرض فضاء";
@@ -2933,7 +2941,7 @@ const svPF=()=>{
     createdAt:new Date().toISOString().slice(0,10),
     lastUpdated:new Date().toISOString().slice(0,10),
     by:CU.id,byName:CU.name,byRole:CU.role,
-    ownerName:PFrm.ownerName,nationalId:PFrm.nationalId||"",
+    ownerName:PFrm.ownerName,nationalId:PFrm.nationalId||"",isOriginalOwner:PFrm.isOriginalOwner!==false,
     agents:PFrm.agents||[],
     ownerEmail:PFrm.ownerEmail||"",
     type:PFrm.type,activity:PFrm.activity,
