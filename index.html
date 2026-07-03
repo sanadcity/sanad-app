@@ -2046,12 +2046,9 @@ const rFile=()=>{
         </div>
       </div>
 
-      <!-- POWER OF ATTORNEYS -->
-      <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);">
-        <div style="padding:12px 14px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;">
-          <div style="font-size:12px;font-weight:800;color:var(--t1);">📋 التوكيلات</div>
-          ${can?`<button class="btn btn-p btn-xs" onclick="openAddPOA('${proj.id}')">+ إضافة</button>`:""}
-        </div>
+      <!-- POWER OF ATTORNEYS (hidden - POA now embedded in party/owner cards) -->
+      <div style="display:none;">
+        <div>
         <div style="padding:12px 14px;">
           ${(proj.poas||[]).length===0?`<div style="text-align:center;color:var(--t3);font-size:11px;padding:12px;">لا توجد توكيلات مسجلة</div>`:""}
           ${(proj.poas||[]).map((p,i)=>{
@@ -2096,7 +2093,6 @@ const rFile=()=>{
 
 // ── PARTIES MANAGEMENT ──
 const PARTY_ROLES=[
-  {k:"owner",      l:"مالك عقار",      c:"#1A3F6B"},
   {k:"developer",  l:"مطور عقاري",     c:"#4A1A6B"},
   {k:"office",     l:"مكتب هندسي",     c:"#1B7A4A"},
   {k:"broker",     l:"وسيط",            c:"#B7770D"},
