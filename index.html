@@ -1141,13 +1141,15 @@ const restoreFilesFromStorage=async()=>{
         for(const itemRef of filesRes.items){
           const fileName=itemRef.name;
           const docKey=fileName.split("_")[0];
-          const url=`https://firebasestorage.googleapis.com/v0/b/sanad-city.firebasestorage.app/o/${encodeURIComponent("projects/"+proj.id+"/"+stageKey+"/"+fileName)}?alt=media`;
+          const fullPath="projects/"+proj.id+"/"+stageKey+"/"+fileName;
+          const url=`https://firebasestorage.googleapis.com/v0/b/sanad-city.firebasestorage.app/o/${encodeURIComponent(fullPath)}?alt=media`;
+          const upObj={url,path:fullPath,name:fileName,type:"application/octet-stream",size:"?",date:""};
           const stage=(proj.stages||[]).find(s=>s.key===stageKey);
           if(stage){
             const doc=(stage.docs||[]).find(d=>d.key===docKey);
-            if(doc&&!doc.up){doc.up=url;restored++;}
+            if(doc&&!doc.up){doc.up=upObj;restored++;}
             const cdoc=(stage.cd||[]).find(d=>d.key===docKey);
-            if(cdoc&&!cdoc.up){cdoc.up=url;restored++;}
+            if(cdoc&&!cdoc.up){cdoc.up=upObj;restored++;}
           }
         }
       }
