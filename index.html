@@ -1296,7 +1296,13 @@ const rFile=()=>{
 
   // Active stage
   const stage=proj.stages[CSV];
-  const allDocs=[...(stage.docs||[]),...(stage.cd||[])];
+  const isResidential=!proj.activity||proj.activity==="سكني";
+  const hasElev=proj.hasElevator;
+  const allDocs=[...(stage.docs||[]),...(stage.cd||[])].filter(d=>{
+    if(d.cond==="comm"&&isResidential)return false;
+    if(d.cond==="elev"&&!hasElev)return false;
+    return true;
+  });
   const req=allDocs.filter(d=>d.req);
   const stDone=req.length>0&&req.every(d=>d.up);
   const stCur=CSV===ci&&!stDone;
