@@ -1132,7 +1132,7 @@ const restoreFilesFromStorage=async()=>{
   const projects=LS.g(K.p)||[];
   let restored=0;
   for(const proj of projects){
-    const projRef=ST.ref().child(proj.id);
+    const projRef=ST.ref().child("projects/"+proj.id);
     try{
       const res=await projRef.listAll();
       for(const folderRef of res.prefixes){
