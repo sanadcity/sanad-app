@@ -464,6 +464,8 @@ body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--t1);-webkit
       <div class="tb-r">
         <div id="tb-cta"></div>
         <div class="live"><div class="ldot"></div><span class="ltxt">مباشر</span></div>
+        <!-- PENDING FILES ICON (admin/staff only) -->
+        <div class="ibt hid" id="pf-btn" onclick="showPendingFiles()" title="ملفات تنتظر الموافقة" style="position:relative;">⏳<span class="ibdg" id="bdg-pending-files" style="background:#B7770D;">0</span></div>
         <!-- NOTIFICATIONS BELL with dual badge -->
         <div class="ibt" onclick="togNotifs()" title="الإشعارات" id="nb-btn">🔔<span class="ibdg hid" id="nb">0</span></div>
         <!-- Notif dropdown -->
@@ -1135,7 +1137,7 @@ const buildSB=()=>{
   const nMap={
     admin:[
       {s:"الرئيسية"},{k:"dash",i:"⊞",l:"لوحة التحكم"},
-      {s:"العمل"},{k:"projs",i:"◆",l:"المشاريع"},{k:"svcs",i:"⚡",l:"طلبات الخدمة",b:true},{k:"contacts",i:"◉",l:"العملاء"},{k:"prof",i:"🏗",l:"المهنيون"},
+      {s:"العمل"},{k:"projs",i:"◆",l:"المشاريع"},{k:"svcs",i:"⚡",l:"طلبات الخدمة",b:true},{k:"contacts",i:"◉",l:"العملاء"},
       {s:"العمليات"},{k:"tasks",i:"☑",l:"المهام",b:true},
       {s:"الإدارة"},{k:"users",i:"👥",l:"المستخدمون",b:true},{k:"staff-mgmt",i:"◈",l:"الموظفون"},{k:"settings",i:"⚙",l:"الإعدادات"}
     ],
@@ -1190,7 +1192,38 @@ const updBdg=()=>{
   const nb=$("nb");if(nb){nb.textContent=tot;nb.classList.toggle("hid",tot===0);}
   const bu=$("bdg-users");if(bu){bu.textContent=pu;bu.classList.toggle("hid",pu===0||!isAdmin);}
   const bs=$("bdg-svcs");if(bs){bs.textContent=mySvcs;bs.classList.toggle("hid",mySvcs===0);}
-  const bp=$("bdg-pending-files");if(bp){bp.textContent=pendingFiles;bp.classList.toggle("hid",pendingFiles===0||!isAdmin);}
+  const bp=$("bdg-pending-files");if(bp){bp.textContent=pendingFiles;bp.classList.toggle("hid",pendingFiles===0);}
+  const pfBtn=$("pf-btn");if(pfBtn)pfBtn.classList.toggle("hid",!isAdmin||pendingFiles===0);
+};
+
+const showPendingFiles=()=>{
+  const items=[];
+  (LS.g(K.p)||[]).forEach(proj=>proj.stages?.forEach(s=>{
+    [...(s.docs||[]),...(s.cd||[])].forEach(d=>{
+      if(d.up?.status==="pending")items.push({proj,stage:s,doc:d});
+    });
+  }));
+  const html=items.length===0
+    ?`<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px;">لا توجد ملفات تنتظر الموافقة</div>`
+    :items.map(({proj,stage,doc})=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bdl);cursor:pointer;" onclick="CPJ='${proj.id}';showPage('file');$('pf-modal').classList.add('hid');">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${proj.ownerName}</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:2px;">${stage.label} · ${doc.label}</div>
+          <div style="font-size:9px;color:var(--am);margin-top:1px;">رُفع بواسطة: ${doc.up.uploadedBy||"—"} · ${doc.up.date||""}</div>
+        </div>
+        <span style="font-size:9px;background:rgba(183,119,13,.12);color:#B7770D;border-radius:6px;padding:2px 7px;font-weight:700;white-space:nowrap;">بانتظار الموافقة</span>
+      </div>`).join("");
+  let m=$("pf-modal");
+  if(!m){
+    m=document.createElement("div");
+    m.id="pf-modal";
+    m.style.cssText="position:fixed;top:56px;left:120px;width:340px;background:var(--w);border:1px solid var(--bd);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.14);z-index:300;max-height:420px;overflow-y:auto;";
+    document.body.appendChild(m);
+    document.addEventListener("click",e=>{if(!m.contains(e.target)&&e.target.id!=="pf-btn")m.classList.add("hid");},{passive:true});
+  }
+  m.innerHTML=`<div style="padding:10px 14px;border-bottom:1px solid var(--bdl);font-size:11px;font-weight:700;color:var(--t1);">⏳ ملفات تنتظر الموافقة (${items.length})</div>${html}`;
+  m.classList.toggle("hid");
 };
 
 // ── PAGE ROUTING ──
