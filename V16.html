@@ -3056,13 +3056,19 @@ const rUsers=()=>{
     <td style="font-size:11px;color:var(--t3);">${u.email}</td>
     <td><span style="font-size:11px;font-weight:700;color:${rc.border};">${ROLE_L[u.role]||u.role}</span></td>
     <td style="font-size:11px;color:var(--t3);">${u.created||"—"}</td>
-    <td>${u.role!=="admin"?`<button onclick="suU('${u.id}')" class="btn btn-d btn-xs">تعليق</button>`:`<span style='color:var(--t3);font-size:11px;'>مدير</span>`}</td>
+    <td>${u.role!=="admin"?`<div style="display:flex;gap:4px;">
+      ${u.status==="suspended"
+        ?`<button onclick="apU('${u.id}')" class="btn btn-xs" style="background:#1B7A4A;color:#fff;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:Cairo,sans-serif;font-size:11px;">تفعيل</button>`
+        :`<button onclick="suU('${u.id}')" class="btn btn-d btn-xs">تعليق</button>`}
+      <button onclick="delU('${u.id}','${(u.name||u.nationalId||"").replace(/'/g,"\\'")}')" class="btn btn-xs" style="background:#7B0000;color:#fff;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:Cairo,sans-serif;font-size:11px;">حذف</button>
+    </div>`:`<span style='color:var(--t3);font-size:11px;'>مدير</span>`}</td>
   </tr>`;}).join("")}</tbody></table></div>`;
   $("us").innerHTML=html;
 };
 const apU=id=>{LS.s(K.u,(LS.g(K.u)||[]).map(u=>u.id===id?{...u,status:"active",code:u.code||genUserCode(u.role)}:u));rUsers();rDash();updBdg();toast("تم قبول المستخدم ✓");};
 const rjU=id=>{LS.s(K.u,(LS.g(K.u)||[]).map(u=>u.id===id?{...u,status:"rejected"}:u));rUsers();updBdg();toast("تم رفض الطلب","info");};
 const suU=id=>{if(!confirm("تعليق هذا المستخدم؟"))return;LS.s(K.u,(LS.g(K.u)||[]).map(u=>u.id===id?{...u,status:"suspended"}:u));rUsers();toast("تم التعليق","warn");};
+const delU=(id,name)=>{if(!confirm(`حذف المستخدم "${name}" نهائياً؟\nلا يمكن التراجع.`))return;LS.s(K.u,(LS.g(K.u)||[]).filter(u=>u.id!==id));rUsers();updBdg();toast("تم حذف المستخدم","info");};
 
 // ── CONTACTS ──
 const rContacts=()=>{
