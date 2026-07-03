@@ -358,7 +358,7 @@ body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--t1);-webkit
       </div>
       <div id="amsg"></div>
       <div id="lf">
-        <div class="fg"><label class="fl">البريد الإلكتروني</label><div class="fi-wrap"><input class="fi ico" id="le" type="email" placeholder="name@company.com" onkeydown="if(event.key==='Enter')doLogin()"/><span class="fi-ico">✉</span></div></div>
+        <div class="fg"><label class="fl">البريد الإلكتروني أو الرقم القومي</label><div class="fi-wrap"><input class="fi ico" id="le" placeholder="name@company.com أو 14 رقم" onkeydown="if(event.key==='Enter')doLogin()"/><span class="fi-ico">✉</span></div></div>
         <div class="fg"><label class="fl">كلمة المرور</label><div class="fi-wrap"><input class="fi ico" id="lp" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/><span class="fi-ico">🔒</span></div></div>
         <div class="rem-row">
           <label class="rem-chk"><input type="checkbox" id="rm"/><span>تذكرني على هذا الجهاز</span></label>
@@ -372,10 +372,11 @@ body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--t1);-webkit
           <div class="fg"><label class="fl">رقم الهاتف <span class="rq">*</span></label><input class="fi" id="rph" type="tel" placeholder="01xxxxxxxxx"/></div>
         </div>
         <div class="fg"><label class="fl">البريد الإلكتروني <span class="rq">*</span></label><input class="fi" id="re" type="email" placeholder="name@company.com"/></div>
+        <div class="fg" id="rg-nid-wrap" style="display:none;"><label class="fl">الرقم القومي <span class="rq">*</span></label><input class="fi" id="rnid" placeholder="14 رقم" maxlength="14"/></div>
         <div class="fg"><label class="fl">كلمة المرور <span class="rq">*</span></label><input class="fi" id="rp" type="password" placeholder="8 أحرف على الأقل"/></div>
         <div class="fg">
           <label class="fl">نوع الحساب <span class="rq">*</span></label>
-          <select class="fs" id="rr">
+          <select class="fs" id="rr" onchange="document.getElementById('rg-nid-wrap').style.display=this.value==='client'?'block':'none'">
             <option value="">— اختر نوع حسابك —</option>
             <option value="office">مكتب هندسي</option>
             <option value="developer">مطور عقاري</option>
@@ -1006,9 +1007,9 @@ const showReg=()=>{
 const doLogin=()=>{
   const e=$("le").value.trim(),p=$("lp").value,rem=$("rm").checked;
   sm("amsg","","");
-  if(!e||!p){sm("amsg","يرجى تعبئة الإيميل وكلمة المرور","e");return;}
+  if(!e||!p){sm("amsg","يرجى تعبئة بيانات الدخول","e");return;}
   const users=LS.g(K.u)||[];
-  const user=users.find(u=>u.email===e&&u.pass===p);
+  const user=users.find(u=>(u.email===e||u.nationalId===e)&&u.pass===p);
   if(!user){sm("amsg","البيانات غير صحيحة","e");return;}
   if(user.status==="pending"){sm("amsg","حسابك في انتظار موافقة المدير","i");return;}
   if(user.status==="rejected"){sm("amsg","تم رفض حسابك — تواصل مع الإدارة","e");return;}
@@ -1019,14 +1020,18 @@ const doLogin=()=>{
 
 const doReg=()=>{
   const n=$("rn").value.trim(),ph=$("rph").value.trim(),e=$("re").value.trim(),p=$("rp").value,r=$("rr").value;
+  const nid=r==="client"?($("rnid")?.value.trim()||""):"";
   sm("amsg","","");
-  if(!n||!ph||!e||!p||!r){sm("amsg","يرجى تعبئة كل الحقول المطلوبة","e");return;}
+  if(!n||!ph||!p||!r){sm("amsg","يرجى تعبئة كل الحقول المطلوبة","e");return;}
+  if(r==="client"&&(!nid||nid.length!==14)){sm("amsg","الرقم القومي يجب أن يكون 14 رقم","e");return;}
+  if(r!=="client"&&!e){sm("amsg","يرجى تعبئة البريد الإلكتروني","e");return;}
   if(p.length<8){sm("amsg","كلمة المرور 8 أحرف على الأقل","e");return;}
   const users=LS.g(K.u)||[];
-  if(users.find(u=>u.email===e)){sm("amsg","هذا الإيميل مسجل بالفعل","e");return;}
+  if(e&&users.find(u=>u.email===e)){sm("amsg","هذا الإيميل مسجل بالفعل","e");return;}
+  if(nid&&users.find(u=>u.nationalId===nid)){sm("amsg","هذا الرقم القومي مسجل بالفعل","e");return;}
   const status=r==="staff"?"pending":"active";
   const officeId=r==="office"?"OFF"+Date.now():null;
-  users.push({id:"u"+Date.now(),name:n,phone:ph,email:e,pass:p,role:r,status,created:new Date().toISOString().slice(0,10),officeId});
+  users.push({id:"u"+Date.now(),name:n,phone:ph,email:e||"",nationalId:nid||"",pass:p,role:r,status,created:new Date().toISOString().slice(0,10),officeId});
   LS.s(K.u,users);
   if(r==="staff"){sm("amsg","✓ تم إرسال طلبك — في انتظار موافقة الإدارة","o");}
   else{sm("amsg","✓ تم إنشاء حسابك بنجاح — يمكنك تسجيل الدخول الآن","o");}
@@ -1151,6 +1156,7 @@ const myP=()=>{
   return all.filter(p=>{
     if(p.parties?.some(pt=>pt.partyId===CU.id))return true;
     if(p.ownerEmail&&p.ownerEmail===CU.email)return true; // backward compat
+    if(CU.nationalId&&p.nationalId&&p.nationalId===CU.nationalId)return true;
     if(p.by===CU.id)return true;
     if(p.at?.includes(CU.id))return true;
     if(CU.role==="office"){
