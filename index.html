@@ -2521,10 +2521,10 @@ const openPassport=projId=>{
               ${stages.map((s,i)=>`
                 <div style="display:flex;align-items:center;flex:1;">
                   <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
-                    <div style="width:24px;height:24px;border-radius:50%;background:${s.done?"#1B7A4A":s===currentStage?"#1C2D4A":"#e8e8e8"};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                      <span style="color:${s.done||s===currentStage?"#fff":"#bbb"};font-size:10px;font-weight:700;">${s.done?"✓":i+1}</span>
+                    <div style="width:24px;height:24px;border-radius:50%;background:${(()=>{const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);const done=req.length>0&&req.every(d=>d.up);return done?"#1B7A4A":s===currentStage?"#1C2D4A":"#e8e8e8";})()};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                      <span style="color:${(()=>{const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);const done=req.length>0&&req.every(d=>d.up);return done||s===currentStage?"#fff":"#bbb";})()};font-size:10px;font-weight:700;">${(()=>{const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);return req.length>0&&req.every(d=>d.up)?"✓":i+1;})()}</span>
                     </div>
-                    <div style="font-size:7.5px;text-align:center;color:${s.done?"#1B7A4A":s===currentStage?"#1C2D4A":"#bbb"};font-weight:${s.done||s===currentStage?"700":"400"};max-width:48px;line-height:1.3;">${s.label||s.name||""}</div>
+                    <div style="font-size:7.5px;text-align:center;color:${(()=>{const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);const done=req.length>0&&req.every(d=>d.up);return done?"#1B7A4A":s===currentStage?"#1C2D4A":"#bbb";})()};font-weight:${s===currentStage?"700":"400"};max-width:48px;line-height:1.3;">${s.label||s.name||""}</div>
                   </div>
                   ${i<stages.length-1?`<div style="height:2px;flex:1;background:${s.done?"#1B7A4A":"#e8e8e8"};margin-bottom:20px;"></div>`:""}
                 </div>`).join("")}
@@ -2653,12 +2653,13 @@ const openPassport=projId=>{
             <div style="font-size:8px;color:rgba(255,255,255,.3);margin-top:6px;font-family:monospace;">${proj.id}</div>
           </div>
 
-          <!-- COMPLETION RING -->
-          <div style="text-align:center;padding:12px 0;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);width:100%;">
-            <div style="font-size:30px;font-weight:900;color:#C9A84C;">${pct}%</div>
-            <div style="font-size:8px;color:rgba(255,255,255,.4);margin-top:2px;">اكتمال المشروع</div>
-            <div style="margin-top:8px;height:4px;background:rgba(255,255,255,.1);border-radius:10px;overflow:hidden;">
-              <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#C9A84C,#f0c040);border-radius:10px;"></div>
+          <!-- DOCS SUMMARY -->
+          <div style="width:100%;padding:12px 0;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);">
+            <div style="font-size:8px;color:rgba(255,255,255,.3);margin-bottom:8px;text-align:center;">المستندات</div>
+            <div style="display:flex;justify-content:space-around;">
+              <div style="text-align:center;"><div style="font-size:18px;font-weight:900;color:#4ade80;">${uploadedDocs}</div><div style="font-size:8px;color:rgba(255,255,255,.3);">مرفوع</div></div>
+              <div style="text-align:center;"><div style="font-size:18px;font-weight:900;color:#C9A84C;">${totalDocs-uploadedDocs}</div><div style="font-size:8px;color:rgba(255,255,255,.3);">ناقص</div></div>
+              <div style="text-align:center;"><div style="font-size:18px;font-weight:900;color:#fff;">${totalDocs}</div><div style="font-size:8px;color:rgba(255,255,255,.3);">إجمالي</div></div>
             </div>
           </div>
 
