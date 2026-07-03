@@ -3856,9 +3856,16 @@ const openAddTask=(presetProjId)=>{
             <div id="tk-due-hint" style="font-size:10px;margin-top:3px;color:var(--t3);"></div>
           </div>
           <div class="fg"><label class="fl">المشروع (اختياري)</label>
-            <select class="fs" id="tk-proj">
+            <select class="fs" id="tk-proj" onchange="tkLoadStages(this.value)">
               <option value="">— بدون مشروع —</option>
               ${projs.map(p=>`<option value="${p.id}" ${presetProjId===p.id?"selected":""}>${p.ownerName} · ${p.city}</option>`).join("")}
+            </select>
+          </div>
+          <div class="fg" id="tk-stage-wrap" style="${presetProjId?"":"display:none;"}">
+            <label class="fl">المرحلة</label>
+            <select class="fs" id="tk-stage">
+              <option value="">— كل المشروع —</option>
+              ${presetProjId?(projs.find(p=>p.id===presetProjId)?.stages||[]).map(s=>`<option value="${s.key}">${s.label}</option>`).join(""):""}
             </select>
           </div>
         </div>
@@ -3870,6 +3877,17 @@ const openAddTask=(presetProjId)=>{
     </div>
   </div>`;
   document.body.insertAdjacentHTML("beforeend",h);
+};
+
+const tkLoadStages=(projId)=>{
+  const wrap=document.getElementById("tk-stage-wrap");
+  const sel=document.getElementById("tk-stage");
+  if(!wrap||!sel)return;
+  if(!projId){wrap.style.display="none";sel.innerHTML="";return;}
+  const proj=(LS.g(K.p)||[]).find(p=>p.id===projId);
+  const stages=proj?.stages||[];
+  sel.innerHTML=`<option value="">— كل المشروع —</option>${stages.map(s=>`<option value="${s.key}">${s.label}</option>`).join("")}`;
+  wrap.style.display="";
 };
 
 const tkDateHint=(v,hintId="tk-due-hint")=>{
@@ -3892,11 +3910,14 @@ const saveTask=()=>{
   const schedDate=document.getElementById("tk-sched")?.value;
   const place=document.getElementById("tk-place")?.value?.trim();
   const projId=document.getElementById("tk-proj")?.value;
+  const stageKey=document.getElementById("tk-stage")?.value||"";
+  const proj=(LS.g(K.p)||[]).find(p=>p.id===projId);
+  const stageLabel=stageKey?(proj?.stages||[]).find(s=>s.key===stageKey)?.label||"":"";
   if(!title||!assignedTo){toast("يرجى تعبئة العنوان والمسؤول","err");return;}
   const today=new Date().toISOString().slice(0,10);
   const initStatus=dueDate&&dueDate<today?"late":"new";
   const tasks=LS.g(K.tasks)||[];
-  tasks.push({id:"tk"+Date.now(),title,desc,assignedTo,priority,dueDate,schedDate,place,projId,status:initStatus,createdBy:CU.id,createdAt:today});
+  tasks.push({id:"tk"+Date.now(),title,desc,assignedTo,priority,dueDate,schedDate,place,projId,stageKey,stageLabel,status:initStatus,createdBy:CU.id,createdAt:today});
   LS.s(K.tasks,tasks);
   document.getElementById("m-add-task")?.remove();
   addNotif(`مهمة جديدة: ${title}`,"info","",assignedTo);
