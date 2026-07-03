@@ -673,19 +673,21 @@ const initData=()=>{
   let uChanged=false;
   users2.forEach(u=>{if(!u.code){u.code=genUserCode(u.role);uChanged=true;}});
   if(uChanged)LS.s(K.u,users2);
-  // rebuild stages for any project not matching current STAGES keys
+  // rebuild stages for any project not on current STAGES schema
+  const STAGE_KEYS_NORMAL=STAGES.filter(s=>!s.forC).map(s=>s.key).join(",");
+  const STAGE_KEYS_COMPOUND=STAGES.map(s=>s.key).join(",");
   const migrateProjects=()=>{
     const projects=LS.g(K.p)||[];
     if(!projects.length)return;
-    const currentKeys=STAGES.map(s=>s.key).join(",");
     let dirty=false;
     const migrated=projects.map(proj=>{
-      const projKeys=(proj.stages||[]).filter(s=>!s.forC).map(s=>s.key).join(",");
-      const stagesMatch=proj.stages&&proj.stages.length>0&&projKeys===currentKeys;
-      if(stagesMatch)return proj;
+      const isComp=proj.isCompound||proj.type==="compound";
+      const expected=isComp?STAGE_KEYS_COMPOUND:STAGE_KEYS_NORMAL;
+      const projKeys=(proj.stages||[]).map(s=>s.key).join(",");
+      if(projKeys===expected)return proj;
       dirty=true;
       const oldStages=proj.stages||[];
-      const newStages=STAGES.filter(s=>!s.forC||(proj.isCompound||proj.type==="compound")).map(stageDef=>{
+      const newStages=STAGES.filter(s=>!s.forC||isComp).map(stageDef=>{
         const oldStage=oldStages.find(s=>s.key===stageDef.key);
         return{
           key:stageDef.key,label:stageDef.label,icon:stageDef.icon,color:stageDef.color,
