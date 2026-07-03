@@ -1303,14 +1303,51 @@ const rFile=()=>{
   const sc=calcSC(stage);
   const upCount=allDocs.filter(d=>d.up).length;
 
-  // group headers for land stage
-  const landGroups={l4a:"المالك الأول",l5a:"المالك الثاني"};
-  let lastGroup="";
-  const docsHtml=allDocs.map(doc=>{
+  const mkDocCard=(doc,sk,isC,compact=false)=>{
+    const dk=doc.key;
+    const docNotes=Array.isArray(doc.notes)?doc.notes:(doc.note?[doc.note]:[]);
+    const noteTagsHtml2=docNotes.map((n,i)=>`<span style="display:inline-flex;align-items:center;gap:4px;background:#FEF9EC;border:1px solid #E8D08A;border-radius:20px;padding:2px 8px;font-size:10px;color:#7A5C00;white-space:nowrap;">📝 ${n.replace(/</g,"&lt;")}${can?`<button onclick="delNote('${sk}','${dk}',${isC},${i})" style="background:none;border:none;cursor:pointer;color:#B7770D;font-size:13px;line-height:1;padding:0;">×</button>`:""}</span>`).join("");
+    const noteHtml2=can?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;"><input style="width:100%;border:1px solid var(--bdl);border-radius:6px;padding:4px 8px;font-size:10px;color:var(--t2);outline:none;font-family:Cairo,sans-serif;background:transparent;" placeholder="ملاحظة..." onkeydown="if(event.key==='Enter'){event.preventDefault();saveNoteFromInput('${sk}','${dk}',${isC},this);}"/>${noteTagsHtml2?`<div style="display:flex;flex-wrap:wrap;gap:3px;">${noteTagsHtml2}</div>`:""}</div>`:(docNotes.length?`<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">${noteTagsHtml2}</div>`:"");
+    const upArea=doc.up?`<div style="background:rgba(27,122,74,.08);border:1px solid rgba(27,122,74,.25);border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:8px;margin-top:6px;">
+      <span style="font-size:18px;">✅</span>
+      <div style="flex:1;min-width:0;"><div style="font-size:10px;font-weight:700;color:#1B7A4A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${doc.up.name||"ملف"}</div><div style="font-size:9px;color:var(--t3);">${doc.up.size||""}${doc.up.date?" · "+doc.up.date:""}</div></div>
+      <div style="display:flex;gap:4px;flex-shrink:0;">
+        <button onclick="prvF('${doc.up.url||doc.up.data}','${(doc.up.name||"").replace(/'/g,"\\'")}',${doc.up.type?.includes("pdf")||false})" class="btn btn-gh btn-xs">👁</button>
+        <a href="${doc.up.url||doc.up.data}" download="${doc.up.name}" class="btn btn-gh btn-xs">⬇</a>
+        ${can?`<button onclick="rF('${sk}','${dk}',${isC})" class="btn btn-d btn-xs">🗑</button>`:""}
+      </div></div>`:can?`<label style="display:flex;flex-direction:column;align-items:center;gap:3px;border:1.5px dashed var(--bdl);border-radius:8px;padding:${compact?"8px":"12px"};text-align:center;cursor:pointer;background:var(--w2);margin-top:6px;" for="up-${sk}-${dk}"><span style="font-size:${compact?"16px":"20px"};opacity:.4;">📤</span><span style="font-size:10px;font-weight:600;color:var(--t2);">رفع الملف</span><input type="file" id="up-${sk}-${dk}" accept=".pdf,.jpg,.jpeg,.png,.dwg,.dxf" onchange="hUp('${sk}','${dk}',${isC},this)" style="display:none;"/></label>`:`<div style="background:var(--w2);border-radius:8px;padding:8px;text-align:center;color:var(--t3);font-size:10px;margin-top:6px;">لم يُرفع بعد</div>`;
+    return`<div style="background:var(--w);border:1.5px solid ${doc.req?"rgba(192,57,43,.2)":isC?"rgba(201,168,76,.35)":"var(--bdl)"};border-radius:10px;padding:10px 12px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <div style="width:7px;height:7px;border-radius:50%;background:${doc.up?"#1B7A4A":doc.req?"#C0392B":"#8896A4"};flex-shrink:0;"></div>
+        <div style="font-size:11px;font-weight:700;color:var(--t1);flex:1;">${doc.label.replace(/المالك الأول — |المالك الثاني — /,"")}</div>
+        ${doc.req?pill("مطلوب","#C0392B"):isC?pill("مخصص","#B7770D"):""}
+      </div>
+      ${upArea}${noteHtml2}</div>`;
+  };
+
+  // land stage: custom grouped layout
+  const landDocsHtml=(()=>{
+    if(stage.key!=="land")return null;
+    const get=k=>allDocs.find(d=>d.key===k);
+    const sk=stage.key;
+    const genDocs=[get("l0"),get("l1"),get("l2")].filter(Boolean);
+    const owner1=[get("l4a"),get("l4b"),get("l4c")].filter(Boolean);
+    const owner2=[get("l5a"),get("l5b"),get("l5c"),get("l5d")].filter(Boolean);
+    const ownerHeader=(title,color="#C9A84C")=>`<div style="margin:16px 0 10px;padding:10px 16px;background:var(--n7);border-right:3px solid ${color};border-radius:8px;display:flex;align-items:center;gap:8px;"><span style="font-size:16px;">👤</span><span style="font-size:14px;font-weight:800;color:#fff;">${title}</span></div>`;
+    const grid=(docs,cols=2)=>`<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:8px;">${docs.map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`;
+    let html=genDocs.map(d=>mkDocCard(d,sk,false,false)+`<div style="margin-bottom:8px;"></div>`).join("");
+    if(owner1.length){html+=ownerHeader("المالك الأول");html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">${owner1.map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`;}
+    if(owner2.length){html+=ownerHeader("المالك الثاني","#3D5A8A");html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">${owner2.slice(0,2).map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`;if(owner2.length>2)html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">${owner2.slice(2).map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`;}
+    // custom docs
+    const cdDocs=(stage.cd||[]);
+    if(cdDocs.length)html+=`<div style="margin-top:8px;">${cdDocs.map(d=>mkDocCard(d,sk,true,false)).join("")}</div>`;
+    return html;
+  })();
+
+  const docsHtml=landDocsHtml!==null?landDocsHtml:allDocs.map(doc=>{
     const isC=(stage.cd||[]).some(d=>d.key===doc.key);
     const sk=stage.key,dk=doc.key;
-    const groupKey=landGroups[dk];
-    const groupHeader=(stage.key==="land"&&groupKey&&groupKey!==lastGroup)?(lastGroup=groupKey,`<div style="margin:18px 0 8px;padding:10px 16px;background:var(--n7);border-right:3px solid var(--gold);border-radius:8px;font-size:13px;font-weight:800;color:var(--t1);">👤 ${groupKey}</div>`):(stage.key==="land"&&!groupKey&&lastGroup&&!["l0","l1","l2"].includes(dk)?"":(""));
+    const groupHeader="";
     const fee=doc.fee||{};
     const feeBodyId=`fb-${sk}-${dk}`;
 
