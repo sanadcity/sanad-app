@@ -1126,6 +1126,38 @@ const myP=()=>{
 };
 
 // ── DASHBOARD ──
+const restoreFilesFromStorage=async()=>{
+  const btn=document.getElementById("restore-btn");
+  if(btn){btn.disabled=true;btn.textContent="جارٍ الاسترجاع...";}
+  const projects=LS.g(K.p)||[];
+  let restored=0;
+  for(const proj of projects){
+    const projRef=ST.ref().child(proj.id);
+    try{
+      const res=await projRef.listAll();
+      for(const folderRef of res.prefixes){
+        const stageKey=folderRef.name;
+        const filesRes=await folderRef.listAll();
+        for(const itemRef of filesRes.items){
+          const fileName=itemRef.name;
+          const docKey=fileName.split("_")[0];
+          const url=`https://firebasestorage.googleapis.com/v0/b/sanad-city.firebasestorage.app/o/${encodeURIComponent(proj.id+"/"+stageKey+"/"+fileName)}?alt=media`;
+          const stage=(proj.stages||[]).find(s=>s.key===stageKey);
+          if(stage){
+            const doc=(stage.docs||[]).find(d=>d.key===docKey);
+            if(doc&&!doc.up){doc.up=url;restored++;}
+            const cdoc=(stage.cd||[]).find(d=>d.key===docKey);
+            if(cdoc&&!cdoc.up){cdoc.up=url;restored++;}
+          }
+        }
+      }
+    }catch(e){console.warn("skip",proj.id);}
+  }
+  LS.s(K.p,projects);
+  alert(`✅ تم استرجاع ${restored} ملف`);
+  location.reload();
+};
+
 const rDash=()=>{
   const projs=myP(),svcs=LS.g(K.svc)||[];
   const pendU=(LS.g(K.u)||[]).filter(u=>u.status==="pending");
@@ -1153,7 +1185,8 @@ const rDash=()=>{
   const recent=projs.slice(0,5);
   let html=`<div class="card" style="margin-bottom:16px;">
     <div class="ch"><div class="cht">المشاريع الأخيرة</div>
-    <button class="btn btn-gh btn-sm" onclick="showPage('projs')">عرض كافة المشاريع</button></div>
+    <button class="btn btn-gh btn-sm" onclick="showPage('projs')">عرض كافة المشاريع</button>
+    <button id="restore-btn" class="btn btn-sm" style="background:#1A3F6B;color:#fff;" onclick="restoreFilesFromStorage()">🔁 استرجاع الملفات</button></div>
     <div style="overflow:auto;"><table class="tbl"><thead><tr>
       <th>كود المشروع</th><th>المالك</th><th>أضافه</th><th>الحالة</th><th>القيمة التقديرية</th><th>تاريخ الإضافة</th><th>إجراءات</th>
     </tr></thead><tbody>`;
