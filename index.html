@@ -782,102 +782,103 @@ const initData=()=>{
     });
   });
   if(changed)LS.s(K.p,projs);
+  // migrate to new STAGES schema
+  const migrateProjects=()=>{
+    const projects=LS.g(K.p)||[];
+    if(!projects.length)return;
+    const migrated=projects.map(proj=>{
+      if(proj.stages&&proj.stages.some(s=>s.key==="ownership"))return proj;
+      const oldStages=proj.stages||[];
+      const newStages=STAGES.map(stageDef=>{
+        const oldStage=oldStages.find(s=>s.key===stageDef.key);
+        return{
+          ...stageDef,
+          docs:stageDef.docs.map(docDef=>{
+            const oldDoc=oldStage?.docs?.find(d=>d.key===docDef.key);
+            return{...docDef,up:oldDoc?.up||null,note:oldDoc?.note||""};
+          }),
+          cd:oldStage?.cd||[],
+        };
+      });
+      return{...proj,stages:newStages};
+    });
+    LS.s(K.p,migrated);
+  };
+  migrateProjects();
 };
 
 // ── STAGES ──
 const STAGES=[
-  {key:"decree",label:"القرار الوزاري",icon:"🏛",color:"#4A1A6B",forC:true,docs:[
-    {key:"d1",label:"القرار الوزاري",req:true},
-    {key:"d2",label:"المخطط العام",req:true},
-    {key:"d3",label:"موافقة الهيئة",req:true},
-    {key:"d4",label:"موافقة الجهاز المحلي",req:true},
-    {key:"d5",label:"قرار التخصيص",req:true}
-  ]},
-  {key:"land",label:"ملكية العقار",icon:"🏠",color:"#1A3F6B",docs:[
-    {key:"l2",label:"كروكي الأرض",req:true},
-    {key:"l0",label:"إخطار التخصيص",req:true},
-    {key:"l1",label:"محضر استلام الأرض",req:true},
-    {key:"l4a",label:"المالك الأول — عقد الهيئة / الجهاز",req:true},
-    {key:"l4b",label:"المالك الأول — صورة البطاقة (وجه)",req:true},
-    {key:"l4c",label:"المالك الأول — صورة البطاقة (ظهر)",req:true},
-    {key:"l5a",label:"المالك الثاني — توكيل رسمي",req:false},
-    {key:"l5b",label:"المالك الثاني — عقد البيع",req:false},
-    {key:"l5c",label:"المالك الثاني — صورة البطاقة (وجه)",req:false},
-    {key:"l5d",label:"المالك الثاني — صورة البطاقة (ظهر)",req:false},
+  {key:"ownership",label:"ملكية العقار",icon:"🏠",color:"#1B7A4A",docs:[
+    {key:"notice",   label:"إخطار التخصيص",              req:true},
+    {key:"receipt",  label:"محضر استلام الأرض",           req:true},
+    {key:"proxy",    label:"توكيل رسمي (إن وجد)",         req:false},
+    {key:"sketch",   label:"كروكي الأرض",                 req:true},
+    {key:"booklet",  label:"كراسة الاشتراطات",            req:true},
+    {key:"owner_id", label:"الرقم القومي للمالك",         req:true},
+    {key:"agent_id", label:"الرقم القومي للوكيل",         req:false},
+    {key:"contract", label:"عقد الملكية / العقد الابتدائي",req:true},
   ]},
   {key:"design",label:"التصميمات الهندسية",icon:"📐",color:"#3D5A8A",docs:[
-    {key:"des1",label:"الرسومات المعمارية المعتمدة",req:true},
-    {key:"des2",label:"التصميمات الإنشائية",req:true},
-    {key:"des3",label:"المخططات التفصيلية",req:false},
-    {key:"des4",label:"تقرير الحساب الإنشائي",req:false}
+    {key:"arch",   label:"الرسومات المعمارية المعتمدة",   req:true},
+    {key:"struct", label:"رسومات الهيكل الخرساني",        req:true},
+    {key:"detail", label:"المخططات التفصيلية",            req:false},
+    {key:"calc",   label:"تقرير الحساب الإنشائي",         req:false},
   ]},
   {key:"permits",label:"التراخيص والتصاريح",icon:"📑",color:"#C9A84C",docs:[
-    {key:"p0",label:"بيان صلاحية الموقع",req:true},
-    {key:"p1",label:"تقرير تربة معتمد",req:true},
-    {key:"p2",label:"تقرير استشاري معتمد",req:true},
-    {key:"p3",label:"موافقة الدفاع المدني",req:false,cond:"comm"},
-    {key:"p4",label:"موافقة بيئية",req:false,cond:"comm"},
-    {key:"p5",label:"موافقة مرورية",req:false,cond:"comm"},
-    {key:"p6",label:"وثيقة تأمين المجمعة / تقرير استشاري",req:false},
-    {key:"p7",label:"عقد مقاولة المصعد",req:true,cond:"elev"},
-    {key:"p7b",label:"وثيقة تأمين المصعد",req:true,cond:"elev"},
-    {key:"p7c",label:"تقرير استشاري المصعد",req:true,cond:"elev"},
-    {key:"p8",label:"طلب الترخيص",req:true},
-    {key:"p9",label:"رخصة البناء",req:true}
+    {key:"soil",      label:"تقرير تربة معتمد",           req:true},
+    {key:"consult",   label:"تقرير استشاري معتمد",        req:true},
+    {key:"civil_def", label:"موافقة الدفاع المدني",       req:false,cond:"comm"},
+    {key:"env",       label:"موافقة بيئية",               req:false,cond:"comm"},
+    {key:"traffic",   label:"موافقة مرورية",              req:false,cond:"comm"},
+    {key:"assembly",  label:"وثيقة المجمعة العشرية",      req:false},
+    {key:"elev_con",  label:"عقد مقاولة المصعد",          req:false,cond:"elev"},
+    {key:"lic_req",   label:"طلب الترخيص",                req:true},
+    {key:"license",   label:"رخصة البناء",                req:true},
   ]},
-  {key:"exec",label:"التنفيذ والتوثيق",icon:"🏗",color:"#5A3A1C",docs:[
-    {key:"ex1",label:"عقد المقاول",req:true},
-    {key:"ex2",label:"أوامر الإسناد",req:false},
-    {key:"ex3",label:"تصاريح التنفيذ",req:false},
-    {key:"ex4",label:"اختبارات الخرسانة",req:false},
-    {key:"ex5",label:"محاضر الصب",req:false},
-    {key:"ex6",label:"الضمانات",req:false}
+  {key:"execution",label:"التنفيذ والتوثيق",icon:"🏗",color:"#8A5A1C",docs:[
+    {key:"con_contract",label:"عقد المقاول",              req:true},
+    {key:"assignment",  label:"أوامر الإسناد",            req:false},
+    {key:"exec_permit", label:"تصاريح التنفيذ",           req:true},
+    {key:"concrete",    label:"اختبارات الخرسانة",        req:false},
+    {key:"pour_report", label:"محاضر الصب",               req:false},
+    {key:"warranty_ex", label:"الضمانات",                 req:false},
   ]},
-  {key:"finish",label:"الديكور والتشطيب",icon:"🏡",color:"#6B3A8A",docs:[
-    {key:"fn1",label:"عقد التشطيب",req:false},
-    {key:"fn2",label:"اعتماد الخامات",req:false},
-    {key:"fn3",label:"الضمانات",req:false},
-    {key:"fn4",label:"كتالوجات",req:false},
-    {key:"fn5",label:"محاضر الاستلام",req:false}
+  {key:"finishing",label:"الديكور والتشطيب",icon:"🏡",color:"#4A1A6B",docs:[
+    {key:"fin_contract", label:"عقد التشطيب",             req:true},
+    {key:"materials",    label:"اعتماد الخامات",          req:false},
+    {key:"warranty_fin", label:"الضمانات",                req:false},
+    {key:"catalogs",     label:"كتالوجات",                req:false},
+    {key:"handover_rep", label:"محاضر الاستلام",          req:false},
   ]},
   {key:"utilities",label:"المرافق والخدمات",icon:"⚡",color:"#1A6B6B",docs:[
-    {key:"u_e1",label:"الكهرباء — طلب الخدمة",req:false},
-    {key:"u_e2",label:"الكهرباء — موافقة الجهة",req:false},
-    {key:"u_e3",label:"الكهرباء — عقد الخدمة",req:false},
-    {key:"u_e4",label:"الكهرباء — تركيب العداد",req:false},
-    {key:"u_w1",label:"المياه — طلب الخدمة",req:false},
-    {key:"u_w2",label:"المياه — موافقة الجهة",req:false},
-    {key:"u_w3",label:"المياه — عقد الخدمة",req:false},
-    {key:"u_w4",label:"المياه — تركيب العداد",req:false},
-    {key:"u_s1",label:"الصرف الصحي — طلب الخدمة",req:false},
-    {key:"u_s2",label:"الصرف الصحي — موافقة الجهة",req:false},
-    {key:"u_s3",label:"الصرف الصحي — عقد الخدمة",req:false},
-    {key:"u_s4",label:"الصرف الصحي — توصيل الشبكة",req:false},
-    {key:"u_g1",label:"الغاز — طلب الخدمة",req:false},
-    {key:"u_g2",label:"الغاز — موافقة الجهة",req:false},
-    {key:"u_g3",label:"الغاز — عقد الخدمة",req:false},
-    {key:"u_g4",label:"الغاز — تركيب العداد",req:false},
-    {key:"u_t1",label:"الاتصالات — طلب الخدمة",req:false},
-    {key:"u_t2",label:"الاتصالات — موافقة الجهة",req:false},
-    {key:"u_t3",label:"الاتصالات — عقد الخدمة",req:false},
-    {key:"u_t4",label:"الاتصالات — التركيب",req:false},
-    {key:"u_i1",label:"الإنترنت — طلب الخدمة",req:false},
-    {key:"u_i2",label:"الإنترنت — موافقة الجهة",req:false},
-    {key:"u_i3",label:"الإنترنت — عقد الخدمة",req:false},
-    {key:"u_i4",label:"الإنترنت — التركيب",req:false}
+    {key:"elec_req",  label:"طلب الكهرباء",               req:true},
+    {key:"elec_app",  label:"موافقة الكهرباء",            req:true},
+    {key:"elec_con",  label:"عقد الكهرباء",               req:false},
+    {key:"elec_ins",  label:"تركيب الكهرباء",             req:false},
+    {key:"water_req", label:"طلب المياه",                  req:true},
+    {key:"water_app", label:"موافقة المياه",               req:true},
+    {key:"water_con", label:"عقد المياه",                  req:false},
+    {key:"drain_req", label:"طلب الصرف الصحي",            req:true},
+    {key:"drain_app", label:"موافقة الصرف",               req:false},
+    {key:"gas_req",   label:"طلب الغاز",                   req:false},
+    {key:"gas_app",   label:"موافقة الغاز",               req:false},
+    {key:"gas_con",   label:"عقد الغاز",                   req:false},
+    {key:"tel_req",   label:"طلب الاتصالات والإنترنت",    req:false},
+    {key:"tel_con",   label:"عقد الاتصالات",              req:false},
   ]},
-  {key:"delivery",label:"التسليم والمطابقة",icon:"✅",color:"#1B7A4A",docs:[
-    {key:"dl1",label:"شهادة إتمام الإشراف",req:true},
-    {key:"dl2",label:"شهادة المطابقة",req:true},
-    {key:"dl3",label:"محضر الاستلام النهائي",req:true},
-    {key:"dl4",label:"شهادة صلاحية السكن",req:true}
+  {key:"handover",label:"التسليم والمطابقة",icon:"✅",color:"#1B7A4A",docs:[
+    {key:"sup_cert",  label:"شهادة إتمام الإشراف",        req:true},
+    {key:"match",     label:"شهادة المطابقة",             req:true},
+    {key:"recv_rep",  label:"محضر الاستلام النهائي",      req:true},
+    {key:"occupancy", label:"شهادة صلاحية السكن",         req:true},
   ]},
-  {key:"ops",label:"التشغيل والصيانة",icon:"🔧",color:"#1C3A6A",docs:[
-    {key:"o1",label:"عقود الصيانة",req:false},
-    {key:"o2",label:"الضمانات",req:false},
-    {key:"o3",label:"الكتالوجات",req:false},
-    {key:"o4",label:"سجلات الصيانة",req:false},
-    {key:"o5",label:"البلاغات",req:false}
+  {key:"operations",label:"التشغيل والصيانة",icon:"🔧",color:"#1C3A6A",docs:[
+    {key:"maint_con",  label:"عقود الصيانة",              req:false},
+    {key:"warranty_op",label:"الضمانات",                  req:false},
+    {key:"catalogs_op",label:"كتالوجات الأجهزة",          req:false},
+    {key:"logs",       label:"سجلات الصيانة",             req:false},
+    {key:"tickets",    label:"بلاغات وإصلاحات",           req:false},
   ]},
 ];
 
@@ -1405,75 +1406,113 @@ const rFile=()=>{
       </div>`;
   }).join("");
 
-  let html=`
-  <!-- PIN: المرحلة الحالية -->
-  ${(proj.currentStage&&proj.currentStage!=="—")||proj.nextAction?`
-  <div style="background:linear-gradient(135deg,var(--n8),var(--n9));border-radius:14px;padding:16px 18px;margin-bottom:14px;">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-      <div style="font-size:20px;">📍</div>
-      <div>
-        <div style="font-size:9px;color:var(--gold);font-weight:700;letter-spacing:.1em;">المرحلة الحالية</div>
-        <div style="font-size:15px;font-weight:900;color:#fff;">${proj.currentStage&&proj.currentStage!=="—"?proj.currentStage:"—"}</div>
-      </div>
-      ${proj.serviceReason&&proj.serviceReason!=="مشروع كامل"?`<span style="margin-right:auto;background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.3);border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;color:var(--gold);">${proj.serviceReason}</span>`:""}
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      ${proj.nextAction?`<div style="background:rgba(255,255,255,.06);border-radius:8px;padding:9px 11px;">
-        <div style="font-size:9px;color:rgba(255,255,255,.35);margin-bottom:3px;">المطلوب</div>
-        <div style="font-size:11px;font-weight:700;color:#fff;">${proj.nextAction}</div>
-      </div>`:""}
-      ${(()=>{const resp=(proj.parties||[]).find(p=>["office","staff"].includes(p.role));return resp?`<div style="background:rgba(255,255,255,.06);border-radius:8px;padding:9px 11px;">
-        <div style="font-size:9px;color:rgba(255,255,255,.35);margin-bottom:3px;">المسؤول الحالي</div>
-        <div style="font-size:11px;font-weight:700;color:#fff;">${resp.name}</div>
-      </div>`:"";})()}
-    </div>
-  </div>`:""}
+  // ── header stats ──
+  const totalDocs2=proj.stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]).length;
+  const uploadedDocs2=proj.stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]).filter(d=>d.up).length;
+  const missingReqTotal=proj.stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]).filter(d=>d.req&&!d.up).length;
+  const healthScore=totalDocs2>0?Math.round(uploadedDocs2/totalDocs2*100):0;
+  const healthColor2=healthScore>=80?"#4ABA7A":healthScore>=50?"#C9A84C":"#E74C3C";
+  const curSt=proj.stages[ci];
+  const missingCurDocs=curSt?[...(curSt.docs||[]),...(curSt.cd||[])].filter(d=>d.req&&!d.up):[];
+  const responsible=(proj.parties||[]).find(pt=>["office","staff"].includes(pt.role));
+  const needsAttention=missingCurDocs.length>0||missingReqTotal>2;
+  const locParts=[proj.city,proj.district,proj.plot?"قطعة "+proj.plot:""].filter(Boolean);
 
-  <!-- TOP BAR -->
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+  // ── timeline ──
+  const timelineHtml=(()=>{
+    const parts=[];
+    proj.stages.forEach((s,i)=>{
+      const all=[...(s.docs||[]),...(s.cd||[])];
+      const req=all.filter(d=>d.req);
+      const done=req.length>0&&req.every(d=>d.up);
+      const isCur=i===ci&&!done;
+      const circleBg=done?"#1B7A4A":isCur?"#C9A84C":"#2D3748";
+      const circleBdr=done?"#1B7A4A":isCur?"rgba(201,168,76,.7)":"#3D4F6A";
+      const labelColor=isCur?"#C9A84C":done?"#fff":"#8896A4";
+      const inner=done?`<span style="font-size:18px;color:#fff;">✓</span>`:isCur?`<span style="font-size:18px;">${s.icon||"📋"}</span>`:`<span style="font-size:12px;font-weight:700;color:#8896A4;">${i+1}</span>`;
+      parts.push(`<div onclick="switchStage(${i})" style="display:flex;flex-direction:column;align-items:center;min-width:64px;max-width:84px;cursor:pointer;flex-shrink:0;">
+        <div style="width:44px;height:44px;border-radius:50%;background:${circleBg};border:2px solid ${circleBdr};display:flex;align-items:center;justify-content:center;${isCur?"box-shadow:0 0 0 8px rgba(201,168,76,.12);":""}">${inner}</div>
+        <div style="font-size:10px;color:${labelColor};font-weight:${isCur?700:done?500:400};text-align:center;margin-top:8px;line-height:1.35;">${s.label}</div>
+        ${done?`<div style="font-size:12px;color:#1B7A4A;margin-top:3px;font-weight:700;">✓</div>`:""}
+      </div>`);
+      if(i<proj.stages.length-1){
+        const lineColor=done?"#1B7A4A":isCur?"#C9A84C":"transparent";
+        const dashed=!done&&!isCur;
+        parts.push(`<div style="flex:1;align-self:flex-start;margin-top:21px;height:2px;min-width:8px;${dashed?"border-top:2px dashed #3D4F6A;":`background:${lineColor};`}"></div>`);
+      }
+    });
+    return parts.join("");
+  })();
+
+  let html=`
+  <!-- ACTION BUTTONS -->
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
     <button class="btn btn-gh btn-sm" onclick="showPage('projs')">← العودة</button>
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:18px;font-weight:900;color:var(--t1);">${proj.ownerName}</div>
-      <div style="font-size:11px;color:var(--t3);margin-top:1px;font-family:monospace;">${proj.id} · ${proj.city} · ${proj.district}</div>
-    </div>
-    <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
-      ${pill(proj.devStatus||"—",DSC[proj.devStatus]||"#8896A4")}
-      ${proj.marketStatus&&proj.marketStatus!=="غير محدد"?pill(proj.marketStatus,MSC[proj.marketStatus]||"#8896A4"):""}
-      ${(()=>{const miss=proj.stages?.flatMap(s=>s.docs||[]).filter(d=>d.req&&!d.up).length||0;return miss>0?`<span style="background:var(--rdl);color:var(--rd);border-radius:20px;font-size:10px;font-weight:700;padding:3px 8px;">⚠ ناقص ${miss}</span>`:""})()}
-      ${can?`<button class="btn btn-gh btn-sm" onclick="openEditProj('${proj.id}')">✎ تعديل</button>`:""}
-      ${can?`<button class="btn btn-gh btn-sm" onclick="openAddTask('${proj.id}')">☑ مهمة</button>`:""}
-      <button class="btn btn-gh btn-sm" onclick="openPassport('${proj.id}')">🪪 سند المشروع</button>
-      <button class="btn btn-gh btn-sm" onclick="openSvc()">⚡ طلب خدمة</button>
-      ${canDel?`<button class="btn btn-d btn-sm" onclick="delCP()">🗑 حذف</button>`:""}
-    </div>
+    ${can?`<button class="btn btn-gh btn-sm" onclick="openEditProj('${proj.id}')">✎ تعديل</button>`:""}
+    ${can?`<button class="btn btn-gh btn-sm" onclick="openAddTask('${proj.id}')">☑ مهمة</button>`:""}
+    <button class="btn btn-gh btn-sm" onclick="openPassport('${proj.id}')">🪪 سند المشروع</button>
+    <button class="btn btn-gh btn-sm" onclick="openSvc()">⚡ طلب خدمة</button>
+    ${canDel?`<button class="btn btn-d btn-sm" onclick="delCP()">🗑 حذف</button>`:""}
   </div>
 
-  <!-- HEADER: dark with stage tabs -->
-  <div style="background:linear-gradient(140deg,var(--n9),var(--n8));border-radius:16px;padding:20px 22px;margin-bottom:16px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+  <!-- DARK HEADER -->
+  <div style="background:#0D1B2E;border-radius:16px;overflow:hidden;margin-bottom:14px;">
+
+    <!-- TOP BAR -->
+    <div style="padding:20px 24px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
       <div>
-        <div style="font-size:10px;color:var(--gold);font-family:monospace;margin-bottom:3px;">#${proj.id}</div>
-        <div style="font-size:17px;font-weight:900;color:#fff;">${proj.ownerName}</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;">📍 ${proj.city} · ${proj.district} · أضافه: ${addedBy}</div>
+        <div style="font-size:24px;font-weight:900;color:#fff;margin-bottom:6px;">${proj.ownerName}</div>
+        <div style="font-size:12px;color:#8896A4;">📍 ${locParts.join(" · ")}${addedBy?" · أضافه: "+addedBy:""}</div>
       </div>
-      <div style="display:flex;gap:16px;align-items:center;">
-        <div style="text-align:center;">
-          <div style="font-size:28px;font-weight:900;color:${cc};font-family:monospace;">${comp}%</div>
-          <div style="font-size:9px;color:rgba(255,255,255,.35);">الإنجاز الكلي</div>
-        </div>
-        <div style="width:1px;height:36px;background:rgba(255,255,255,.1);"></div>
-        <div style="text-align:center;">
-          <div style="font-size:22px;font-weight:900;color:#fff;font-family:monospace;">${completedCount}/${proj.stages.length}</div>
-          <div style="font-size:9px;color:rgba(255,255,255,.35);">مراحل مكتملة</div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+        <div style="font-size:10px;color:#C9A84C;font-family:monospace;font-weight:700;">#${proj.id}</div>
+        <div style="display:flex;gap:20px;align-items:center;">
+          <div style="text-align:center;">
+            <div style="font-size:28px;font-weight:900;color:#fff;line-height:1;font-family:monospace;">${completedCount}/${proj.stages.length}</div>
+            <div style="font-size:10px;color:#8896A4;margin-top:3px;">مراحل مكتملة</div>
+          </div>
+          <div style="width:1px;height:36px;background:rgba(255,255,255,.1);"></div>
+          <div style="text-align:center;">
+            <div style="font-size:28px;font-weight:900;color:#C9A84C;line-height:1;font-family:monospace;">${comp}%</div>
+            <div style="font-size:10px;color:#8896A4;margin-top:3px;">الإنجاز الكلي</div>
+          </div>
         </div>
       </div>
     </div>
-    <div style="height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;margin-bottom:18px;">
-      <div style="height:100%;width:${comp}%;background:linear-gradient(90deg,#1B7A4A,var(--gold));border-radius:2px;"></div>
+
+    <!-- TIMELINE -->
+    <div style="padding:4px 24px 28px;display:flex;align-items:flex-start;direction:rtl;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;">
+      ${timelineHtml}
     </div>
-    <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;-webkit-overflow-scrolling:touch;">
-      ${stageTabs}
+
+    <!-- INFO CARDS -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;background:#1C2D4A;border-top:1px solid rgba(255,255,255,.06);">
+      <div style="padding:16px 20px;border-left:1px solid rgba(255,255,255,.06);">
+        <div style="font-size:10px;color:#8896A4;font-weight:700;margin-bottom:10px;">📊 حالة المشروع</div>
+        <div style="display:inline-block;background:${needsAttention?"rgba(201,168,76,.15)":"rgba(27,122,74,.15)"};border:1px solid ${needsAttention?"rgba(201,168,76,.35)":"rgba(27,122,74,.35)"};color:${needsAttention?"#C9A84C":"#4ABA7A"};border-radius:8px;padding:5px 14px;font-size:13px;font-weight:800;margin-bottom:8px;">${needsAttention?"يحتاج متابعة":"على المسار"}</div>
+        <div style="font-size:11px;color:#8896A4;line-height:1.6;">${missingCurDocs.length>0?`ينقص ${missingCurDocs.length} مستندات في هذه المرحلة`:missingReqTotal>0?`${missingReqTotal} مستند مطلوب`:"المستندات الحالية مكتملة"}${missingReqTotal>0?`<br><span style="color:${needsAttention?"#C9A84C":"#8896A4"};">يوجد مستندات متأخرة</span>`:""}</div>
+      </div>
+      <div style="padding:16px 20px;border-left:1px solid rgba(255,255,255,.06);text-align:center;">
+        <div style="font-size:10px;color:#8896A4;font-weight:700;margin-bottom:8px;">📋 المرحلة الحالية</div>
+        <div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:10px;">${curSt?.label||"—"}</div>
+        ${responsible?`<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);border-radius:20px;padding:4px 12px;font-size:11px;color:#60A5FA;margin-bottom:6px;">المسؤول: ${responsible.name}</div>`:""}
+        <div style="font-size:11px;color:#8896A4;">📅 الموعد المتوقع: ${proj.nextAction||"—"}</div>
+      </div>
+      <div style="padding:16px 20px;">
+        <div style="font-size:10px;color:#8896A4;font-weight:700;margin-bottom:10px;">📝 الإجراء القادم</div>
+        ${missingCurDocs.length>0?`<ul style="margin:0;padding-right:16px;font-size:11px;color:#D1D9E0;line-height:2;list-style:disc;">${missingCurDocs.slice(0,3).map(d=>`<li>${d.label}</li>`).join("")}${missingCurDocs.length>3?`<li style="color:#8896A4;">و ${missingCurDocs.length-3} أخرى...</li>`:""}</ul>`:`<div style="font-size:11px;color:#8896A4;">لا توجد إجراءات معلقة</div>`}
+        <button onclick="switchStage(${ci})" style="margin-top:10px;background:transparent;border:1.5px solid #C9A84C;color:#C9A84C;border-radius:8px;padding:7px 16px;font-size:11px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;width:100%;">عرض التفاصيل</button>
+      </div>
     </div>
+
+    <!-- STATS BAR -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);background:#0D1B2E;border-top:1px solid rgba(201,168,76,.2);padding:14px 24px;gap:10px;">
+      <div style="display:flex;align-items:center;gap:8px;"><span>🕐</span><div><div style="font-size:9px;color:#8896A4;">آخر تحديث</div><div style="font-size:11px;font-weight:700;color:#D1D9E0;">${proj.lastUpdated||"—"}</div></div></div>
+      <div style="display:flex;align-items:center;gap:8px;"><span>📄</span><div><div style="font-size:9px;color:#8896A4;">إجمالي المستندات</div><div style="font-size:11px;font-weight:700;color:#D1D9E0;">${totalDocs2} مستند</div></div></div>
+      <div style="display:flex;align-items:center;gap:8px;"><span>⚠️</span><div><div style="font-size:9px;color:#8896A4;">مستندات ناقصة</div><div style="font-size:11px;font-weight:700;color:${missingReqTotal>0?"#E67E22":"#4ABA7A"};">${missingReqTotal>0?missingReqTotal+" مستند":"لا يوجد"}</div></div></div>
+      <div style="display:flex;align-items:center;gap:8px;"><span>👤</span><div><div style="font-size:9px;color:#8896A4;">الصحة العامة</div><div style="font-size:11px;font-weight:700;color:${healthColor2};">${healthScore}/100</div></div></div>
+    </div>
+
   </div>
 
   <!-- BODY: 2 cols -->
