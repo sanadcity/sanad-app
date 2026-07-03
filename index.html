@@ -2003,6 +2003,20 @@ const rFile=()=>{
           <div style="font-size:14px;font-weight:800;color:var(--t1);">${stage.icon} ${stage.label}</div>
           <span style="font-size:11px;color:var(--t3);">${upCount} من ${allDocs.length} مرفوع</span>
         </div>
+        ${stage.key==="land"&&(proj.landOwners||[]).length>0?`
+        <div style="padding:10px 14px;border-bottom:1px solid var(--bdl);background:linear-gradient(135deg,rgba(26,63,107,.04),rgba(26,63,107,.01));">
+          <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.08em;margin-bottom:7px;">الملاك</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            ${(proj.landOwners||[]).map(o=>`
+            <div style="display:flex;align-items:center;gap:6px;background:var(--w);border:1px solid var(--bdl);border-radius:8px;padding:5px 10px;">
+              <div style="width:7px;height:7px;border-radius:50%;background:${o.type==="direct"?"#1A3F6B":"#8B5CF6"};flex-shrink:0;"></div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--t1);">${o.name||"—"}</div>
+                <div style="font-size:9px;color:var(--t3);">${o.type==="direct"?"مالك مباشر":"شريك"}${o.share?" · "+o.share+"%":""}</div>
+              </div>
+            </div>`).join("")}
+          </div>
+        </div>`:""}
         <div style="padding:14px;max-height:500px;overflow-y:auto;">
           ${docsHtml||`<div style="padding:28px;text-align:center;color:var(--t3);font-size:12px;">لا توجد مستندات</div>`}
           ${can?`<div style="display:flex;gap:8px;margin-top:4px;padding-top:10px;border-top:1px dashed var(--bdl);">
