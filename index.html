@@ -390,7 +390,6 @@ body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--t1);-webkit
         <div id="reg-step2-client" style="display:none;">
           <button onclick="backToRegStep1()" style="background:none;border:none;color:var(--t3);cursor:pointer;font-family:Cairo,sans-serif;font-size:13px;margin-bottom:12px;padding:0;">← تغيير نوع الحساب</button>
           <div style="background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:10px 13px;margin-bottom:14px;font-size:12px;color:var(--t2);">🔐 مالك عقار — الرقم القومي هو اسم المستخدم</div>
-          <div class="fg"><label class="fl">الاسم الكامل <span class="rq">*</span></label><input class="fi" id="rn-c" placeholder="محمد أحمد السيد"/></div>
           <div class="fg"><label class="fl">الرقم القومي <span class="rq">*</span></label><input class="fi" id="rnid" placeholder="14 رقم" maxlength="14" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')"/></div>
           <div class="fg"><label class="fl">كلمة المرور <span class="rq">*</span></label><input class="fi" id="rp-c" type="password" placeholder="8 أحرف على الأقل" onkeydown="if(event.key==='Enter')doReg()"/></div>
           <input type="hidden" id="rr" value="client"/>
@@ -1068,11 +1067,9 @@ const doReg=()=>{
   if(!r){sm("amsg","يرجى اختيار نوع الحساب","e");return;}
   let n,ph,e="",nid="",p;
   if(r==="client"){
-    n=($("rn-c")?.value||"").trim();
     nid=($("rnid")?.value||"").replace(/[^0-9]/g,"");
     p=$("rp-c")?.value||"";
-    ph="";
-    if(!n){sm("amsg","يرجى إدخال الاسم الكامل","e");return;}
+    n=nid; ph="";
     if(!/^\d{14}$/.test(nid)){sm("amsg","الرقم القومي يجب أن يكون 14 رقم (أرقام إنجليزية فقط)","e");return;}
   } else {
     n=($("rn")?.value||"").trim();
