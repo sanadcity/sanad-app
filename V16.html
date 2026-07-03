@@ -1535,14 +1535,71 @@ const rFile=()=>{
     const get=k=>allDocs.find(d=>d.key===k);
     const sk=stage.key;
     const genDocs=[get("l0"),get("l1"),get("l2")].filter(Boolean);
-    const owner1=[get("l4a"),get("l4b"),get("l4c")].filter(Boolean);
-    const owner2=[get("l5a"),get("l5b"),get("l5c"),get("l5d")].filter(Boolean);
-    const ownerHeader=(title,color="#C9A84C")=>`<div style="margin:16px 0 10px;padding:10px 16px;background:var(--n7);border-right:3px solid ${color};border-radius:8px;display:flex;align-items:center;gap:8px;"><span style="font-size:16px;">👤</span><span style="font-size:14px;font-weight:800;color:#fff;">${title}</span></div>`;
-    const grid=(docs,cols=2)=>`<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:8px;">${docs.map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`;
     let html=genDocs.map(d=>mkDocCard(d,sk,false,false)+`<div style="margin-bottom:8px;"></div>`).join("");
-    if(owner1.length){html+=ownerHeader("المالك الأول");html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">${owner1.map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`;}
-    if(owner2.length){html+=ownerHeader("المالك الثاني","#3D5A8A");html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">${owner2.slice(0,2).map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`;if(owner2.length>2)html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">${owner2.slice(2).map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`;}
-    // custom docs
+
+    const sectionHdr=(title,color,type,owners)=>{
+      const totalShare=owners.filter(o=>o.share).reduce((s,o)=>s+Number(o.share),0);
+      const equalShare=owners.length?Math.round(100/owners.length):0;
+      return`<div style="margin:14px 0 4px;display:flex;align-items:center;gap:8px;">
+        <div style="flex:1;font-size:13px;font-weight:800;color:${color};">${title}</div>
+        ${can?`<button onclick="addLandOwner('${type}')" style="background:var(--n8);border:none;border-radius:6px;color:#fff;cursor:pointer;font-size:11px;padding:4px 10px;font-family:Cairo,sans-serif;white-space:nowrap;">+ إضافة</button>`:""}
+      </div>`;
+    };
+    const ownerCard=(owner,color,owners)=>{
+      const ownerDocs=allDocs.filter(d=>d.key.startsWith(owner.id+"_"));
+      const cols=Math.min(ownerDocs.length,3);
+      const autoShare=owners.length?Math.round(100/owners.length):0;
+      const shareLabel=owner.share?owner.share+"%":autoShare+"%";
+      return`<div style="background:var(--w);border:1.5px solid ${color}33;border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="font-size:18px;">👤</span>
+          <div style="flex:1;font-size:13px;font-weight:800;color:var(--t1);">${owner.name}</div>
+          <span style="font-size:11px;background:${color}22;color:${color};border-radius:12px;padding:2px 10px;font-weight:700;">${shareLabel}</span>
+          ${can?`<button onclick="editLandOwner('${owner.id}')" style="background:none;border:1px solid var(--bd);border-radius:6px;cursor:pointer;font-size:11px;padding:3px 8px;color:var(--t2);font-family:Cairo,sans-serif;">تعديل</button>`:""}
+          ${can?`<button onclick="removeLandOwner('${owner.id}')" style="background:none;border:1px solid rgba(192,57,43,.4);border-radius:6px;cursor:pointer;font-size:11px;padding:3px 8px;color:#C0392B;font-family:Cairo,sans-serif;">حذف</button>`:""}
+        </div>
+        ${ownerDocs.length?`<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:8px;">${ownerDocs.map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`:""}
+      </div>`;
+    };
+
+    const landOwners=proj.landOwners||[];
+    const directOwners=landOwners.filter(o=>o.type==="direct");
+    const partnerOwners=landOwners.filter(o=>o.type==="partner");
+
+    // ── الملاك المباشرون ──
+    html+=sectionHdr("الملاك المباشرون (من الجهاز / الهيئة)","var(--gold)","direct",directOwners);
+    if(directOwners.length){
+      directOwners.forEach(o=>{html+=ownerCard(o,"#C9A84C",directOwners);});
+    } else {
+      // legacy fallback: l4a/l4b/l4c
+      const lg1=[get("l4a"),get("l4b"),get("l4c")].filter(Boolean);
+      if(lg1.length){
+        html+=`<div style="background:var(--w);border:1.5px solid #C9A84C33;border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;"><span style="font-size:16px;">👤</span><span style="font-size:12px;font-weight:700;color:var(--t1);">المالك الأول</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">${lg1.map(d=>mkDocCard(d,sk,false,true)).join("")}</div>
+        </div>`;
+      } else {
+        html+=`<div style="text-align:center;color:var(--t3);font-size:11px;padding:14px;background:var(--w2);border-radius:8px;margin-bottom:8px;">لم يُضف مالك مباشر بعد</div>`;
+      }
+    }
+
+    // ── الملاك الشركاء ──
+    html+=sectionHdr("الملاك الشركاء / المشترون","#3D5A8A","partner",partnerOwners);
+    if(partnerOwners.length){
+      partnerOwners.forEach(o=>{html+=ownerCard(o,"#3D5A8A",partnerOwners);});
+    } else {
+      const lg2=[get("l5a"),get("l5b"),get("l5c"),get("l5d")].filter(Boolean);
+      if(lg2.length){
+        html+=`<div style="background:var(--w);border:1.5px solid #3D5A8A33;border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;"><span style="font-size:16px;">👤</span><span style="font-size:12px;font-weight:700;color:var(--t1);">المالك الثاني</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">${lg2.slice(0,2).map(d=>mkDocCard(d,sk,false,true)).join("")}</div>
+          ${lg2.length>2?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">${lg2.slice(2).map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`:""}
+        </div>`;
+      } else {
+        html+=`<div style="text-align:center;color:var(--t3);font-size:11px;padding:14px;background:var(--w2);border-radius:8px;margin-bottom:8px;">لم يُضف مالك شريك بعد</div>`;
+      }
+    }
+
     const cdDocs=(stage.cd||[]);
     if(cdDocs.length)html+=`<div style="margin-top:8px;">${cdDocs.map(d=>mkDocCard(d,sk,true,false)).join("")}</div>`;
     return html;
@@ -2343,6 +2400,78 @@ const delNote=(sk,dk,isC,idx)=>{
 const sFee=(sk,dk,isC,field,value)=>{const p=gP();if(!p)return;const upd=arr=>arr.map(d=>d.key===dk?{...d,fee:{...(d.fee||{}),enabled:true,[field]:value}}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);};
 const sFeeEnabled=(sk,dk,isC,checked)=>{const p=gP();if(!p)return;const upd=arr=>arr.map(d=>d.key===dk?{...d,fee:{...(d.fee||{}),enabled:checked}}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);const fb=document.getElementById(`fb-${sk}-${dk}`);if(fb)fb.style.display=checked?"flex":"none";};
 const uploadFeeReceipt=(sk,dk,isC,input)=>{const file=input.files?.[0];if(!file)return;const p=gP();if(!p)return;toast("⏳ جاري رفع الإيصال...","info");uploadToST(file,p.id,`fee_${sk}`,dk).then(up=>{const upd=arr=>arr.map(d=>d.key===dk?{...d,fee:{...(d.fee||{}),enabled:true,receipt:{url:up.url,path:up.path,name:up.name,type:up.type}}}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);rFile();toast("✓ تم رفع الإيصال");}).catch(err=>{console.error(err);toast("✗ فشل رفع الإيصال","err");});};
+// ── LAND OWNERS ──
+const LAND_OWNER_DOCS={
+  direct:[
+    {key:"contract",label:"عقد الهيئة / الجهاز",req:true},
+    {key:"idFront", label:"صورة البطاقة (وجه)",  req:true},
+    {key:"idBack",  label:"صورة البطاقة (ظهر)",  req:true},
+  ],
+  partner:[
+    {key:"poa",         label:"توكيل رسمي", req:false},
+    {key:"saleContract",label:"عقد البيع",  req:false},
+  ]
+};
+const addLandOwner=(type)=>{
+  const typeLabel=type==="direct"?"المالك المباشر":"المالك الشريك";
+  showModal(`إضافة ${typeLabel}`,`
+    <div class="fg"><label class="fl">الاسم الكامل <span class="rq">*</span></label><input class="fi" id="lo-name" placeholder="مثال: محمد أحمد السيد"/></div>
+    <div class="fg"><label class="fl">النسبة % <span style="color:var(--t3);font-size:11px;">— اتركها فارغة للتوزيع بالتساوي</span></label><input class="fi" id="lo-share" type="number" min="1" max="100" placeholder="مثال: 50"/></div>
+    <input type="hidden" id="lo-type" value="${type}"/>
+  `,`
+    <button class="btn btn-gh" onclick="closeModal()">إلغاء</button>
+    <button class="btn btn-p" onclick="confirmAddLandOwner()">+ إضافة</button>
+  `);
+  setTimeout(()=>document.getElementById("lo-name")?.focus(),100);
+};
+const confirmAddLandOwner=()=>{
+  const name=(document.getElementById("lo-name")?.value||"").trim();
+  const share=(document.getElementById("lo-share")?.value||"").trim();
+  const type=document.getElementById("lo-type")?.value||"direct";
+  if(!name){toast("يرجى إدخال الاسم","err");return;}
+  closeModal();
+  const p=gP();if(!p)return;
+  const id="lo_"+Date.now();
+  if(!p.landOwners)p.landOwners=[];
+  p.landOwners.push({id,name,type,share});
+  const landStage=p.stages.find(s=>s.key==="land");
+  if(landStage){
+    LAND_OWNER_DOCS[type].forEach(d=>{
+      landStage.docs.push({key:`${id}_${d.key}`,label:d.label,req:d.req,up:null,notes:[],_ownerId:id});
+    });
+  }
+  svP(p);rFile();toast("تم إضافة المالك ✓");
+};
+const editLandOwner=(ownerId)=>{
+  const p=gP();if(!p)return;
+  const owner=(p.landOwners||[]).find(o=>o.id===ownerId);if(!owner)return;
+  showModal("تعديل بيانات المالك",`
+    <div class="fg"><label class="fl">الاسم الكامل <span class="rq">*</span></label><input class="fi" id="lo-name" value="${owner.name.replace(/"/g,"&quot;")}"/></div>
+    <div class="fg"><label class="fl">النسبة % <span style="color:var(--t3);font-size:11px;">— فارغة = تساوي</span></label><input class="fi" id="lo-share" type="number" min="1" max="100" value="${owner.share||""}"/></div>
+    <input type="hidden" id="lo-edit-id" value="${ownerId}"/>
+  `,`
+    <button class="btn btn-gh" onclick="closeModal()">إلغاء</button>
+    <button class="btn btn-p" onclick="confirmEditLandOwner()">✓ حفظ</button>
+  `);
+};
+const confirmEditLandOwner=()=>{
+  const name=(document.getElementById("lo-name")?.value||"").trim();
+  const share=(document.getElementById("lo-share")?.value||"").trim();
+  const ownerId=document.getElementById("lo-edit-id")?.value;
+  if(!name){toast("يرجى إدخال الاسم","err");return;}
+  closeModal();
+  const p=gP();if(!p)return;
+  p.landOwners=(p.landOwners||[]).map(o=>o.id===ownerId?{...o,name,share}:o);
+  svP(p);rFile();toast("تم تعديل بيانات المالك ✓");
+};
+const removeLandOwner=(ownerId)=>{
+  if(!confirm("حذف هذا المالك وجميع مستنداته؟\nلا يمكن التراجع."))return;
+  const p=gP();if(!p)return;
+  p.landOwners=(p.landOwners||[]).filter(o=>o.id!==ownerId);
+  const landStage=p.stages.find(s=>s.key==="land");
+  if(landStage)landStage.docs=landStage.docs.filter(d=>!d.key.startsWith(ownerId+"_"));
+  svP(p);rFile();toast("تم حذف المالك","info");
+};
 const aCD=sk=>{const inp=$("cd-"+sk);const label=inp?.value?.trim();if(!label)return;const p=gP();if(!p)return;p.stages=p.stages.map(s=>s.key!==sk?s:{...s,cd:[...(s.cd||[]),{key:"c_"+Date.now(),label,req:false,up:null,note:""}]});inp.value="";svP(p);rFile();toast("تم إضافة المستند");};
 const renameCD=(sk,dk)=>{
   const p=gP();if(!p)return;
