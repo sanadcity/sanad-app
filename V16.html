@@ -1898,7 +1898,7 @@ const rFile=()=>{
         else if(chainOwners.length>0)
           owners=chainOwners.map((o,i)=>({name:o.name||"—",sub:i===chainOwners.length-1?"المالك الحالي":o.transferType||"مالك سابق",color:i===chainOwners.length-1?"#1A3F6B":"#8896A4",bg:i===chainOwners.length-1?"#E6EEF8":"#F4F5F7"}));
         else if(proj.ownerName)
-          owners=[{name:proj.ownerName,sub:"المالك المسجل",color:"#1A3F6B",bg:"#E6EEF8"}];
+          owners=[{name:proj.ownerName,sub:"مالك مباشر",color:"#1A3F6B",bg:"#E6EEF8"}];
         if(!owners.length)return"";
         return`<div style="background:var(--w);border:2px solid rgba(26,63,107,.25);border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(26,63,107,.08);">
           <div style="font-size:9px;font-weight:700;color:#1A3F6B;letter-spacing:.1em;margin-bottom:10px;">🏠 الملاك</div>
