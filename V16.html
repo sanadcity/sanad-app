@@ -1939,7 +1939,8 @@ const rFile=()=>{
         const chainOwners=(proj.ownerChain||[]);
         let owners=[];
         if(newOwners.length>0)
-          owners=newOwners.map(o=>({name:o.name||"—",sub:o.type==="direct"?"مالك مباشر":"شريك"+(o.share?" · "+o.share+"%":""),color:"#1A3F6B",bg:"#E6EEF8"}));
+          const subtypeLbl=o=>{if(o.type==="direct")return"مالك مباشر";if(o.subtype==="buyer")return"مشترٍ";return"شريك في الجهاز";};
+          owners=newOwners.map(o=>({name:o.name||"—",sub:subtypeLbl(o)+(o.share?" · "+o.share+"%":""),color:o.type==="direct"?"#1A3F6B":o.subtype==="buyer"?"#1B7A4A":"#8B5CF6",bg:o.type==="direct"?"#E6EEF8":o.subtype==="buyer"?"#E3F5EC":"#EEE6F8"}));
         else if(chainOwners.length>0)
           owners=chainOwners.map((o,i)=>({name:o.name||"—",sub:i===chainOwners.length-1?"المالك الحالي":o.transferType||"مالك سابق",color:i===chainOwners.length-1?"#1A3F6B":"#8896A4",bg:i===chainOwners.length-1?"#E6EEF8":"#F4F5F7"}));
         else if(proj.ownerName)
@@ -2154,7 +2155,7 @@ const rFile=()=>{
                 <div style="width:7px;height:7px;border-radius:50%;background:${o.type==="direct"?"#1A3F6B":"#8B5CF6"};flex-shrink:0;"></div>
                 <div>
                   <div style="font-size:11px;font-weight:700;color:var(--t1);">${o.name||"—"}</div>
-                  <div style="font-size:9px;color:var(--t3);">${o.type==="direct"?"مالك مباشر":"شريك"}${o.share?" · "+o.share+"%":""}</div>
+                  <div style="font-size:9px;color:var(--t3);">${o.type==="direct"?"مالك مباشر":o.subtype==="buyer"?"مشترٍ":"شريك في الجهاز"}${o.share?" · "+o.share+"%":""}</div>
                 </div>
               </div>`)
             :chainOwners.map((o,i)=>`
@@ -2676,9 +2677,13 @@ const LAND_OWNER_DOCS={
   ]
 };
 const addLandOwner=(type)=>{
-  const typeLabel=type==="direct"?"المالك المباشر":"المالك الشريك";
+  const typeLabel=type==="direct"?"المالك المباشر":"الشريك / المشترى";
   showModal(`إضافة ${typeLabel}`,`
     <div class="fg"><label class="fl">الاسم الكامل <span class="rq">*</span></label><input class="fi" id="lo-name" placeholder="مثال: محمد أحمد السيد"/></div>
+    ${type==="partner"?`<div class="fg"><label class="fl">الصفة</label><select class="fs" id="lo-subtype">
+      <option value="partner_gehaaz">شريك في عقد الجهاز</option>
+      <option value="buyer">مشترٍ (اشترى من المالك)</option>
+    </select></div>`:`<input type="hidden" id="lo-subtype" value="direct"/>`}
     <div class="fg"><label class="fl">النسبة % <span style="color:var(--t3);font-size:11px;">— اتركها فارغة للتوزيع بالتساوي</span></label><input class="fi" id="lo-share" type="number" min="1" max="100" placeholder="مثال: 50"/></div>
     <input type="hidden" id="lo-type" value="${type}"/>
   `,`
@@ -2691,12 +2696,13 @@ const confirmAddLandOwner=()=>{
   const name=(document.getElementById("lo-name")?.value||"").trim();
   const share=(document.getElementById("lo-share")?.value||"").trim();
   const type=document.getElementById("lo-type")?.value||"direct";
+  const subtype=document.getElementById("lo-subtype")?.value||type;
   if(!name){toast("يرجى إدخال الاسم","err");return;}
   closeModal();
   const p=gP();if(!p)return;
   const id="lo_"+Date.now();
   if(!p.landOwners)p.landOwners=[];
-  p.landOwners.push({id,name,type,share});
+  p.landOwners.push({id,name,type,subtype,share});
   const landStage=p.stages.find(s=>s.key==="land");
   if(landStage){
     LAND_OWNER_DOCS[type].forEach(d=>{
