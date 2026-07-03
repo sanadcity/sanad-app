@@ -1303,9 +1303,14 @@ const rFile=()=>{
   const sc=calcSC(stage);
   const upCount=allDocs.filter(d=>d.up).length;
 
+  // group headers for land stage
+  const landGroups={l4a:"المالك الأول",l5a:"المالك الثاني"};
+  let lastGroup="";
   const docsHtml=allDocs.map(doc=>{
     const isC=(stage.cd||[]).some(d=>d.key===doc.key);
     const sk=stage.key,dk=doc.key;
+    const groupKey=landGroups[dk];
+    const groupHeader=(stage.key==="land"&&groupKey&&groupKey!==lastGroup)?(lastGroup=groupKey,`<div style="margin:18px 0 8px;padding:10px 16px;background:var(--n7);border-right:3px solid var(--gold);border-radius:8px;font-size:13px;font-weight:800;color:var(--t1);">👤 ${groupKey}</div>`):(stage.key==="land"&&!groupKey&&lastGroup&&!["l0","l1","l2"].includes(dk)?"":(""));
     const fee=doc.fee||{};
     const feeBodyId=`fb-${sk}-${dk}`;
 
@@ -1352,7 +1357,7 @@ const rFile=()=>{
         </div>
         ${noteHtml}${feeHtml}
       </div>`;
-    return`
+    return groupHeader+`
       <div style="background:var(--w);border:1.5px solid ${doc.req?"rgba(192,57,43,.2)":isC?"rgba(201,168,76,.35)":"var(--bdl)"};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
           <div style="width:8px;height:8px;border-radius:50%;background:${doc.req?"#C0392B":isC?"#B7770D":"#8896A4"};flex-shrink:0;"></div>
