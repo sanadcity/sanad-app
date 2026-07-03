@@ -1210,6 +1210,7 @@ const myP=()=>{
     if(p.parties?.some(pt=>pt.partyId===CU.id))return true;
     if(p.ownerEmail&&p.ownerEmail===CU.email)return true; // backward compat
     if(CU.nationalId&&p.nationalId&&p.nationalId===CU.nationalId)return true;
+    if(p.delegatedTo&&p.delegatedTo===CU.id)return true;
     if(p.by===CU.id)return true;
     if(p.at?.includes(CU.id))return true;
     if(CU.role==="office"){
@@ -1292,7 +1293,7 @@ const rDash=()=>{
   let html=`<div class="card" style="margin-bottom:16px;">
     <div class="ch"><div class="cht">المشاريع الأخيرة</div>
     <button class="btn btn-gh btn-sm" onclick="showPage('projs')">عرض كافة المشاريع</button>
-    <button id="restore-btn" class="btn btn-sm" style="background:#1A3F6B;color:#fff;" onclick="restoreFilesFromStorage()">🔁 استرجاع الملفات</button></div>
+    </div>
     <div style="overflow:auto;"><table class="tbl"><thead><tr>
       <th>كود المشروع</th><th>المالك</th><th>أضافه</th><th>الحالة</th><th>القيمة التقديرية</th><th>تاريخ الإضافة</th><th>إجراءات</th>
     </tr></thead><tbody>`;
@@ -2088,6 +2089,18 @@ const openEditProj=id=>{
     </div>
     <div class="fg"><label class="fl">كود جهة الولاية</label><input class="fi" id="ep-auth" value="${proj.authorityCode||""}" placeholder="NUCA-2024-XXX"/></div>
     <div class="fg"><label class="fl">ملاحظات</label><textarea class="fi" id="ep-note" rows="3">${proj.note||""}</textarea></div>
+    <div style="border-top:1px solid var(--bd);margin:14px 0 10px;padding-top:12px;">
+      <div class="fl" style="font-weight:700;margin-bottom:8px;font-size:13px;">تفويض المشروع لمكتب هندسي</div>
+      ${(()=>{
+        const offices=(LS.g(K.u)||[]).filter(u=>u.role==="office"&&u.status==="active");
+        const current=proj.delegatedTo||"";
+        return`<select class="fs" id="ep-delegate">
+          <option value="">— بدون تفويض —</option>
+          ${offices.map(o=>`<option value="${o.id}" ${current===o.id?"selected":""}>${o.name}</option>`).join("")}
+        </select>
+        ${current?`<div style="font-size:11px;color:var(--t3);margin-top:5px;">مفوَّض حالياً لـ: ${(LS.g(K.u)||[]).find(u=>u.id===current)?.name||current}</div>`:""}`;
+      })()}
+    </div>
     <div style="display:flex;gap:8px;margin-top:6px;">
       <button class="btn btn-gh" onclick="document.getElementById('m-edit-proj').remove()">إلغاء</button>
       <div style="flex:1;"></div>
@@ -2115,6 +2128,7 @@ const saveEditProj=id=>{
   proj.floors=Number(document.getElementById("ep-floors")?.value)||proj.floors;
   proj.authorityCode=document.getElementById("ep-auth")?.value?.trim()||"";
   proj.note=document.getElementById("ep-note")?.value||"";
+  proj.delegatedTo=document.getElementById("ep-delegate")?.value||"";
   proj.lastUpdated=new Date().toISOString().slice(0,10);
   LS.s(K.p,projs);
   document.getElementById("m-edit-proj")?.remove();
@@ -2167,7 +2181,7 @@ const hUp=(sk,dk,isC,inp)=>{
   toast("⏳ جاري الرفع...","info");
   uploadToST(file,p.id,sk,dk).then(up=>{
     const now=new Date();
-    const upd=arr=>arr.map(d=>d.key===dk?{...d,up}:d);
+    const upd=arr=>arr.map(d=>d.key===dk?{...d,up:{...up,uploadedBy:CU.id}}:d);
     p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
     const stageLbl=p.stages.find(s=>s.key===sk)?.label||sk;
     const docLbl=p.stages.find(s=>s.key===sk)?.docs?.find(d=>d.key===dk)?.label||file.name;
@@ -2184,8 +2198,14 @@ const hUp=(sk,dk,isC,inp)=>{
 
 // حذف ملف — لازم تأكيد
 const rF=(sk,dk,isC)=>{
-  if(!confirm("⚠ هل أنت متأكد من حذف هذا الملف؟\nلا يمكن التراجع عن هذا الإجراء."))return;
   const p=gP();if(!p)return;
+  const stage=p.stages.find(s=>s.key===sk);
+  const doc=(isC?(stage?.cd||[]):(stage?.docs||[])).find(d=>d.key===dk);
+  const uploadedBy=doc?.up?.uploadedBy;
+  if(uploadedBy&&uploadedBy!==CU.id&&!["admin","staff"].includes(CU.role)){
+    toast("لا يمكنك حذف ملف لم ترفعه","err");return;
+  }
+  if(!confirm("⚠ هل أنت متأكد من حذف هذا الملف؟\nلا يمكن التراجع عن هذا الإجراء."))return;
   const upd=arr=>arr.map(d=>d.key===dk?{...d,up:null}:d);
   p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
   svP(p);rFile();
