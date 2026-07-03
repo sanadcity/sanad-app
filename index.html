@@ -1779,11 +1779,15 @@ const rFile=()=>{
     <!-- TOP BAR -->
     <div style="padding:20px 24px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
       <div>
-        <div style="font-size:24px;font-weight:900;color:#fff;margin-bottom:6px;">${proj.ownerName}</div>
-        <div style="font-size:12px;color:#8896A4;">📍 ${locParts.join(" · ")}${addedBy?" · أضافه: "+addedBy:""}</div>
+        <div style="font-size:24px;font-weight:900;color:#fff;margin-bottom:4px;">${proj.ownerName}</div>
+        <div style="font-size:12px;color:#8896A4;margin-bottom:2px;">📍 ${locParts.join(" · ")}</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:11px;color:#C9A84C;font-family:monospace;font-weight:700;">#${proj.id}</span>
+          ${CU.role==="admin"&&addedBy?`<span style="font-size:10px;color:#8896A4;">· أضافه: ${addedBy}</span>`:""}
+        </div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
-        <div style="font-size:10px;color:#C9A84C;font-family:monospace;font-weight:700;">#${proj.id}</div>
+        <div></div>
         <div style="display:flex;gap:20px;align-items:center;">
           <div style="text-align:center;">
             <div style="font-size:28px;font-weight:900;color:#fff;line-height:1;font-family:monospace;">${completedCount}/${proj.stages.length}</div>
