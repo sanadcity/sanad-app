@@ -1138,13 +1138,13 @@ const buildSB=()=>{
     admin:[
       {s:"الرئيسية"},{k:"dash",i:"⊞",l:"لوحة التحكم"},
       {s:"العمل"},{k:"projs",i:"◆",l:"المشاريع"},{k:"svcs",i:"⚡",l:"طلبات الخدمة",b:true},{k:"contacts",i:"◉",l:"العملاء"},
-      {s:"العمليات"},{k:"tasks",i:"☑",l:"المهام",b:true},
+      {s:"العمليات"},{k:"tasks",i:"☑",l:"المهام",b:true},{k:"__pf__",i:"⏳",l:"طلبات الموافقة",b:true},
       {s:"الإدارة"},{k:"users",i:"👥",l:"المستخدمون",b:true},{k:"staff-mgmt",i:"◈",l:"الموظفون"},{k:"settings",i:"⚙",l:"الإعدادات"}
     ],
     staff:[
       {s:"الرئيسية"},{k:"dash",i:"⊞",l:"لوحة التحكم"},
       {s:"العمل"},{k:"projs",i:"◆",l:"المشاريع"},{k:"svcs",i:"⚡",l:"طلبات الخدمة"},{k:"contacts",i:"◉",l:"العملاء"},
-      {s:"العمليات"},{k:"tasks",i:"☑",l:"المهام",b:true},
+      {s:"العمليات"},{k:"tasks",i:"☑",l:"المهام",b:true},{k:"__pf__",i:"⏳",l:"طلبات الموافقة",b:true},
       {k:"settings",i:"⚙",l:"الإعدادات"}
     ],
     office:[
@@ -1163,6 +1163,7 @@ const buildSB=()=>{
   $("sb-nav").innerHTML=items.map(x=>{
     if(x.s)return`<div class="nsec">${x.s}</div>`;
     const pg=x.k==="office-staff"?"office-staff":x.k;
+    if(x.k==="__pf__")return`<button class="nbtn" id="nav-__pf__" onclick="showPendingFilesPage()"><span class="nico">${x.i}</span><span class="nlbl">${x.l}</span><span class="nbdg hid" id="bdg-__pf__">0</span></button>`;
     return`<button class="nbtn" id="nav-${x.k}" onclick="showPage('${pg}')"><span class="nico">${x.i}</span><span class="nlbl">${x.l}</span>${x.b?`<span class="nbdg hid" id="bdg-${x.k}">0</span>`:""}</button>`;
   }).join("");
 };
@@ -1193,7 +1194,41 @@ const updBdg=()=>{
   const bu=$("bdg-users");if(bu){bu.textContent=pu;bu.classList.toggle("hid",pu===0||!isAdmin);}
   const bs=$("bdg-svcs");if(bs){bs.textContent=mySvcs;bs.classList.toggle("hid",mySvcs===0);}
   const bp=$("bdg-pending-files");if(bp){bp.textContent=pendingFiles;bp.classList.toggle("hid",pendingFiles===0);}
-  const pfBtn=$("pf-btn");if(pfBtn)pfBtn.classList.toggle("hid",!isAdmin);
+  const pfBtn=$("pf-btn");if(pfBtn)pfBtn.classList.add("hid");
+  const bpf=$("bdg-__pf__");if(bpf){bpf.textContent=pendingFiles;bpf.classList.toggle("hid",pendingFiles===0);}
+};
+
+const showPendingFilesPage=()=>{
+  const items=[];
+  (LS.g(K.p)||[]).forEach(proj=>proj.stages?.forEach(s=>{
+    [...(s.docs||[]),...(s.cd||[])].forEach(d=>{
+      if(d.up?.status==="pending")items.push({proj,stage:s,doc:d});
+    });
+  }));
+  document.querySelectorAll(".page").forEach(p=>p.classList.add("hid"));
+  document.querySelectorAll(".nbtn").forEach(b=>b.classList.remove("act"));
+  const nb=$("nav-__pf__");if(nb)nb.classList.add("act");
+  $("tbt").textContent="طلبات الموافقة";
+  let pg=$("pg-pf");
+  if(!pg){pg=document.createElement("div");pg.id="pg-pf";pg.className="page";$("pg-dash").parentNode.appendChild(pg);}
+  pg.classList.remove("hid");
+  pg.innerHTML=`<div style="max-width:780px;margin:0 auto;padding:16px;">
+    <div style="font-size:18px;font-weight:800;color:var(--t1);margin-bottom:14px;">⏳ طلبات الموافقة <span style="font-size:13px;color:var(--t3);font-weight:400;">(${items.length})</span></div>
+    ${items.length===0?`<div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;padding:48px;text-align:center;color:var(--t3);">لا توجد ملفات تنتظر الموافقة</div>`
+    :items.map(({proj,stage:s,doc:d})=>`
+    <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:800;color:var(--t1);">${d.label}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:3px;">${proj.ownerName} · ${s.label}</div>
+        <div style="font-size:10px;color:var(--am);margin-top:2px;">رُفع: ${d.up.date||""}</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button onclick="previewFile('${d.up.url||d.up.data||""}','${(d.up.name||"").replace(/'/g,"\\'")}','${d.up.type||""}')" class="btn btn-gh btn-sm">👁 معاينة</button>
+        <button onclick="CPJ='${proj.id}';approveFile('${s.key}','${d.key}',${!!d.custom});showPendingFilesPage()" style="background:#1B7A4A;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:Cairo,sans-serif;font-weight:700;">✓ قبول</button>
+        <button onclick="CPJ='${proj.id}';rejectFile('${s.key}','${d.key}',${!!d.custom});showPendingFilesPage()" style="background:#C0392B;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:Cairo,sans-serif;font-weight:700;">✕ رفض</button>
+      </div>
+    </div>`).join("")}
+  </div>`;
 };
 
 const showPendingFiles=()=>{
