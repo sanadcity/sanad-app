@@ -1853,6 +1853,30 @@ const rFile=()=>{
         </div>
       </div>
 
+      <!-- Owners summary card (land stage only) -->
+      ${(()=>{
+        if(stage.key!=="land")return"";
+        const newOwners=(proj.landOwners||[]);
+        const chainOwners=(proj.ownerChain||[]);
+        if(!newOwners.length&&!chainOwners.length)return"";
+        const owners=newOwners.length>0
+          ?newOwners.map(o=>({name:o.name||"—",sub:o.type==="direct"?"مالك مباشر":"شريك"+(o.share?" · "+o.share+"%":""),color:"#1A3F6B",bg:"#E6EEF8"}))
+          :chainOwners.map((o,i)=>({name:o.name||"—",sub:i===chainOwners.length-1?"المالك الحالي":o.transferType||"مالك سابق",color:i===chainOwners.length-1?"#1A3F6B":"#8896A4",bg:i===chainOwners.length-1?"#E6EEF8":"#F4F5F7"}));
+        return`<div style="background:var(--w);border:2px solid rgba(26,63,107,.25);border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(26,63,107,.08);">
+          <div style="font-size:9px;font-weight:700;color:#1A3F6B;letter-spacing:.1em;margin-bottom:10px;">🏠 الملاك</div>
+          ${owners.map(o=>{
+            const ini=(o.name).split(" ").slice(0,2).map(w=>w[0]||"").join("");
+            return`<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--bdl);">
+              <div style="width:34px;height:34px;border-radius:50%;background:${o.bg};border:1.5px solid ${o.color}40;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:${o.color};flex-shrink:0;">${ini}</div>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:var(--t1);">${o.name}</div>
+                <div style="font-size:9px;color:${o.color};font-weight:600;margin-top:1px;">${o.sub}</div>
+              </div>
+            </div>`;
+          }).join("")}
+        </div>`;
+      })()}
+
       <!-- Parties card -->
       ${(()=>{
         const parties=proj.parties||[];
