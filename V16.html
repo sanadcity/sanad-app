@@ -1193,7 +1193,7 @@ const updBdg=()=>{
   const bu=$("bdg-users");if(bu){bu.textContent=pu;bu.classList.toggle("hid",pu===0||!isAdmin);}
   const bs=$("bdg-svcs");if(bs){bs.textContent=mySvcs;bs.classList.toggle("hid",mySvcs===0);}
   const bp=$("bdg-pending-files");if(bp){bp.textContent=pendingFiles;bp.classList.toggle("hid",pendingFiles===0);}
-  const pfBtn=$("pf-btn");if(pfBtn)pfBtn.classList.toggle("hid",!isAdmin||pendingFiles===0);
+  const pfBtn=$("pf-btn");if(pfBtn)pfBtn.classList.toggle("hid",!isAdmin);
 };
 
 const showPendingFiles=()=>{
