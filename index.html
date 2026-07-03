@@ -673,36 +673,115 @@ const initData=()=>{
   let uChanged=false;
   users2.forEach(u=>{if(!u.code){u.code=genUserCode(u.role);uChanged=true;}});
   if(uChanged)LS.s(K.u,users2);
-  // rebuild stages for any project not on current STAGES schema
-  const STAGE_KEYS_NORMAL=STAGES.filter(s=>!s.forC).map(s=>s.key).join(",");
-  const STAGE_KEYS_COMPOUND=STAGES.map(s=>s.key).join(",");
-  const migrateProjects=()=>{
-    const projects=LS.g(K.p)||[];
-    if(!projects.length)return;
-    let dirty=false;
-    const migrated=projects.map(proj=>{
-      const isComp=proj.isCompound||proj.type==="compound";
-      const expected=isComp?STAGE_KEYS_COMPOUND:STAGE_KEYS_NORMAL;
-      const projKeys=(proj.stages||[]).map(s=>s.key).join(",");
-      if(projKeys===expected)return proj;
-      dirty=true;
-      const oldStages=proj.stages||[];
-      const newStages=STAGES.filter(s=>!s.forC||isComp).map(stageDef=>{
-        const oldStage=oldStages.find(s=>s.key===stageDef.key);
-        return{
-          key:stageDef.key,label:stageDef.label,icon:stageDef.icon,color:stageDef.color,
-          docs:stageDef.docs.map(docDef=>{
-            const oldDoc=oldStage?.docs?.find(d=>d.key===docDef.key);
-            return{...docDef,up:oldDoc?.up||null,note:oldDoc?.note||""};
-          }),
-          cd:oldStage?.cd||[],
-        };
-      });
-      return{...proj,stages:newStages};
-    });
-    if(dirty)LS.s(K.p,migrated);
+  // migrate old stage labels
+  const LABEL_MAP={"الاستحواذ على الأرض":"ملكية العقار"};
+  // migrate old doc labels
+  const DOC_LABEL_MAP={
+    "شهادة إشراف الحفر":"شهادة إشراف",
+    "التصميمات الإنشائية والمعمارية":"التصميمات الإنشائية",
+    "الرسومات الإنشائية":"التصميمات الإنشائية",
+    "التصاميم الإنشائية والمعمارية":"التصميمات الإنشائية",
+    "وثيقة المجمعة":"وثيقة تأمين المجمعة / تقرير استشاري",
+    "وثيقة المجمعه":"وثيقة تأمين المجمعة / تقرير استشاري",
+    "عقد مقاولة الحفر":"عقد مقاولة",
   };
-  migrateProjects();
+  const projs=LS.g(K.p)||[];
+  let changed=false;
+  projs.forEach(p=>(p.stages||[]).forEach(s=>{
+    if(LABEL_MAP[s.label]){s.label=LABEL_MAP[s.label];changed=true;}
+    (s.docs||[]).forEach(d=>{if(DOC_LABEL_MAP[d.label]){d.label=DOC_LABEL_MAP[d.label];changed=true;}});
+    (s.cd||[]).forEach(d=>{if(DOC_LABEL_MAP[d.label]){d.label=DOC_LABEL_MAP[d.label];changed=true;}});
+  }));
+  // migrate: add بيان صلاحية الموقع as first doc in permits stage if missing
+  projs.forEach(p=>{
+    const ps=p.stages?.find(s=>s.key==="permits");
+    if(ps&&!ps.docs?.find(d=>d.key==="p0")){
+      ps.docs=[{key:"p0",label:"بيان صلاحية الموقع",req:true,up:null,note:""},...(ps.docs||[])];
+      changed=true;
+    }
+  });
+  // migrate: restructure land stage docs
+  projs.forEach(p=>{
+    const ls=p.stages?.find(s=>s.key==="land");
+    if(!ls)return;
+    // remove كراسة الاشتراطات
+    const before=ls.docs?.length||0;
+    ls.docs=(ls.docs||[]).filter(d=>d.key!=="l3");
+    if(ls.docs.length!==before)changed=true;
+    // rename old labels
+    const landMap={
+      "صورة الرقم القومي — المالك (وجه)":"المالك الأول — صورة البطاقة (وجه)",
+      "صورة الرقم القومي — المالك (ظهر)":"المالك الأول — صورة البطاقة (ظهر)",
+      "صورة الرقم القومي — الوكيل (وجه) (إن وجد)":"المالك الثاني — صورة البطاقة (وجه)",
+      "صورة الرقم القومي — الوكيل (ظهر) (إن وجد)":"المالك الثاني — صورة البطاقة (ظهر)",
+      "توكيل رسمي — المالك الأصلي (إن وجد)":"المالك الثاني — توكيل رسمي",
+      "عقد الملكية / العقد الابتدائي":"المالك الثاني — عقد البيع",
+    };
+    (ls.docs||[]).forEach(d=>{if(landMap[d.label]){d.label=landMap[d.label];changed=true;}});
+    // add new docs if missing
+    if(!ls.docs?.find(d=>d.key==="l4a")){ls.docs=[...(ls.docs||[]),{key:"l4a",label:"المالك الأول — عقد الهيئة / الجهاز",req:true,up:null,note:""}];changed=true;}
+    if(!ls.docs?.find(d=>d.key==="l5b")){ls.docs=[...(ls.docs||[]),{key:"l5b",label:"المالك الثاني — عقد البيع",req:false,up:null,note:""}];changed=true;}
+  });
+  // migrate: add elevator docs if missing
+  projs.forEach(p=>{
+    if(!p.hasElevator)return;
+    const ps=p.stages?.find(s=>s.key==="permits");
+    if(!ps)return;
+    if(!ps.docs?.find(d=>d.key==="p7b")){ps.docs=[...(ps.docs||[]),{key:"p7b",label:"وثيقة تأمين المصعد",req:true,up:null,note:"",cond:"elev"}];changed=true;}
+    if(!ps.docs?.find(d=>d.key==="p7c")){ps.docs=[...(ps.docs||[]),{key:"p7c",label:"تقرير استشاري المصعد",req:true,up:null,note:"",cond:"elev"}];changed=true;}
+  });
+  // migrate: restructure stages to new schema (v2)
+  const NEW_ORDER=["decree","land","design","permits","exec","finish","utilities","delivery","ops"];
+  const REMOVE_OLD=["excavation","foundations","mep","exterior","interior","handover"];
+  const mkDocs=defs=>defs.map(d=>({...d,up:null,note:""}));
+  projs.forEach(p=>{
+    if(!p.stages)return;
+    // fix design label
+    const ds=p.stages.find(s=>s.key==="design");
+    if(ds&&ds.label==="التصاميم الهندسية"){ds.label="التصميمات الهندسية";changed=true;}
+    // migrate handover → delivery
+    const hs=p.stages.find(s=>s.key==="handover");
+    if(hs&&!p.stages.find(s=>s.key==="delivery")){
+      p.stages.push({key:"delivery",label:"التسليم والمطابقة",icon:"✅",color:"#1B7A4A",docs:hs.docs||[],cd:hs.cd||[]});
+      changed=true;
+    }
+    // remove old stages
+    const before=p.stages.length;
+    p.stages=p.stages.filter(s=>!REMOVE_OLD.includes(s.key));
+    if(p.stages.length!==before)changed=true;
+    // add missing new stages
+    const stgDefs={
+      exec:STAGES.find(s=>s.key==="exec"),
+      finish:STAGES.find(s=>s.key==="finish"),
+      utilities:STAGES.find(s=>s.key==="utilities"),
+      delivery:STAGES.find(s=>s.key==="delivery"),
+      ops:STAGES.find(s=>s.key==="ops"),
+    };
+    ["exec","finish","utilities","delivery","ops"].forEach(k=>{
+      if(!p.stages.find(s=>s.key===k)&&stgDefs[k]){
+        p.stages.push({...stgDefs[k],docs:mkDocs(stgDefs[k].docs),cd:[]});
+        changed=true;
+      }
+    });
+    // update ops docs if old structure
+    const os=p.stages.find(s=>s.key==="ops");
+    if(os&&os.docs?.length<=2&&!os.docs?.find(d=>d.key==="o3")){
+      os.docs=[
+        ...(os.docs||[]),
+        {key:"o3",label:"الكتالوجات",req:false,up:null,note:""},
+        {key:"o4",label:"سجلات الصيانة",req:false,up:null,note:""},
+        {key:"o5",label:"البلاغات",req:false,up:null,note:""},
+      ];
+      changed=true;
+    }
+    // reorder stages to match NEW_ORDER
+    p.stages.sort((a,b)=>{
+      const ai=NEW_ORDER.indexOf(a.key);
+      const bi=NEW_ORDER.indexOf(b.key);
+      return (ai===-1?999:ai)-(bi===-1?999:bi);
+    });
+  });
+  if(changed)LS.s(K.p,projs);
 };
 
 // ── STAGES ──
@@ -733,18 +812,18 @@ const STAGES=[
     {key:"des4",label:"تقرير الحساب الإنشائي",req:false}
   ]},
   {key:"permits",label:"التراخيص والتصاريح",icon:"📑",color:"#C9A84C",docs:[
-    {key:"p0", label:"بيان صلاحية الموقع",req:true},
-    {key:"p1", label:"تقرير تربة معتمد",req:true},
-    {key:"p2", label:"تقرير استشاري معتمد",req:true},
-    {key:"p3", label:"موافقة الدفاع المدني",req:false,cond:"comm"},
-    {key:"p4", label:"موافقة بيئية",req:false,cond:"comm"},
-    {key:"p5", label:"موافقة مرورية",req:false,cond:"comm"},
-    {key:"p6", label:"وثيقة تأمين المجمعة / تقرير استشاري",req:false},
-    {key:"p7", label:"عقد مقاولة المصعد",req:true,cond:"elev"},
+    {key:"p0",label:"بيان صلاحية الموقع",req:true},
+    {key:"p1",label:"تقرير تربة معتمد",req:true},
+    {key:"p2",label:"تقرير استشاري معتمد",req:true},
+    {key:"p3",label:"موافقة الدفاع المدني",req:false,cond:"comm"},
+    {key:"p4",label:"موافقة بيئية",req:false,cond:"comm"},
+    {key:"p5",label:"موافقة مرورية",req:false,cond:"comm"},
+    {key:"p6",label:"وثيقة تأمين المجمعة / تقرير استشاري",req:false},
+    {key:"p7",label:"عقد مقاولة المصعد",req:true,cond:"elev"},
     {key:"p7b",label:"وثيقة تأمين المصعد",req:true,cond:"elev"},
     {key:"p7c",label:"تقرير استشاري المصعد",req:true,cond:"elev"},
-    {key:"p8", label:"طلب الترخيص",req:true},
-    {key:"p9", label:"رخصة البناء",req:true}
+    {key:"p8",label:"طلب الترخيص",req:true},
+    {key:"p9",label:"رخصة البناء",req:true}
   ]},
   {key:"exec",label:"التنفيذ والتوثيق",icon:"🏗",color:"#5A3A1C",docs:[
     {key:"ex1",label:"عقد المقاول",req:true},
@@ -1126,46 +1205,6 @@ const myP=()=>{
 };
 
 // ── DASHBOARD ──
-const restoreFilesFromStorage=async()=>{
-  const btn=document.getElementById("restore-btn");
-  if(btn){btn.disabled=true;btn.textContent="جارٍ الاسترجاع...";}
-  const projects=LS.g(K.p)||[];
-  let restored=0;
-  const tryList=async(basePath)=>{
-    try{return await ST.ref().child(basePath).listAll();}catch(e){return null;}
-  };
-  for(const proj of projects){
-    // try both path patterns
-    const paths=["projects/"+proj.id, proj.id];
-    for(const base of paths){
-      const res=await tryList(base);
-      if(!res||!res.prefixes.length)continue;
-      for(const folderRef of res.prefixes){
-        const stageKey=folderRef.name;
-        const filesRes=await folderRef.listAll().catch(()=>null);
-        if(!filesRes)continue;
-        for(const itemRef of filesRes.items){
-          const fileName=itemRef.name;
-          const docKey=fileName.split("_")[0];
-          const fullPath=base+"/"+stageKey+"/"+fileName;
-          const url=`https://firebasestorage.googleapis.com/v0/b/sanad-city.firebasestorage.app/o/${encodeURIComponent(fullPath)}?alt=media`;
-          const upObj={url,path:fullPath,name:fileName,type:"application/octet-stream",size:"?",date:""};
-          const stage=(proj.stages||[]).find(s=>s.key===stageKey);
-          if(stage){
-            const doc=(stage.docs||[]).find(d=>d.key===docKey);
-            if(doc&&!doc.up){doc.up=upObj;restored++;}
-            const cdoc=(stage.cd||[]).find(d=>d.key===docKey);
-            if(cdoc&&!cdoc.up){cdoc.up=upObj;restored++;}
-          }
-        }
-      }
-    }
-  }
-  LS.s(K.p,projects);
-  alert(`✅ تم استرجاع ${restored} ملف — جارٍ إعادة التحميل`);
-  location.reload();
-};
-
 const rDash=()=>{
   const projs=myP(),svcs=LS.g(K.svc)||[];
   const pendU=(LS.g(K.u)||[]).filter(u=>u.status==="pending");
@@ -1193,8 +1232,7 @@ const rDash=()=>{
   const recent=projs.slice(0,5);
   let html=`<div class="card" style="margin-bottom:16px;">
     <div class="ch"><div class="cht">المشاريع الأخيرة</div>
-    <button class="btn btn-gh btn-sm" onclick="showPage('projs')">عرض كافة المشاريع</button>
-    <button id="restore-btn" class="btn btn-sm" style="background:#1A3F6B;color:#fff;" onclick="restoreFilesFromStorage()">🔁 استرجاع الملفات</button></div>
+    <button class="btn btn-gh btn-sm" onclick="showPage('projs')">عرض كافة المشاريع</button></div>
     <div style="overflow:auto;"><table class="tbl"><thead><tr>
       <th>كود المشروع</th><th>المالك</th><th>أضافه</th><th>الحالة</th><th>القيمة التقديرية</th><th>تاريخ الإضافة</th><th>إجراءات</th>
     </tr></thead><tbody>`;
@@ -1367,113 +1405,75 @@ const rFile=()=>{
       </div>`;
   }).join("");
 
-  // ── header stats ──
-  const totalDocs2=proj.stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]).length;
-  const uploadedDocs2=proj.stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]).filter(d=>d.up).length;
-  const missingReqTotal=proj.stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]).filter(d=>d.req&&!d.up).length;
-  const healthScore=totalDocs2>0?Math.round(uploadedDocs2/totalDocs2*100):0;
-  const healthColor2=healthScore>=80?"#4ABA7A":healthScore>=50?"#C9A84C":"#E74C3C";
-  const curSt=proj.stages[ci];
-  const missingCurDocs=curSt?[...(curSt.docs||[]),...(curSt.cd||[])].filter(d=>d.req&&!d.up):[];
-  const responsible=(proj.parties||[]).find(pt=>["office","staff"].includes(pt.role));
-  const needsAttention=missingCurDocs.length>0||missingReqTotal>2;
-  const locParts=[proj.city,proj.district,proj.plot?"قطعة "+proj.plot:""].filter(Boolean);
-
-  // ── timeline ──
-  const timelineHtml=(()=>{
-    const parts=[];
-    proj.stages.forEach((s,i)=>{
-      const all=[...(s.docs||[]),...(s.cd||[])];
-      const req=all.filter(d=>d.req);
-      const done=req.length>0&&req.every(d=>d.up);
-      const isCur=i===ci&&!done;
-      const circleBg=done?"#1B7A4A":isCur?"#C9A84C":"#2D3748";
-      const circleBdr=done?"#1B7A4A":isCur?"rgba(201,168,76,.7)":"#3D4F6A";
-      const labelColor=isCur?"#C9A84C":done?"#fff":"#8896A4";
-      const inner=done?`<span style="font-size:18px;color:#fff;">✓</span>`:isCur?`<span style="font-size:18px;">${s.icon||"📋"}</span>`:`<span style="font-size:12px;font-weight:700;color:#8896A4;">${i+1}</span>`;
-      parts.push(`<div onclick="switchStage(${i})" style="display:flex;flex-direction:column;align-items:center;min-width:64px;max-width:84px;cursor:pointer;flex-shrink:0;">
-        <div style="width:44px;height:44px;border-radius:50%;background:${circleBg};border:2px solid ${circleBdr};display:flex;align-items:center;justify-content:center;${isCur?"box-shadow:0 0 0 8px rgba(201,168,76,.12);":""}">${inner}</div>
-        <div style="font-size:10px;color:${labelColor};font-weight:${isCur?700:done?500:400};text-align:center;margin-top:8px;line-height:1.35;">${s.label}</div>
-        ${done?`<div style="font-size:12px;color:#1B7A4A;margin-top:3px;font-weight:700;">✓</div>`:""}
-      </div>`);
-      if(i<proj.stages.length-1){
-        const lineColor=done?"#1B7A4A":isCur?"#C9A84C":"transparent";
-        const dashed=!done&&!isCur;
-        parts.push(`<div style="flex:1;align-self:flex-start;margin-top:21px;height:2px;min-width:8px;${dashed?"border-top:2px dashed #3D4F6A;":`background:${lineColor};`}"></div>`);
-      }
-    });
-    return parts.join("");
-  })();
-
   let html=`
-  <!-- ACTION BUTTONS -->
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+  <!-- PIN: المرحلة الحالية -->
+  ${(proj.currentStage&&proj.currentStage!=="—")||proj.nextAction?`
+  <div style="background:linear-gradient(135deg,var(--n8),var(--n9));border-radius:14px;padding:16px 18px;margin-bottom:14px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <div style="font-size:20px;">📍</div>
+      <div>
+        <div style="font-size:9px;color:var(--gold);font-weight:700;letter-spacing:.1em;">المرحلة الحالية</div>
+        <div style="font-size:15px;font-weight:900;color:#fff;">${proj.currentStage&&proj.currentStage!=="—"?proj.currentStage:"—"}</div>
+      </div>
+      ${proj.serviceReason&&proj.serviceReason!=="مشروع كامل"?`<span style="margin-right:auto;background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.3);border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;color:var(--gold);">${proj.serviceReason}</span>`:""}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      ${proj.nextAction?`<div style="background:rgba(255,255,255,.06);border-radius:8px;padding:9px 11px;">
+        <div style="font-size:9px;color:rgba(255,255,255,.35);margin-bottom:3px;">المطلوب</div>
+        <div style="font-size:11px;font-weight:700;color:#fff;">${proj.nextAction}</div>
+      </div>`:""}
+      ${(()=>{const resp=(proj.parties||[]).find(p=>["office","staff"].includes(p.role));return resp?`<div style="background:rgba(255,255,255,.06);border-radius:8px;padding:9px 11px;">
+        <div style="font-size:9px;color:rgba(255,255,255,.35);margin-bottom:3px;">المسؤول الحالي</div>
+        <div style="font-size:11px;font-weight:700;color:#fff;">${resp.name}</div>
+      </div>`:"";})()}
+    </div>
+  </div>`:""}
+
+  <!-- TOP BAR -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
     <button class="btn btn-gh btn-sm" onclick="showPage('projs')">← العودة</button>
-    ${can?`<button class="btn btn-gh btn-sm" onclick="openEditProj('${proj.id}')">✎ تعديل</button>`:""}
-    ${can?`<button class="btn btn-gh btn-sm" onclick="openAddTask('${proj.id}')">☑ مهمة</button>`:""}
-    <button class="btn btn-gh btn-sm" onclick="openPassport('${proj.id}')">🪪 سند المشروع</button>
-    <button class="btn btn-gh btn-sm" onclick="openSvc()">⚡ طلب خدمة</button>
-    ${canDel?`<button class="btn btn-d btn-sm" onclick="delCP()">🗑 حذف</button>`:""}
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:18px;font-weight:900;color:var(--t1);">${proj.ownerName}</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:1px;font-family:monospace;">${proj.id} · ${proj.city} · ${proj.district}</div>
+    </div>
+    <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
+      ${pill(proj.devStatus||"—",DSC[proj.devStatus]||"#8896A4")}
+      ${proj.marketStatus&&proj.marketStatus!=="غير محدد"?pill(proj.marketStatus,MSC[proj.marketStatus]||"#8896A4"):""}
+      ${(()=>{const miss=proj.stages?.flatMap(s=>s.docs||[]).filter(d=>d.req&&!d.up).length||0;return miss>0?`<span style="background:var(--rdl);color:var(--rd);border-radius:20px;font-size:10px;font-weight:700;padding:3px 8px;">⚠ ناقص ${miss}</span>`:""})()}
+      ${can?`<button class="btn btn-gh btn-sm" onclick="openEditProj('${proj.id}')">✎ تعديل</button>`:""}
+      ${can?`<button class="btn btn-gh btn-sm" onclick="openAddTask('${proj.id}')">☑ مهمة</button>`:""}
+      <button class="btn btn-gh btn-sm" onclick="openPassport('${proj.id}')">🪪 سند المشروع</button>
+      <button class="btn btn-gh btn-sm" onclick="openSvc()">⚡ طلب خدمة</button>
+      ${canDel?`<button class="btn btn-d btn-sm" onclick="delCP()">🗑 حذف</button>`:""}
+    </div>
   </div>
 
-  <!-- DARK HEADER -->
-  <div style="background:#0D1B2E;border-radius:16px;overflow:hidden;margin-bottom:14px;">
-
-    <!-- TOP BAR -->
-    <div style="padding:20px 24px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+  <!-- HEADER: dark with stage tabs -->
+  <div style="background:linear-gradient(140deg,var(--n9),var(--n8));border-radius:16px;padding:20px 22px;margin-bottom:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
       <div>
-        <div style="font-size:24px;font-weight:900;color:#fff;margin-bottom:6px;">${proj.ownerName}</div>
-        <div style="font-size:12px;color:#8896A4;">📍 ${locParts.join(" · ")}${addedBy?" · أضافه: "+addedBy:""}</div>
+        <div style="font-size:10px;color:var(--gold);font-family:monospace;margin-bottom:3px;">#${proj.id}</div>
+        <div style="font-size:17px;font-weight:900;color:#fff;">${proj.ownerName}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;">📍 ${proj.city} · ${proj.district} · أضافه: ${addedBy}</div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
-        <div style="font-size:10px;color:#C9A84C;font-family:monospace;font-weight:700;">#${proj.id}</div>
-        <div style="display:flex;gap:20px;align-items:center;">
-          <div style="text-align:center;">
-            <div style="font-size:28px;font-weight:900;color:#fff;line-height:1;font-family:monospace;">${completedCount}/${proj.stages.length}</div>
-            <div style="font-size:10px;color:#8896A4;margin-top:3px;">مراحل مكتملة</div>
-          </div>
-          <div style="width:1px;height:36px;background:rgba(255,255,255,.1);"></div>
-          <div style="text-align:center;">
-            <div style="font-size:28px;font-weight:900;color:#C9A84C;line-height:1;font-family:monospace;">${comp}%</div>
-            <div style="font-size:10px;color:#8896A4;margin-top:3px;">الإنجاز الكلي</div>
-          </div>
+      <div style="display:flex;gap:16px;align-items:center;">
+        <div style="text-align:center;">
+          <div style="font-size:28px;font-weight:900;color:${cc};font-family:monospace;">${comp}%</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.35);">الإنجاز الكلي</div>
+        </div>
+        <div style="width:1px;height:36px;background:rgba(255,255,255,.1);"></div>
+        <div style="text-align:center;">
+          <div style="font-size:22px;font-weight:900;color:#fff;font-family:monospace;">${completedCount}/${proj.stages.length}</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.35);">مراحل مكتملة</div>
         </div>
       </div>
     </div>
-
-    <!-- TIMELINE -->
-    <div style="padding:4px 24px 28px;display:flex;align-items:flex-start;direction:rtl;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;">
-      ${timelineHtml}
+    <div style="height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;margin-bottom:18px;">
+      <div style="height:100%;width:${comp}%;background:linear-gradient(90deg,#1B7A4A,var(--gold));border-radius:2px;"></div>
     </div>
-
-    <!-- INFO CARDS -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;background:#1C2D4A;border-top:1px solid rgba(255,255,255,.06);">
-      <div style="padding:16px 20px;border-left:1px solid rgba(255,255,255,.06);">
-        <div style="font-size:10px;color:#8896A4;font-weight:700;margin-bottom:10px;">📊 حالة المشروع</div>
-        <div style="display:inline-block;background:${needsAttention?"rgba(201,168,76,.15)":"rgba(27,122,74,.15)"};border:1px solid ${needsAttention?"rgba(201,168,76,.35)":"rgba(27,122,74,.35)"};color:${needsAttention?"#C9A84C":"#4ABA7A"};border-radius:8px;padding:5px 14px;font-size:13px;font-weight:800;margin-bottom:8px;">${needsAttention?"يحتاج متابعة":"على المسار"}</div>
-        <div style="font-size:11px;color:#8896A4;line-height:1.6;">${missingCurDocs.length>0?`ينقص ${missingCurDocs.length} مستندات في هذه المرحلة`:missingReqTotal>0?`${missingReqTotal} مستند مطلوب`:"المستندات الحالية مكتملة"}${missingReqTotal>0?`<br><span style="color:${needsAttention?"#C9A84C":"#8896A4"};">يوجد مستندات متأخرة</span>`:""}</div>
-      </div>
-      <div style="padding:16px 20px;border-left:1px solid rgba(255,255,255,.06);text-align:center;">
-        <div style="font-size:10px;color:#8896A4;font-weight:700;margin-bottom:8px;">📋 المرحلة الحالية</div>
-        <div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:10px;">${curSt?.label||"—"}</div>
-        ${responsible?`<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);border-radius:20px;padding:4px 12px;font-size:11px;color:#60A5FA;margin-bottom:6px;">المسؤول: ${responsible.name}</div>`:""}
-        <div style="font-size:11px;color:#8896A4;">📅 الموعد المتوقع: ${proj.nextAction||"—"}</div>
-      </div>
-      <div style="padding:16px 20px;">
-        <div style="font-size:10px;color:#8896A4;font-weight:700;margin-bottom:10px;">📝 الإجراء القادم</div>
-        ${missingCurDocs.length>0?`<ul style="margin:0;padding-right:16px;font-size:11px;color:#D1D9E0;line-height:2;list-style:disc;">${missingCurDocs.slice(0,3).map(d=>`<li>${d.label}</li>`).join("")}${missingCurDocs.length>3?`<li style="color:#8896A4;">و ${missingCurDocs.length-3} أخرى...</li>`:""}</ul>`:`<div style="font-size:11px;color:#8896A4;">لا توجد إجراءات معلقة</div>`}
-        <button onclick="switchStage(${ci})" style="margin-top:10px;background:transparent;border:1.5px solid #C9A84C;color:#C9A84C;border-radius:8px;padding:7px 16px;font-size:11px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;width:100%;">عرض التفاصيل</button>
-      </div>
+    <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;-webkit-overflow-scrolling:touch;">
+      ${stageTabs}
     </div>
-
-    <!-- STATS BAR -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);background:#0D1B2E;border-top:1px solid rgba(201,168,76,.2);padding:14px 24px;gap:10px;">
-      <div style="display:flex;align-items:center;gap:8px;"><span>🕐</span><div><div style="font-size:9px;color:#8896A4;">آخر تحديث</div><div style="font-size:11px;font-weight:700;color:#D1D9E0;">${proj.lastUpdated||"—"}</div></div></div>
-      <div style="display:flex;align-items:center;gap:8px;"><span>📄</span><div><div style="font-size:9px;color:#8896A4;">إجمالي المستندات</div><div style="font-size:11px;font-weight:700;color:#D1D9E0;">${totalDocs2} مستند</div></div></div>
-      <div style="display:flex;align-items:center;gap:8px;"><span>⚠️</span><div><div style="font-size:9px;color:#8896A4;">مستندات ناقصة</div><div style="font-size:11px;font-weight:700;color:${missingReqTotal>0?"#E67E22":"#4ABA7A"};">${missingReqTotal>0?missingReqTotal+" مستند":"لا يوجد"}</div></div></div>
-      <div style="display:flex;align-items:center;gap:8px;"><span>👤</span><div><div style="font-size:9px;color:#8896A4;">الصحة العامة</div><div style="font-size:11px;font-weight:700;color:${healthColor2};">${healthScore}/100</div></div></div>
-    </div>
-
   </div>
 
   <!-- BODY: 2 cols -->
