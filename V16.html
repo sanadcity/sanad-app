@@ -367,23 +367,46 @@ body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--t1);-webkit
         <button class="abtn" onclick="doLogin()">دخول للنظام ←</button>
       </div>
       <div id="rf" class="hid">
-        <div class="fw">
-          <div class="fg"><label class="fl">الاسم الكامل <span class="rq">*</span></label><input class="fi" id="rn" placeholder="محمد أحمد السيد"/></div>
-          <div class="fg"><label class="fl">رقم الهاتف <span class="rq">*</span></label><input class="fi" id="rph" type="tel" placeholder="01xxxxxxxxx"/></div>
+        <!-- Step 1: role selection -->
+        <div id="reg-step1">
+          <div class="fg"><label class="fl" style="font-size:14px;margin-bottom:10px;">اختر نوع حسابك أولاً</label>
+            <div style="display:grid;gap:8px;">
+              <button class="reg-type-btn" onclick="pickRegRole('client')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px solid var(--bd);border-radius:10px;background:var(--w2);cursor:pointer;text-align:right;font-family:Cairo,sans-serif;transition:all .18s;">
+                <span style="font-size:24px;">🏠</span>
+                <div><div style="font-weight:700;color:var(--t1);font-size:14px;">مالك عقار</div><div style="font-size:11px;color:var(--t3);">تسجيل برقمك القومي وكلمة مرور</div></div>
+              </button>
+              <button class="reg-type-btn" onclick="pickRegRole('office')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px solid var(--bd);border-radius:10px;background:var(--w2);cursor:pointer;text-align:right;font-family:Cairo,sans-serif;transition:all .18s;">
+                <span style="font-size:24px;">🏗️</span>
+                <div><div style="font-weight:700;color:var(--t1);font-size:14px;">مكتب هندسي</div><div style="font-size:11px;color:var(--t3);">تسجيل بالبريد الإلكتروني</div></div>
+              </button>
+              <button class="reg-type-btn" onclick="pickRegRole('developer')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px solid var(--bd);border-radius:10px;background:var(--w2);cursor:pointer;text-align:right;font-family:Cairo,sans-serif;transition:all .18s;">
+                <span style="font-size:24px;">🏢</span>
+                <div><div style="font-weight:700;color:var(--t1);font-size:14px;">مطور عقاري</div><div style="font-size:11px;color:var(--t3);">تسجيل بالبريد الإلكتروني</div></div>
+              </button>
+            </div>
+          </div>
         </div>
-        <div class="fg"><label class="fl">البريد الإلكتروني <span class="rq">*</span></label><input class="fi" id="re" type="email" placeholder="name@company.com"/></div>
-        <div class="fg" id="rg-nid-wrap" style="display:none;"><label class="fl">الرقم القومي <span class="rq">*</span></label><input class="fi" id="rnid" placeholder="14 رقم" maxlength="14"/></div>
-        <div class="fg"><label class="fl">كلمة المرور <span class="rq">*</span></label><input class="fi" id="rp" type="password" placeholder="8 أحرف على الأقل"/></div>
-        <div class="fg">
-          <label class="fl">نوع الحساب <span class="rq">*</span></label>
-          <select class="fs" id="rr" onchange="document.getElementById('rg-nid-wrap').style.display=this.value==='client'?'block':'none'">
-            <option value="">— اختر نوع حسابك —</option>
-            <option value="office">مكتب هندسي</option>
-            <option value="developer">مطور عقاري</option>
-            <option value="client">مالك عقار</option>
-          </select>
+        <!-- Step 2a: client (national ID only) -->
+        <div id="reg-step2-client" style="display:none;">
+          <button onclick="backToRegStep1()" style="background:none;border:none;color:var(--t3);cursor:pointer;font-family:Cairo,sans-serif;font-size:13px;margin-bottom:12px;padding:0;">← تغيير نوع الحساب</button>
+          <div style="background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:10px 13px;margin-bottom:14px;font-size:12px;color:var(--t2);">🔐 مالك عقار — الرقم القومي هو اسم المستخدم</div>
+          <div class="fg"><label class="fl">الاسم الكامل <span class="rq">*</span></label><input class="fi" id="rn-c" placeholder="محمد أحمد السيد"/></div>
+          <div class="fg"><label class="fl">الرقم القومي <span class="rq">*</span></label><input class="fi" id="rnid" placeholder="14 رقم" maxlength="14" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')"/></div>
+          <div class="fg"><label class="fl">كلمة المرور <span class="rq">*</span></label><input class="fi" id="rp-c" type="password" placeholder="8 أحرف على الأقل" onkeydown="if(event.key==='Enter')doReg()"/></div>
+          <input type="hidden" id="rr" value="client"/>
         </div>
-        <button class="abtn" onclick="doReg()" style="margin-top:4px;">إنشاء الحساب ←</button>
+        <!-- Step 2b: office / developer -->
+        <div id="reg-step2-other" style="display:none;">
+          <button onclick="backToRegStep1()" style="background:none;border:none;color:var(--t3);cursor:pointer;font-family:Cairo,sans-serif;font-size:13px;margin-bottom:12px;padding:0;">← تغيير نوع الحساب</button>
+          <div class="fw">
+            <div class="fg"><label class="fl">الاسم الكامل <span class="rq">*</span></label><input class="fi" id="rn" placeholder="محمد أحمد السيد"/></div>
+            <div class="fg"><label class="fl">رقم الهاتف <span class="rq">*</span></label><input class="fi" id="rph" type="tel" placeholder="01xxxxxxxxx"/></div>
+          </div>
+          <div class="fg"><label class="fl">البريد الإلكتروني <span class="rq">*</span></label><input class="fi" id="re" type="email" placeholder="name@company.com"/></div>
+          <div class="fg"><label class="fl">كلمة المرور <span class="rq">*</span></label><input class="fi" id="rp" type="password" placeholder="8 أحرف على الأقل" onkeydown="if(event.key==='Enter')doReg()"/></div>
+          <input type="hidden" id="rr-other" value=""/>
+        </div>
+        <button class="abtn" id="reg-submit-btn" onclick="doReg()" style="margin-top:4px;display:none;">إنشاء الحساب ←</button>
         <div style="margin-top:14px;background:rgba(37,211,102,.08);border:1px solid rgba(37,211,102,.2);border-radius:8px;padding:10px 13px;display:flex;align-items:center;gap:10px;">
           <span style="font-size:20px;">💬</span>
           <div>
@@ -1002,6 +1025,27 @@ const showReg=()=>{
   $("lf").classList.add("hid");$("rf").classList.remove("hid");
   $("tab-reg-btn").style.background="var(--n8)";$("tab-reg-btn").style.color="#fff";
   $("tab-login-btn").style.background="transparent";$("tab-login-btn").style.color="var(--t3)";
+  backToRegStep1();
+};
+const backToRegStep1=()=>{
+  $("reg-step1").style.display="";
+  $("reg-step2-client").style.display="none";
+  $("reg-step2-other").style.display="none";
+  $("reg-submit-btn").style.display="none";
+  sm("amsg","","");
+};
+const pickRegRole=(role)=>{
+  $("reg-step1").style.display="none";
+  $("reg-submit-btn").style.display="";
+  if(role==="client"){
+    $("reg-step2-client").style.display="";
+    $("reg-step2-other").style.display="none";
+    $("rr").value="client";
+  } else {
+    $("reg-step2-client").style.display="none";
+    $("reg-step2-other").style.display="";
+    $("rr-other").value=role;
+  }
 };
 
 const doLogin=()=>{
@@ -1019,19 +1063,31 @@ const doLogin=()=>{
 };
 
 const doReg=()=>{
-  const n=$("rn").value.trim(),ph=$("rph").value.trim(),e=$("re").value.trim(),p=$("rp").value,r=$("rr").value;
-  const nid=r==="client"?($("rnid")?.value.trim()||""):"";
   sm("amsg","","");
-  if(!n||!ph||!p||!r){sm("amsg","يرجى تعبئة كل الحقول المطلوبة","e");return;}
-  if(r==="client"&&(!nid||nid.length!==14)){sm("amsg","الرقم القومي يجب أن يكون 14 رقم","e");return;}
-  if(r!=="client"&&!e){sm("amsg","يرجى تعبئة البريد الإلكتروني","e");return;}
-  if(p.length<8){sm("amsg","كلمة المرور 8 أحرف على الأقل","e");return;}
+  const r=($("rr")?.value||$("rr-other")?.value||"");
+  if(!r){sm("amsg","يرجى اختيار نوع الحساب","e");return;}
+  let n,ph,e="",nid="",p;
+  if(r==="client"){
+    n=($("rn-c")?.value||"").trim();
+    nid=($("rnid")?.value||"").replace(/[^0-9]/g,"");
+    p=$("rp-c")?.value||"";
+    ph="";
+    if(!n){sm("amsg","يرجى إدخال الاسم الكامل","e");return;}
+    if(!/^\d{14}$/.test(nid)){sm("amsg","الرقم القومي يجب أن يكون 14 رقم (أرقام إنجليزية فقط)","e");return;}
+  } else {
+    n=($("rn")?.value||"").trim();
+    ph=($("rph")?.value||"").trim();
+    e=($("re")?.value||"").trim();
+    p=$("rp")?.value||"";
+    if(!n||!ph||!e){sm("amsg","يرجى تعبئة كل الحقول المطلوبة","e");return;}
+  }
+  if(!p||p.length<8){sm("amsg","كلمة المرور 8 أحرف على الأقل","e");return;}
   const users=LS.g(K.u)||[];
   if(e&&users.find(u=>u.email===e)){sm("amsg","هذا الإيميل مسجل بالفعل","e");return;}
   if(nid&&users.find(u=>u.nationalId===nid)){sm("amsg","هذا الرقم القومي مسجل بالفعل","e");return;}
   const status=r==="staff"?"pending":"active";
   const officeId=r==="office"?"OFF"+Date.now():null;
-  users.push({id:"u"+Date.now(),name:n,phone:ph,email:e||"",nationalId:nid||"",pass:p,role:r,status,created:new Date().toISOString().slice(0,10),officeId});
+  users.push({id:"u"+Date.now(),name:n,phone:ph,email:e,nationalId:nid,pass:p,role:r,status,created:new Date().toISOString().slice(0,10),officeId});
   LS.s(K.u,users);
   if(r==="staff"){sm("amsg","✓ تم إرسال طلبك — في انتظار موافقة الإدارة","o");}
   else{sm("amsg","✓ تم إنشاء حسابك بنجاح — يمكنك تسجيل الدخول الآن","o");}
