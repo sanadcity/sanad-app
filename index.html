@@ -785,6 +785,16 @@ const initData=()=>{
     }
   });
   if(partyFixed)LS.s(K.p,allProjs);
+  // strip "مكتمل — " prefix from devStatus
+  const allProjs2=LS.g(K.p)||[];
+  let statusFixed=false;
+  allProjs2.forEach(proj=>{
+    if(proj.devStatus&&proj.devStatus.startsWith("مكتمل — ")){
+      proj.devStatus=proj.devStatus.replace("مكتمل — ","");
+      statusFixed=true;
+    }
+  });
+  if(statusFixed)LS.s(K.p,allProjs2);
 };
 
 // ── STAGES ──
@@ -2441,6 +2451,13 @@ const openEditProj=id=>{
       <div class="fg"><label class="fl">اسم المالك <span class="rq">*</span></label><input class="fi" id="ep-name" value="${(proj.ownerName||"").replace(/"/g,"&quot;")}"/></div>
       <div class="fg"><label class="fl">الرقم القومي</label><input class="fi" id="ep-nid" value="${proj.nationalId||""}" maxlength="14" placeholder="14 رقم"/></div>
     </div>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--w2);border:1px solid var(--bdl);border-radius:8px;padding:8px 12px;margin-bottom:10px;">
+      <input type="checkbox" id="ep-isoriginal" ${proj.isOriginalOwner!==false?"checked":""} style="width:15px;height:15px;accent-color:var(--n8);cursor:pointer;"/>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--t1);">المالك الأصلي من الجهاز / الهيئة</div>
+        <div style="font-size:10px;color:var(--t3);">أزل التحديد لو كان المالك الحالي فقط وليس صاحب عقد الجهاز</div>
+      </div>
+    </label>
     <div class="fw">
       <div class="fg"><label class="fl">البريد الإلكتروني</label><input class="fi" id="ep-email" type="email" value="${proj.ownerEmail||""}" placeholder="owner@email.com"/></div>
       <div class="fg"><label class="fl">رقم الهاتف</label><input class="fi" id="ep-phone" value="${proj.phone||""}" placeholder="01xxxxxxxxx" dir="ltr"/></div>
@@ -2494,6 +2511,7 @@ const saveEditProj=id=>{
   proj.nationalId=document.getElementById("ep-nid")?.value?.trim()||proj.nationalId;
   proj.ownerEmail=document.getElementById("ep-email")?.value?.trim()||"";
   proj.phone=document.getElementById("ep-phone")?.value?.trim()||"";
+  proj.isOriginalOwner=document.getElementById("ep-isoriginal")?.checked!==false;
   proj.propertyState=document.getElementById("ep-ps")?.value||proj.propertyState;
   proj.requestType=document.getElementById("ep-rt")?.value||proj.requestType;
   proj.marketStatus=document.getElementById("ep-mkt")?.value||proj.marketStatus;
