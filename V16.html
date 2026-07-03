@@ -2032,7 +2032,8 @@ const rFile=()=>{
           ["الرقم القومي",proj.nationalId||"—"],
           ["المحافظة",proj.gov||"—"],
           ["المجاورة",proj.neighborhood||"—"],
-          ["سبب التسجيل",proj.serviceReason||"—"],
+          ["حالة العقار",proj.propertyState||"—"],
+          ["نوع الطلب",proj.requestType||"—"],
           ["النشاط",proj.activity||"—"],
           ["الأدوار",proj.floors?proj.floors+" أدوار":"—"],
           ["مصعد",proj.hasElevator?"نعم ✓":"لا"],
@@ -2040,6 +2041,7 @@ const rFile=()=>{
           ["حالة السوق",proj.marketStatus||"—"],
           ["كود الجهاز",proj.authorityCode||"—"],
         ].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bdl);"><span style="font-size:10px;color:var(--t3);">${l}</span><span style="font-size:11px;font-weight:600;color:var(--t1);">${v}</span></div>`).join("")}
+        ${(proj.requiredWorks||[]).length?`<div style="margin-top:8px;"><div style="font-size:9px;color:var(--t3);font-weight:700;margin-bottom:5px;">الأعمال المطلوبة</div><div style="display:flex;flex-wrap:wrap;gap:4px;">${(proj.requiredWorks||[]).map(w=>`<span style="font-size:9px;background:rgba(26,63,107,.08);color:var(--n8);border-radius:5px;padding:2px 7px;font-weight:600;">${w}</span>`).join("")}</div></div>`:""}
         ${proj.agents?.length?`<div style="margin-top:8px;font-size:10px;color:var(--t3);">الوكلاء: <span style="color:var(--t1);font-weight:600;">${proj.agents.map(a=>a.name).join(" · ")}</span></div>`:""}
         ${proj.pricePerMeter&&proj.area?`<div style="margin-top:10px;background:linear-gradient(135deg,var(--gl),#fff);border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:10px;"><div style="font-size:9px;color:var(--gd);font-weight:700;margin-bottom:2px;">💰 التقدير المالي</div><div style="font-size:16px;font-weight:800;color:var(--n8);font-family:monospace;">${fmtM(proj.area*proj.pricePerMeter)}</div><div style="font-size:9px;color:var(--gd);margin-top:2px;">${Number(proj.pricePerMeter).toLocaleString()} ج/م²</div></div>`:""}
       </div>
@@ -2444,8 +2446,12 @@ const openEditProj=id=>{
       <div class="fg"><label class="fl">رقم الهاتف</label><input class="fi" id="ep-phone" value="${proj.phone||""}" placeholder="01xxxxxxxxx" dir="ltr"/></div>
     </div>
     <div class="fw">
-      <div class="fg"><label class="fl">حالة التطوير</label><select class="fs" id="ep-dev">${DEV_STATUSES.map(v=>`<option ${proj.devStatus===v?"selected":""}>${v}</option>`).join("")}</select></div>
-      <div class="fg"><label class="fl">حالة السوق</label><select class="fs" id="ep-mkt">${["غير محدد","للبيع","للإيجار","شراكة","تطوير","مغلق"].map(v=>`<option ${proj.marketStatus===v?"selected":""}>${v}</option>`).join("")}</select></div>
+      <div class="fg"><label class="fl">حالة العقار</label><select class="fs" id="ep-ps">${["أرض فضاء","مبنى قائم","تحت الإنشاء","وحدة في عمارة","مبنى قديم / متهالك","أخرى"].map(v=>`<option ${proj.propertyState===v?"selected":""}>${v}</option>`).join("")}</select></div>
+      <div class="fg"><label class="fl">نوع الطلب</label><select class="fs" id="ep-rt">${["مشروع جديد","استكمال مشروع","خدمة منفردة","أرشفة مشروع","نقل إدارة مشروع"].map(v=>`<option ${proj.requestType===v?"selected":""}>${v}</option>`).join("")}</select></div>
+    </div>
+    <div class="fg" style="margin-bottom:8px;">
+      <label class="fl" style="margin-bottom:6px;">حالة السوق</label>
+      <select class="fs" id="ep-mkt">${["غير محدد","للبيع","للإيجار","شراكة","تطوير","مغلق"].map(v=>`<option ${proj.marketStatus===v?"selected":""}>${v}</option>`).join("")}</select>
     </div>
     <div class="fw">
       <div class="fg"><label class="fl">الحي / المنطقة</label><input class="fi" id="ep-dist" value="${proj.district||""}"/></div>
@@ -2488,7 +2494,8 @@ const saveEditProj=id=>{
   proj.nationalId=document.getElementById("ep-nid")?.value?.trim()||proj.nationalId;
   proj.ownerEmail=document.getElementById("ep-email")?.value?.trim()||"";
   proj.phone=document.getElementById("ep-phone")?.value?.trim()||"";
-  proj.devStatus=document.getElementById("ep-dev")?.value||proj.devStatus;
+  proj.propertyState=document.getElementById("ep-ps")?.value||proj.propertyState;
+  proj.requestType=document.getElementById("ep-rt")?.value||proj.requestType;
   proj.marketStatus=document.getElementById("ep-mkt")?.value||proj.marketStatus;
   proj.district=document.getElementById("ep-dist")?.value?.trim()||proj.district;
   proj.area=Number(document.getElementById("ep-area")?.value)||proj.area;
@@ -2737,7 +2744,7 @@ const delCP=()=>{
 // ── NEW PROJECT WIZARD ──
 const openNP=()=>{
   PS=1;
-  PFrm={type:"normal",activity:"سكني",gov:"",city:"",district:"",neighborhood:"",devStatus:"قيد التخطيط",marketStatus:"غير محدد",serviceReason:"مشروع كامل",currentStage:"—",nextAction:"",hasElevator:false,hasBasement:false,hasPool:false,hasPergola:false,models:[{name:"نموذج A",count:"",area:""}],agents:[]};
+  PFrm={type:"normal",activity:"سكني",gov:"",city:"",district:"",neighborhood:"",propertyState:"أرض فضاء",requestType:"مشروع جديد",requiredWorks:[],marketStatus:"غير محدد",nextAction:"",hasElevator:false,hasBasement:false,hasPool:false,hasPergola:false,models:[{name:"نموذج A",count:"",area:""}],agents:[]};
   rPM();$("mnp").classList.remove("hid");
 };
 
@@ -2810,19 +2817,29 @@ const rPM=()=>{
     foot=`<button class="btn btn-gh" onclick="cm('mnp')">إلغاء</button><div style="flex:1;"></div><button class="btn btn-p" onclick="nxPS()">الخطوة التالية ‹</button>`;
   }
 
+  const PROPERTY_STATES=["أرض فضاء","مبنى قائم","تحت الإنشاء","وحدة في عمارة","مبنى قديم / متهالك","أخرى"];
+  const REQUEST_TYPES=["مشروع جديد","استكمال مشروع","خدمة منفردة","أرشفة مشروع","نقل إدارة مشروع"];
+  const REQUIRED_WORKS=["قرار وزاري","تقنين أوضاع","ترخيص بناء","ترخيص هدم","ترخيص تعديل معماري","ترخيص تعديل إنشائي","تصميم معماري","تصميم إنشائي","تصميم كهربائي","MEP","رسومات تنفيذية","إشراف هندسي","تسجيل أونلاين (مجمعة عشرية)","تصالح على مخالفة","إضافة 75% سطح","ادخال مرافق"];
   if(PS===2){
+    const rw=PFrm.requiredWorks||[];
     body=`
     <div class="fw">
-      <div class="fg"><label class="fl">حالة التطوير</label><select class="fs" id="pds">${DEV_STATUSES.map(v=>`<option ${PFrm.devStatus===v?"selected":""}>${v}</option>`).join("")}</select></div>
+      <div class="fg"><label class="fl">حالة العقار</label><select class="fs" id="pps">${PROPERTY_STATES.map(v=>`<option ${PFrm.propertyState===v?"selected":""}>${v}</option>`).join("")}</select></div>
+      <div class="fg"><label class="fl">نوع الطلب</label><select class="fs" id="prt">${REQUEST_TYPES.map(v=>`<option ${PFrm.requestType===v?"selected":""}>${v}</option>`).join("")}</select></div>
+    </div>
+    <div class="fw">
       <div class="fg"><label class="fl">حالة السوق</label><select class="fs" id="pms">${["غير محدد","للبيع","للإيجار","شراكة","تطوير","مغلق"].map(v=>`<option ${PFrm.marketStatus===v?"selected":""}>${v}</option>`).join("")}</select></div>
-    </div>
-    <div class="fw">
       <div class="fg"><label class="fl">سعر المتر تقديري (ج.م)</label><input class="fi" id="ppm" type="number" value="${PFrm.pricePerMeter||""}" placeholder="18000"/></div>
-      <div class="fg"><label class="fl">البريد الإلكتروني للمالك</label><input class="fi" id="pem" type="email" value="${PFrm.ownerEmail||""}" placeholder="owner@email.com"/></div>
     </div>
-    <div class="fw">
-      <div class="fg"><label class="fl">سبب التسجيل</label><select class="fs" id="psr">${["مشروع كامل","ترخيص","تصالح","شهادة إشراف","تقرير تربة","مجمعة عشرية","رفع مساحي","تعديل ترخيص","توصيل مرافق","استشارة فقط"].map(v=>`<option ${PFrm.serviceReason===v?"selected":""}>${v}</option>`).join("")}</select></div>
-      <div class="fg"><label class="fl">المرحلة الحالية</label><select class="fs" id="pcs">${["—","ملكية العقار","التراخيص والتصاريح","الرسومات والمخططات","التنفيذ والإنشاء","المرافق والتشغيل","التسليم والإشغال"].map(v=>`<option ${PFrm.currentStage===v?"selected":""}>${v}</option>`).join("")}</select></div>
+    <div class="fg"><label class="fl">البريد الإلكتروني للمالك</label><input class="fi" id="pem" type="email" value="${PFrm.ownerEmail||""}" placeholder="owner@email.com"/></div>
+    <div class="fg" style="margin-top:8px;">
+      <label class="fl" style="margin-bottom:8px;">الأعمال المطلوبة</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        ${REQUIRED_WORKS.map(w=>`<label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t1);cursor:pointer;background:var(--w2);border:1px solid var(--bdl);border-radius:7px;padding:6px 10px;">
+          <input type="checkbox" id="rw-${w}" ${rw.includes(w)?"checked":""} style="width:14px;height:14px;accent-color:var(--n8);cursor:pointer;"/>
+          ${w}
+        </label>`).join("")}
+      </div>
     </div>
     <div class="fg"><label class="fl">الإجراء المنتظر حالياً</label><input class="fi" id="pna" value="${PFrm.nextAction||""}" placeholder="مثال: انتظار تقرير التربة، سداد رسوم النقابة..."/></div>
     <div class="fg"><label class="fl">ملاحظات</label><textarea class="fi" id="pno" rows="3" placeholder="أي ملاحظات إضافية...">${PFrm.note||""}</textarea></div>`;
@@ -2882,12 +2899,12 @@ const nxPS=()=>{
     PFrm.hasPergola=$("pper")?.checked||false;
   }
   if(PS===2){
-    PFrm.devStatus=$("pds")?.value||"قيد التخطيط";
+    PFrm.propertyState=$("pps")?.value||"أرض فضاء";
+    PFrm.requestType=$("prt")?.value||"مشروع جديد";
     PFrm.marketStatus=$("pms")?.value||"غير محدد";
     PFrm.pricePerMeter=$("ppm")?.value||"";
     PFrm.ownerEmail=$("pem")?.value||"";
-    PFrm.serviceReason=$("psr")?.value||"مشروع كامل";
-    PFrm.currentStage=$("pcs")?.value||"—";
+    PFrm.requiredWorks=[...document.querySelectorAll('[id^="rw-"]')].filter(cb=>cb.checked).map(cb=>cb.id.replace("rw-",""));
     PFrm.nextAction=$("pna")?.value||"";
     PFrm.note=$("pno")?.value||"";
   }
@@ -2899,7 +2916,7 @@ const uMd=(i,k,v)=>{PFrm.models[i][k]=v;};
 const rMd=i=>{PFrm.models.splice(i,1);rPM();};
 
 const svPF=()=>{
-  if(PS===2){PFrm.devStatus=$("pds")?.value||"قيد التخطيط";PFrm.marketStatus=$("pms")?.value||"غير محدد";PFrm.pricePerMeter=$("ppm")?.value||"";PFrm.ownerEmail=$("pem")?.value||"";PFrm.serviceReason=$("psr")?.value||"مشروع كامل";PFrm.currentStage=$("pcs")?.value||"—";PFrm.nextAction=$("pna")?.value||"";PFrm.note=$("pno")?.value||"";}
+  if(PS===2){PFrm.propertyState=$("pps")?.value||"أرض فضاء";PFrm.requestType=$("prt")?.value||"مشروع جديد";PFrm.marketStatus=$("pms")?.value||"غير محدد";PFrm.pricePerMeter=$("ppm")?.value||"";PFrm.ownerEmail=$("pem")?.value||"";PFrm.requiredWorks=[...document.querySelectorAll('[id^="rw-"]')].filter(cb=>cb.checked).map(cb=>cb.id.replace("rw-",""));PFrm.nextAction=$("pna")?.value||"";PFrm.note=$("pno")?.value||"";}
   if(PS===3)PFrm.totalUnits=$("pun")?.value||"";
   const isC=PFrm.type==="compound";
   const stages=STAGES
@@ -2925,9 +2942,9 @@ const svPF=()=>{
     authorityCode:PFrm.authorityCode||"",floors:Number(PFrm.floors)||0,
     hasElevator:PFrm.hasElevator||false,hasBasement:PFrm.hasBasement||false,
     hasPool:PFrm.hasPool||false,hasPergola:PFrm.hasPergola||false,
-    devStatus:PFrm.devStatus||"قيد التخطيط",marketStatus:PFrm.marketStatus||"غير محدد",
-    pricePerMeter:Number(PFrm.pricePerMeter)||0,note:PFrm.note||"",
-    serviceReason:PFrm.serviceReason||"مشروع كامل",currentStage:PFrm.currentStage||"—",nextAction:PFrm.nextAction||"",
+    propertyState:PFrm.propertyState||"أرض فضاء",requestType:PFrm.requestType||"مشروع جديد",
+    requiredWorks:PFrm.requiredWorks||[],marketStatus:PFrm.marketStatus||"غير محدد",
+    pricePerMeter:Number(PFrm.pricePerMeter)||0,note:PFrm.note||"",nextAction:PFrm.nextAction||"",
     isCompound:isC,totalUnits:Number(PFrm.totalUnits)||0,
     compoundModels:isC?(PFrm.models||[]):[],stages,
     parties:[],
