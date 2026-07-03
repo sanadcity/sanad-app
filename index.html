@@ -1141,7 +1141,7 @@ const restoreFilesFromStorage=async()=>{
         for(const itemRef of filesRes.items){
           const fileName=itemRef.name;
           const docKey=fileName.split("_")[0];
-          const url=`https://firebasestorage.googleapis.com/v0/b/sanad-city.firebasestorage.app/o/${encodeURIComponent(proj.id+"/"+stageKey+"/"+fileName)}?alt=media`;
+          const url=`https://firebasestorage.googleapis.com/v0/b/sanad-city.firebasestorage.app/o/${encodeURIComponent("projects/"+proj.id+"/"+stageKey+"/"+fileName)}?alt=media`;
           const stage=(proj.stages||[]).find(s=>s.key===stageKey);
           if(stage){
             const doc=(stage.docs||[]).find(d=>d.key===docKey);
