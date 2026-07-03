@@ -744,7 +744,13 @@ const STAGES=[
     {key:"p7b",label:"وثيقة تأمين المصعد",req:true,cond:"elev"},
     {key:"p7c",label:"تقرير استشاري المصعد",req:true,cond:"elev"},
     {key:"p8", label:"طلب الترخيص",req:true},
-    {key:"p9", label:"رخصة البناء",req:true}
+    {key:"p9", label:"رخصة البناء",req:true},
+    {key:"eng1",label:"المهندس — صورة البطاقة (وجه)",req:true},
+    {key:"eng2",label:"المهندس — صورة البطاقة (ظهر)",req:true},
+    {key:"eng3",label:"المهندس — كارنيه النقابة",req:true},
+    {key:"eng4",label:"المهندس — البطاقة الضريبية",req:true},
+    {key:"eng5",label:"المهندس — غلاف السجل الهندسي",req:true},
+    {key:"eng6",label:"المهندس — صفحة تسجيل المشروع",req:true}
   ]},
   {key:"exec",label:"التنفيذ والتوثيق",icon:"🏗",color:"#5A3A1C",docs:[
     {key:"ex1",label:"عقد المقاول",req:true},
@@ -1332,6 +1338,29 @@ const rFile=()=>{
   };
 
   // land stage: custom grouped layout
+  const stageCustomHtml=(()=>{
+    const ownerHeader=(title,icon,color)=>`<div style="margin:16px 0 10px;padding:10px 16px;background:var(--n7);border-right:3px solid ${color};border-radius:8px;display:flex;align-items:center;gap:8px;"><span style="font-size:16px;">${icon}</span><span style="font-size:14px;font-weight:800;color:#fff;">${title}</span></div>`;
+
+    if(stage.key==="permits"){
+      const sk=stage.key;
+      const engKeys=["eng1","eng2","eng3","eng4","eng5","eng6"];
+      const engDocs=engKeys.map(k=>allDocs.find(d=>d.key===k)).filter(Boolean);
+      const regularDocs=allDocs.filter(d=>!engKeys.includes(d.key)&&!(stage.cd||[]).some(c=>c.key===d.key));
+      const cdDocs=stage.cd||[];
+      let html=regularDocs.map(d=>`${mkDocCard(d,sk,false,false)}<div style="margin-bottom:8px;"></div>`).join("");
+      if(engDocs.length){
+        html+=ownerHeader("مستندات المهندس المشرف","🏗","#3D5A8A");
+        html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">${engDocs.slice(0,2).map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`;
+        html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">${engDocs.slice(2,4).map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`;
+        if(engDocs.length>4)html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">${engDocs.slice(4).map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`;
+      }
+      if(cdDocs.length)html+=`<div style="margin-top:8px;">${cdDocs.map(d=>mkDocCard(d,sk,true,false)).join("")}</div>`;
+      return html;
+    }
+
+    return null;
+  })();
+
   const landDocsHtml=(()=>{
     if(stage.key!=="land")return null;
     const get=k=>allDocs.find(d=>d.key===k);
@@ -1350,7 +1379,7 @@ const rFile=()=>{
     return html;
   })();
 
-  const docsHtml=landDocsHtml!==null?landDocsHtml:allDocs.map(doc=>{
+  const docsHtml=stageCustomHtml!==null?stageCustomHtml:landDocsHtml!==null?landDocsHtml:allDocs.map(doc=>{
     const isC=(stage.cd||[]).some(d=>d.key===doc.key);
     const sk=stage.key,dk=doc.key;
     const groupHeader="";
