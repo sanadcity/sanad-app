@@ -1354,7 +1354,7 @@ const rFile=()=>{
       <span style="font-size:18px;">✅</span>
       <div style="flex:1;min-width:0;"><div style="font-size:10px;font-weight:700;color:#1B7A4A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${doc.up.name||"ملف"}</div><div style="font-size:9px;color:var(--t3);">${doc.up.size||""}${doc.up.date?" · "+doc.up.date:""}</div></div>
       <div style="display:flex;gap:4px;flex-shrink:0;">
-        <button onclick="prvF('${doc.up.url||doc.up.data}','${(doc.up.name||"").replace(/'/g,"\\'")}',${doc.up.type?.includes("pdf")||false})" class="btn btn-gh btn-xs">👁</button>
+        <button onclick="previewFile('${doc.up.url||doc.up.data}','${(doc.up.name||"").replace(/'/g,"\\'")}','${doc.up.type||""}')" class="btn btn-gh btn-xs">👁</button>
         <a href="${doc.up.url||doc.up.data}" download="${doc.up.name}" class="btn btn-gh btn-xs">⬇</a>
         ${can?`<button onclick="rF('${sk}','${dk}',${isC})" class="btn btn-d btn-xs">🗑</button>`:""}
       </div></div>`:can?`<label style="display:flex;flex-direction:column;align-items:center;gap:3px;border:1.5px dashed var(--bdl);border-radius:8px;padding:${compact?"8px":"12px"};text-align:center;cursor:pointer;background:var(--w2);margin-top:6px;" for="up-${sk}-${dk}"><span style="font-size:${compact?"16px":"20px"};opacity:.4;">📤</span><span style="font-size:10px;font-weight:600;color:var(--t2);">رفع الملف</span><input type="file" id="up-${sk}-${dk}" accept=".pdf,.jpg,.jpeg,.png,.dwg,.dxf" onchange="hUp('${sk}','${dk}',${isC},this)" style="display:none;"/></label>`:`<div style="background:var(--w2);border-radius:8px;padding:8px;text-align:center;color:var(--t3);font-size:10px;margin-top:6px;">لم يُرفع بعد</div>`;
