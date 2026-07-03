@@ -703,6 +703,36 @@ const initData=()=>{
     if(dirty)LS.s(K.p,migrated);
   };
   migrateProjects();
+  // patch: add missing docs to existing stages
+  const patchDocs=()=>{
+    const projects=LS.g(K.p)||[];
+    if(!projects.length)return;
+    const newDocs={
+      permits:[
+        {key:"eng1",label:"المهندس — صورة البطاقة (وجه)",req:true},
+        {key:"eng2",label:"المهندس — صورة البطاقة (ظهر)",req:true},
+        {key:"eng3",label:"المهندس — كارنيه النقابة",req:true},
+        {key:"eng4",label:"المهندس — البطاقة الضريبية",req:true},
+        {key:"eng5",label:"المهندس — غلاف السجل الهندسي",req:true},
+        {key:"eng6",label:"المهندس — صفحة تسجيل المشروع",req:true},
+      ]
+    };
+    let dirty=false;
+    projects.forEach(proj=>{
+      proj.stages.forEach(s=>{
+        const extra=newDocs[s.key];
+        if(!extra)return;
+        extra.forEach(nd=>{
+          if(!s.docs.find(d=>d.key===nd.key)){
+            s.docs.push({...nd,up:null,notes:[]});
+            dirty=true;
+          }
+        });
+      });
+    });
+    if(dirty)LS.s(K.p,projects);
+  };
+  patchDocs();
 };
 
 // ── STAGES ──
