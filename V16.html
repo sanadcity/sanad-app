@@ -1827,7 +1827,10 @@ const rFile=()=>{
     </div>
   </div>`;
 
-  $("fc").innerHTML=html;
+  const fc=$("fc");
+  const scrollY=fc?fc.scrollTop:0;
+  fc.innerHTML=html;
+  if(scrollY)fc.scrollTop=scrollY;
 };
 
 // ── PARTIES MANAGEMENT ──
