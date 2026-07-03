@@ -1161,7 +1161,10 @@ const restoreFilesFromStorage=async()=>{
       }
     }
   }
-  LS.s(K.p,projects);
+  // save locally first
+  localStorage.setItem(K.p,JSON.stringify(projects));
+  // await Firestore push before reload so pullDB gets fresh data
+  await DB.collection("sanad").doc(K.p).set({v:JSON.stringify(projects)});
   alert(`✅ تم استرجاع ${restored} ملف — جارٍ إعادة التحميل`);
   location.reload();
 };

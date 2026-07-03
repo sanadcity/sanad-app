@@ -673,126 +673,24 @@ const initData=()=>{
   let uChanged=false;
   users2.forEach(u=>{if(!u.code){u.code=genUserCode(u.role);uChanged=true;}});
   if(uChanged)LS.s(K.u,users2);
-  // migrate old stage labels
-  const LABEL_MAP={"الاستحواذ على الأرض":"ملكية العقار"};
-  // migrate old doc labels
-  const DOC_LABEL_MAP={
-    "شهادة إشراف الحفر":"شهادة إشراف",
-    "التصميمات الإنشائية والمعمارية":"التصميمات الإنشائية",
-    "الرسومات الإنشائية":"التصميمات الإنشائية",
-    "التصاميم الإنشائية والمعمارية":"التصميمات الإنشائية",
-    "وثيقة المجمعة":"وثيقة تأمين المجمعة / تقرير استشاري",
-    "وثيقة المجمعه":"وثيقة تأمين المجمعة / تقرير استشاري",
-    "عقد مقاولة الحفر":"عقد مقاولة",
-  };
-  const projs=LS.g(K.p)||[];
-  let changed=false;
-  projs.forEach(p=>(p.stages||[]).forEach(s=>{
-    if(LABEL_MAP[s.label]){s.label=LABEL_MAP[s.label];changed=true;}
-    (s.docs||[]).forEach(d=>{if(DOC_LABEL_MAP[d.label]){d.label=DOC_LABEL_MAP[d.label];changed=true;}});
-    (s.cd||[]).forEach(d=>{if(DOC_LABEL_MAP[d.label]){d.label=DOC_LABEL_MAP[d.label];changed=true;}});
-  }));
-  // migrate: add بيان صلاحية الموقع as first doc in permits stage if missing
-  projs.forEach(p=>{
-    const ps=p.stages?.find(s=>s.key==="permits");
-    if(ps&&!ps.docs?.find(d=>d.key==="p0")){
-      ps.docs=[{key:"p0",label:"بيان صلاحية الموقع",req:true,up:null,note:""},...(ps.docs||[])];
-      changed=true;
-    }
-  });
-  // migrate: restructure land stage docs
-  projs.forEach(p=>{
-    const ls=p.stages?.find(s=>s.key==="land");
-    if(!ls)return;
-    // remove كراسة الاشتراطات
-    const before=ls.docs?.length||0;
-    ls.docs=(ls.docs||[]).filter(d=>d.key!=="l3");
-    if(ls.docs.length!==before)changed=true;
-    // rename old labels
-    const landMap={
-      "صورة الرقم القومي — المالك (وجه)":"المالك الأول — صورة البطاقة (وجه)",
-      "صورة الرقم القومي — المالك (ظهر)":"المالك الأول — صورة البطاقة (ظهر)",
-      "صورة الرقم القومي — الوكيل (وجه) (إن وجد)":"المالك الثاني — صورة البطاقة (وجه)",
-      "صورة الرقم القومي — الوكيل (ظهر) (إن وجد)":"المالك الثاني — صورة البطاقة (ظهر)",
-      "توكيل رسمي — المالك الأصلي (إن وجد)":"المالك الثاني — توكيل رسمي",
-      "عقد الملكية / العقد الابتدائي":"المالك الثاني — عقد البيع",
-    };
-    (ls.docs||[]).forEach(d=>{if(landMap[d.label]){d.label=landMap[d.label];changed=true;}});
-    // add new docs if missing
-    if(!ls.docs?.find(d=>d.key==="l4a")){ls.docs=[...(ls.docs||[]),{key:"l4a",label:"المالك الأول — عقد الهيئة / الجهاز",req:true,up:null,note:""}];changed=true;}
-    if(!ls.docs?.find(d=>d.key==="l5b")){ls.docs=[...(ls.docs||[]),{key:"l5b",label:"المالك الثاني — عقد البيع",req:false,up:null,note:""}];changed=true;}
-  });
-  // migrate: add elevator docs if missing
-  projs.forEach(p=>{
-    if(!p.hasElevator)return;
-    const ps=p.stages?.find(s=>s.key==="permits");
-    if(!ps)return;
-    if(!ps.docs?.find(d=>d.key==="p7b")){ps.docs=[...(ps.docs||[]),{key:"p7b",label:"وثيقة تأمين المصعد",req:true,up:null,note:"",cond:"elev"}];changed=true;}
-    if(!ps.docs?.find(d=>d.key==="p7c")){ps.docs=[...(ps.docs||[]),{key:"p7c",label:"تقرير استشاري المصعد",req:true,up:null,note:"",cond:"elev"}];changed=true;}
-  });
-  // migrate: restructure stages to new schema (v2)
-  const NEW_ORDER=["decree","land","design","permits","exec","finish","utilities","delivery","ops"];
-  const REMOVE_OLD=["excavation","foundations","mep","exterior","interior","handover"];
-  const mkDocs=defs=>defs.map(d=>({...d,up:null,note:""}));
-  projs.forEach(p=>{
-    if(!p.stages)return;
-    // fix design label
-    const ds=p.stages.find(s=>s.key==="design");
-    if(ds&&ds.label==="التصاميم الهندسية"){ds.label="التصميمات الهندسية";changed=true;}
-    // migrate handover → delivery
-    const hs=p.stages.find(s=>s.key==="handover");
-    if(hs&&!p.stages.find(s=>s.key==="delivery")){
-      p.stages.push({key:"delivery",label:"التسليم والمطابقة",icon:"✅",color:"#1B7A4A",docs:hs.docs||[],cd:hs.cd||[]});
-      changed=true;
-    }
-    // remove old stages
-    const before=p.stages.length;
-    p.stages=p.stages.filter(s=>!REMOVE_OLD.includes(s.key));
-    if(p.stages.length!==before)changed=true;
-    // add missing new stages
-    const stgDefs={
-      exec:STAGES.find(s=>s.key==="exec"),
-      finish:STAGES.find(s=>s.key==="finish"),
-      utilities:STAGES.find(s=>s.key==="utilities"),
-      delivery:STAGES.find(s=>s.key==="delivery"),
-      ops:STAGES.find(s=>s.key==="ops"),
-    };
-    ["exec","finish","utilities","delivery","ops"].forEach(k=>{
-      if(!p.stages.find(s=>s.key===k)&&stgDefs[k]){
-        p.stages.push({...stgDefs[k],docs:mkDocs(stgDefs[k].docs),cd:[]});
-        changed=true;
-      }
-    });
-    // update ops docs if old structure
-    const os=p.stages.find(s=>s.key==="ops");
-    if(os&&os.docs?.length<=2&&!os.docs?.find(d=>d.key==="o3")){
-      os.docs=[
-        ...(os.docs||[]),
-        {key:"o3",label:"الكتالوجات",req:false,up:null,note:""},
-        {key:"o4",label:"سجلات الصيانة",req:false,up:null,note:""},
-        {key:"o5",label:"البلاغات",req:false,up:null,note:""},
-      ];
-      changed=true;
-    }
-    // reorder stages to match NEW_ORDER
-    p.stages.sort((a,b)=>{
-      const ai=NEW_ORDER.indexOf(a.key);
-      const bi=NEW_ORDER.indexOf(b.key);
-      return (ai===-1?999:ai)-(bi===-1?999:bi);
-    });
-  });
-  if(changed)LS.s(K.p,projs);
-  // migrate to new STAGES schema
+  // rebuild stages for any project not on current STAGES schema
+  const STAGE_KEYS_NORMAL=STAGES.filter(s=>!s.forC).map(s=>s.key).join(",");
+  const STAGE_KEYS_COMPOUND=STAGES.map(s=>s.key).join(",");
   const migrateProjects=()=>{
     const projects=LS.g(K.p)||[];
     if(!projects.length)return;
+    let dirty=false;
     const migrated=projects.map(proj=>{
-      if(proj.stages&&proj.stages.some(s=>s.key==="ownership"))return proj;
+      const isComp=proj.isCompound||proj.type==="compound";
+      const expected=isComp?STAGE_KEYS_COMPOUND:STAGE_KEYS_NORMAL;
+      const projKeys=(proj.stages||[]).map(s=>s.key).join(",");
+      if(projKeys===expected)return proj;
+      dirty=true;
       const oldStages=proj.stages||[];
-      const newStages=STAGES.map(stageDef=>{
+      const newStages=STAGES.filter(s=>!s.forC||isComp).map(stageDef=>{
         const oldStage=oldStages.find(s=>s.key===stageDef.key);
         return{
-          ...stageDef,
+          key:stageDef.key,label:stageDef.label,icon:stageDef.icon,color:stageDef.color,
           docs:stageDef.docs.map(docDef=>{
             const oldDoc=oldStage?.docs?.find(d=>d.key===docDef.key);
             return{...docDef,up:oldDoc?.up||null,note:oldDoc?.note||""};
@@ -802,83 +700,105 @@ const initData=()=>{
       });
       return{...proj,stages:newStages};
     });
-    LS.s(K.p,migrated);
+    if(dirty)LS.s(K.p,migrated);
   };
   migrateProjects();
 };
 
 // ── STAGES ──
 const STAGES=[
-  {key:"ownership",label:"ملكية العقار",icon:"🏠",color:"#1B7A4A",docs:[
-    {key:"notice",   label:"إخطار التخصيص",              req:true},
-    {key:"receipt",  label:"محضر استلام الأرض",           req:true},
-    {key:"proxy",    label:"توكيل رسمي (إن وجد)",         req:false},
-    {key:"sketch",   label:"كروكي الأرض",                 req:true},
-    {key:"booklet",  label:"كراسة الاشتراطات",            req:true},
-    {key:"owner_id", label:"الرقم القومي للمالك",         req:true},
-    {key:"agent_id", label:"الرقم القومي للوكيل",         req:false},
-    {key:"contract", label:"عقد الملكية / العقد الابتدائي",req:true},
+  {key:"decree",label:"القرار الوزاري",icon:"🏛",color:"#4A1A6B",forC:true,docs:[
+    {key:"d1",label:"القرار الوزاري",req:true},
+    {key:"d2",label:"المخطط العام",req:true},
+    {key:"d3",label:"موافقة الهيئة",req:true},
+    {key:"d4",label:"موافقة الجهاز المحلي",req:true},
+    {key:"d5",label:"قرار التخصيص",req:true}
+  ]},
+  {key:"land",label:"ملكية العقار",icon:"🏠",color:"#1A3F6B",docs:[
+    {key:"l2",label:"كروكي الأرض",req:true},
+    {key:"l0",label:"إخطار التخصيص",req:true},
+    {key:"l1",label:"محضر استلام الأرض",req:true},
+    {key:"l4a",label:"المالك الأول — عقد الهيئة / الجهاز",req:true},
+    {key:"l4b",label:"المالك الأول — صورة البطاقة (وجه)",req:true},
+    {key:"l4c",label:"المالك الأول — صورة البطاقة (ظهر)",req:true},
+    {key:"l5a",label:"المالك الثاني — توكيل رسمي",req:false},
+    {key:"l5b",label:"المالك الثاني — عقد البيع",req:false},
+    {key:"l5c",label:"المالك الثاني — صورة البطاقة (وجه)",req:false},
+    {key:"l5d",label:"المالك الثاني — صورة البطاقة (ظهر)",req:false},
   ]},
   {key:"design",label:"التصميمات الهندسية",icon:"📐",color:"#3D5A8A",docs:[
-    {key:"arch",   label:"الرسومات المعمارية المعتمدة",   req:true},
-    {key:"struct", label:"رسومات الهيكل الخرساني",        req:true},
-    {key:"detail", label:"المخططات التفصيلية",            req:false},
-    {key:"calc",   label:"تقرير الحساب الإنشائي",         req:false},
+    {key:"des1",label:"الرسومات المعمارية المعتمدة",req:true},
+    {key:"des2",label:"التصميمات الإنشائية",req:true},
+    {key:"des3",label:"المخططات التفصيلية",req:false},
+    {key:"des4",label:"تقرير الحساب الإنشائي",req:false}
   ]},
   {key:"permits",label:"التراخيص والتصاريح",icon:"📑",color:"#C9A84C",docs:[
-    {key:"soil",      label:"تقرير تربة معتمد",           req:true},
-    {key:"consult",   label:"تقرير استشاري معتمد",        req:true},
-    {key:"civil_def", label:"موافقة الدفاع المدني",       req:false,cond:"comm"},
-    {key:"env",       label:"موافقة بيئية",               req:false,cond:"comm"},
-    {key:"traffic",   label:"موافقة مرورية",              req:false,cond:"comm"},
-    {key:"assembly",  label:"وثيقة المجمعة العشرية",      req:false},
-    {key:"elev_con",  label:"عقد مقاولة المصعد",          req:false,cond:"elev"},
-    {key:"lic_req",   label:"طلب الترخيص",                req:true},
-    {key:"license",   label:"رخصة البناء",                req:true},
+    {key:"p0", label:"بيان صلاحية الموقع",req:true},
+    {key:"p1", label:"تقرير تربة معتمد",req:true},
+    {key:"p2", label:"تقرير استشاري معتمد",req:true},
+    {key:"p3", label:"موافقة الدفاع المدني",req:false,cond:"comm"},
+    {key:"p4", label:"موافقة بيئية",req:false,cond:"comm"},
+    {key:"p5", label:"موافقة مرورية",req:false,cond:"comm"},
+    {key:"p6", label:"وثيقة تأمين المجمعة / تقرير استشاري",req:false},
+    {key:"p7", label:"عقد مقاولة المصعد",req:true,cond:"elev"},
+    {key:"p7b",label:"وثيقة تأمين المصعد",req:true,cond:"elev"},
+    {key:"p7c",label:"تقرير استشاري المصعد",req:true,cond:"elev"},
+    {key:"p8", label:"طلب الترخيص",req:true},
+    {key:"p9", label:"رخصة البناء",req:true}
   ]},
-  {key:"execution",label:"التنفيذ والتوثيق",icon:"🏗",color:"#8A5A1C",docs:[
-    {key:"con_contract",label:"عقد المقاول",              req:true},
-    {key:"assignment",  label:"أوامر الإسناد",            req:false},
-    {key:"exec_permit", label:"تصاريح التنفيذ",           req:true},
-    {key:"concrete",    label:"اختبارات الخرسانة",        req:false},
-    {key:"pour_report", label:"محاضر الصب",               req:false},
-    {key:"warranty_ex", label:"الضمانات",                 req:false},
+  {key:"exec",label:"التنفيذ والتوثيق",icon:"🏗",color:"#5A3A1C",docs:[
+    {key:"ex1",label:"عقد المقاول",req:true},
+    {key:"ex2",label:"أوامر الإسناد",req:false},
+    {key:"ex3",label:"تصاريح التنفيذ",req:false},
+    {key:"ex4",label:"اختبارات الخرسانة",req:false},
+    {key:"ex5",label:"محاضر الصب",req:false},
+    {key:"ex6",label:"الضمانات",req:false}
   ]},
-  {key:"finishing",label:"الديكور والتشطيب",icon:"🏡",color:"#4A1A6B",docs:[
-    {key:"fin_contract", label:"عقد التشطيب",             req:true},
-    {key:"materials",    label:"اعتماد الخامات",          req:false},
-    {key:"warranty_fin", label:"الضمانات",                req:false},
-    {key:"catalogs",     label:"كتالوجات",                req:false},
-    {key:"handover_rep", label:"محاضر الاستلام",          req:false},
+  {key:"finish",label:"الديكور والتشطيب",icon:"🏡",color:"#6B3A8A",docs:[
+    {key:"fn1",label:"عقد التشطيب",req:false},
+    {key:"fn2",label:"اعتماد الخامات",req:false},
+    {key:"fn3",label:"الضمانات",req:false},
+    {key:"fn4",label:"كتالوجات",req:false},
+    {key:"fn5",label:"محاضر الاستلام",req:false}
   ]},
   {key:"utilities",label:"المرافق والخدمات",icon:"⚡",color:"#1A6B6B",docs:[
-    {key:"elec_req",  label:"طلب الكهرباء",               req:true},
-    {key:"elec_app",  label:"موافقة الكهرباء",            req:true},
-    {key:"elec_con",  label:"عقد الكهرباء",               req:false},
-    {key:"elec_ins",  label:"تركيب الكهرباء",             req:false},
-    {key:"water_req", label:"طلب المياه",                  req:true},
-    {key:"water_app", label:"موافقة المياه",               req:true},
-    {key:"water_con", label:"عقد المياه",                  req:false},
-    {key:"drain_req", label:"طلب الصرف الصحي",            req:true},
-    {key:"drain_app", label:"موافقة الصرف",               req:false},
-    {key:"gas_req",   label:"طلب الغاز",                   req:false},
-    {key:"gas_app",   label:"موافقة الغاز",               req:false},
-    {key:"gas_con",   label:"عقد الغاز",                   req:false},
-    {key:"tel_req",   label:"طلب الاتصالات والإنترنت",    req:false},
-    {key:"tel_con",   label:"عقد الاتصالات",              req:false},
+    {key:"u_e1",label:"الكهرباء — طلب الخدمة",req:false},
+    {key:"u_e2",label:"الكهرباء — موافقة الجهة",req:false},
+    {key:"u_e3",label:"الكهرباء — عقد الخدمة",req:false},
+    {key:"u_e4",label:"الكهرباء — تركيب العداد",req:false},
+    {key:"u_w1",label:"المياه — طلب الخدمة",req:false},
+    {key:"u_w2",label:"المياه — موافقة الجهة",req:false},
+    {key:"u_w3",label:"المياه — عقد الخدمة",req:false},
+    {key:"u_w4",label:"المياه — تركيب العداد",req:false},
+    {key:"u_s1",label:"الصرف الصحي — طلب الخدمة",req:false},
+    {key:"u_s2",label:"الصرف الصحي — موافقة الجهة",req:false},
+    {key:"u_s3",label:"الصرف الصحي — عقد الخدمة",req:false},
+    {key:"u_s4",label:"الصرف الصحي — توصيل الشبكة",req:false},
+    {key:"u_g1",label:"الغاز — طلب الخدمة",req:false},
+    {key:"u_g2",label:"الغاز — موافقة الجهة",req:false},
+    {key:"u_g3",label:"الغاز — عقد الخدمة",req:false},
+    {key:"u_g4",label:"الغاز — تركيب العداد",req:false},
+    {key:"u_t1",label:"الاتصالات — طلب الخدمة",req:false},
+    {key:"u_t2",label:"الاتصالات — موافقة الجهة",req:false},
+    {key:"u_t3",label:"الاتصالات — عقد الخدمة",req:false},
+    {key:"u_t4",label:"الاتصالات — التركيب",req:false},
+    {key:"u_i1",label:"الإنترنت — طلب الخدمة",req:false},
+    {key:"u_i2",label:"الإنترنت — موافقة الجهة",req:false},
+    {key:"u_i3",label:"الإنترنت — عقد الخدمة",req:false},
+    {key:"u_i4",label:"الإنترنت — التركيب",req:false}
   ]},
-  {key:"handover",label:"التسليم والمطابقة",icon:"✅",color:"#1B7A4A",docs:[
-    {key:"sup_cert",  label:"شهادة إتمام الإشراف",        req:true},
-    {key:"match",     label:"شهادة المطابقة",             req:true},
-    {key:"recv_rep",  label:"محضر الاستلام النهائي",      req:true},
-    {key:"occupancy", label:"شهادة صلاحية السكن",         req:true},
+  {key:"delivery",label:"التسليم والمطابقة",icon:"✅",color:"#1B7A4A",docs:[
+    {key:"dl1",label:"شهادة إتمام الإشراف",req:true},
+    {key:"dl2",label:"شهادة المطابقة",req:true},
+    {key:"dl3",label:"محضر الاستلام النهائي",req:true},
+    {key:"dl4",label:"شهادة صلاحية السكن",req:true}
   ]},
-  {key:"operations",label:"التشغيل والصيانة",icon:"🔧",color:"#1C3A6A",docs:[
-    {key:"maint_con",  label:"عقود الصيانة",              req:false},
-    {key:"warranty_op",label:"الضمانات",                  req:false},
-    {key:"catalogs_op",label:"كتالوجات الأجهزة",          req:false},
-    {key:"logs",       label:"سجلات الصيانة",             req:false},
-    {key:"tickets",    label:"بلاغات وإصلاحات",           req:false},
+  {key:"ops",label:"التشغيل والصيانة",icon:"🔧",color:"#1C3A6A",docs:[
+    {key:"o1",label:"عقود الصيانة",req:false},
+    {key:"o2",label:"الضمانات",req:false},
+    {key:"o3",label:"الكتالوجات",req:false},
+    {key:"o4",label:"سجلات الصيانة",req:false},
+    {key:"o5",label:"البلاغات",req:false}
   ]},
 ];
 
@@ -1206,6 +1126,49 @@ const myP=()=>{
 };
 
 // ── DASHBOARD ──
+const restoreFilesFromStorage=async()=>{
+  const btn=document.getElementById("restore-btn");
+  if(btn){btn.disabled=true;btn.textContent="جارٍ الاسترجاع...";}
+  const projects=LS.g(K.p)||[];
+  let restored=0;
+  const tryList=async(basePath)=>{
+    try{return await ST.ref().child(basePath).listAll();}catch(e){return null;}
+  };
+  for(const proj of projects){
+    // try both path patterns
+    const paths=["projects/"+proj.id, proj.id];
+    for(const base of paths){
+      const res=await tryList(base);
+      if(!res||!res.prefixes.length)continue;
+      for(const folderRef of res.prefixes){
+        const stageKey=folderRef.name;
+        const filesRes=await folderRef.listAll().catch(()=>null);
+        if(!filesRes)continue;
+        for(const itemRef of filesRes.items){
+          const fileName=itemRef.name;
+          const docKey=fileName.split("_")[0];
+          const fullPath=base+"/"+stageKey+"/"+fileName;
+          const url=`https://firebasestorage.googleapis.com/v0/b/sanad-city.firebasestorage.app/o/${encodeURIComponent(fullPath)}?alt=media`;
+          const upObj={url,path:fullPath,name:fileName,type:"application/octet-stream",size:"?",date:""};
+          const stage=(proj.stages||[]).find(s=>s.key===stageKey);
+          if(stage){
+            const doc=(stage.docs||[]).find(d=>d.key===docKey);
+            if(doc&&!doc.up){doc.up=upObj;restored++;}
+            const cdoc=(stage.cd||[]).find(d=>d.key===docKey);
+            if(cdoc&&!cdoc.up){cdoc.up=upObj;restored++;}
+          }
+        }
+      }
+    }
+  }
+  // save locally first
+  localStorage.setItem(K.p,JSON.stringify(projects));
+  // await Firestore push before reload so pullDB gets fresh data
+  await DB.collection("sanad").doc(K.p).set({v:JSON.stringify(projects)});
+  alert(`✅ تم استرجاع ${restored} ملف — جارٍ إعادة التحميل`);
+  location.reload();
+};
+
 const rDash=()=>{
   const projs=myP(),svcs=LS.g(K.svc)||[];
   const pendU=(LS.g(K.u)||[]).filter(u=>u.status==="pending");
@@ -1233,7 +1196,8 @@ const rDash=()=>{
   const recent=projs.slice(0,5);
   let html=`<div class="card" style="margin-bottom:16px;">
     <div class="ch"><div class="cht">المشاريع الأخيرة</div>
-    <button class="btn btn-gh btn-sm" onclick="showPage('projs')">عرض كافة المشاريع</button></div>
+    <button class="btn btn-gh btn-sm" onclick="showPage('projs')">عرض كافة المشاريع</button>
+    <button id="restore-btn" class="btn btn-sm" style="background:#1A3F6B;color:#fff;" onclick="restoreFilesFromStorage()">🔁 استرجاع الملفات</button></div>
     <div style="overflow:auto;"><table class="tbl"><thead><tr>
       <th>كود المشروع</th><th>المالك</th><th>أضافه</th><th>الحالة</th><th>القيمة التقديرية</th><th>تاريخ الإضافة</th><th>إجراءات</th>
     </tr></thead><tbody>`;
