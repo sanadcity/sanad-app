@@ -4047,10 +4047,7 @@ const downloadProjZip=async(projId)=>{
   const root=zip.folder(proj.ownerName||proj.id);
   await Promise.all(allDocs.map(async item=>{
     try{
-      const dlUrl=await ST.ref(item.path).getDownloadURL();
-      const r=await fetch(dlUrl);
-      if(!r.ok)return;
-      const blob=await r.blob();
+      const blob=await ST.ref(item.path).getBlob();
       const ext=(item.name.split(".").pop()||"pdf").toLowerCase();
       root.folder(`${item.si}. ${item.sl}`).file(`${item.dl.replace(/[/\\:*?"<>|]/g,"-")}.${ext}`,blob);
     }catch(e){}
