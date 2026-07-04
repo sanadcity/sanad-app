@@ -4038,7 +4038,7 @@ const downloadProjZip=async(projId)=>{
   const allDocs=[];
   proj.stages?.forEach((s,si)=>{
     [...(s.docs||[]),...(s.cd||[])].forEach(d=>{
-      if(d.up?.url) allDocs.push({si:si+1,sl:s.label,dl:d.label,url:d.up.url,name:d.up.name||d.label});
+      if(d.up?.path) allDocs.push({si:si+1,sl:s.label,dl:d.label,path:d.up.path,name:d.up.name||d.label});
     });
   });
   if(!allDocs.length){toast("لا توجد ملفات مرفوعة في هذا المشروع","err");return;}
@@ -4047,7 +4047,8 @@ const downloadProjZip=async(projId)=>{
   const root=zip.folder(proj.ownerName||proj.id);
   await Promise.all(allDocs.map(async item=>{
     try{
-      const r=await fetch(item.url);
+      const dlUrl=await ST.ref(item.path).getDownloadURL();
+      const r=await fetch(dlUrl);
       if(!r.ok)return;
       const blob=await r.blob();
       const ext=(item.name.split(".").pop()||"pdf").toLowerCase();
