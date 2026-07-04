@@ -541,22 +541,6 @@ body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--t1);-webkit
         <div id="ct"></div>
       </div>
 
-      <!-- PROFESSIONALS PAGE -->
-      <div class="page hid" id="pg-prof">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-          <div style="font-size:20px;font-weight:800;color:var(--t1);">قاموس المهنيين</div>
-          <button class="btn btn-p btn-sm" onclick="openAddProf()">+ إضافة مهني</button>
-        </div>
-        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
-          <input id="pf-q" placeholder="🔍 بحث بالاسم..." oninput="rProfs()" style="flex:1;min-width:180px;border:1px solid var(--bdl);border-radius:8px;padding:7px 12px;font-size:12px;font-family:Cairo,sans-serif;background:var(--w);color:var(--t1);outline:none;"/>
-          <select id="pf-type" onchange="rProfs()" style="border:1px solid var(--bdl);border-radius:8px;padding:7px 12px;font-size:12px;font-family:Cairo,sans-serif;background:var(--w);color:var(--t1);outline:none;">
-            <option value="">الكل</option>
-            <option value="engineer">مهندس</option>
-            <option value="office">مكتب / شركة</option>
-          </select>
-        </div>
-        <div id="pf-list"></div>
-      </div>
 
       <!-- OFFICE STAFF PAGE -->
       <div class="page hid" id="pg-office-staff">
@@ -1287,7 +1271,6 @@ const showPage=pg=>{
   if(pg==="svcs")rSvcs();
   if(pg==="users")rUsers();
   if(pg==="contacts")rContacts();
-  if(pg==="prof")rProfs();
   if(pg==="office-staff")rOfficeStaff();
   if(pg==="staff-mgmt")rStaffMgmt();
   if(pg==="tasks")rTasks();
@@ -3493,171 +3476,7 @@ const rjU=id=>{LS.s(K.u,(LS.g(K.u)||[]).map(u=>u.id===id?{...u,status:"rejected"
 const suU=id=>{if(!confirm("تعليق هذا المستخدم؟"))return;LS.s(K.u,(LS.g(K.u)||[]).map(u=>u.id===id?{...u,status:"suspended"}:u));rUsers();toast("تم التعليق","warn");};
 const delU=(id,name)=>{if(!confirm(`حذف المستخدم "${name}" نهائياً؟\nلا يمكن التراجع.`))return;LS.s(K.u,(LS.g(K.u)||[]).filter(u=>u.id!==id));rUsers();updBdg();toast("تم حذف المستخدم","info");};
 
-// ── PROFESSIONALS ──
-const PROF_DOCS={
-  engineer:[
-    {key:"idFront", label:"بطاقة (وجه)",      req:true},
-    {key:"idBack",  label:"بطاقة (ظهر)",      req:true},
-    {key:"karneh",  label:"كارنيه النقابة",    req:true},
-    {key:"taxCard", label:"بطاقة ضريبية",     req:true},
-    {key:"registry",label:"سجل هندسي (غلاف)", req:false},
-    {key:"poa",     label:"توكيل إدارة",       req:false},
-  ],
-  office:[
-    {key:"commercialReg",label:"سجل تجاري",   req:true},
-    {key:"taxCard",      label:"بطاقة ضريبية",req:true},
-    {key:"poa",          label:"توكيل إدارة", req:false},
-  ]
-};
-const ENG_TYPES=["معماري","مدني","كهربائي","ميكانيكي","إنشائي","ديكور"];
-const ENG_ROLES=["تصميم","ترخيص","تنفيذ","إشراف"];
 
-const rProfs=()=>{
-  const q=($("pf-q")?.value||"").trim().toLowerCase();
-  const tf=$("pf-type")?.value||"";
-  let profs=(LS.g(K.prof)||[]).filter(p=>{
-    if(tf&&p.profType!==tf)return false;
-    if(q&&!(p.name||"").toLowerCase().includes(q))return false;
-    return true;
-  });
-  if(!profs.length){$("pf-list").innerHTML=`<div style="text-align:center;padding:40px;color:var(--t3);">لا يوجد مهنيون — اضغط "+ إضافة مهني"</div>`;return;}
-  $("pf-list").innerHTML=`<div style="display:grid;gap:10px;">${profs.map(p=>{
-    const isEng=p.profType==="engineer";
-    const docs=PROF_DOCS[p.profType]||[];
-    const done=docs.filter(d=>p.docs?.[d.key]).length;
-    const pct=docs.length?Math.round(done/docs.length*100):0;
-    const rolesTags=(p.roles||[]).map(r=>`<span style="background:rgba(201,168,76,.15);color:var(--gold);border-radius:12px;padding:1px 7px;font-size:10px;">${r}</span>`).join("");
-    return`<div style="background:var(--w);border:1.5px solid var(--bd);border-radius:12px;padding:14px 16px;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div style="width:42px;height:42px;border-radius:50%;background:var(--n7);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">${isEng?"🏗":"🏢"}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:800;color:var(--t1);">${p.name}</div>
-          <div style="font-size:11px;color:var(--t3);margin-top:2px;">${isEng?(p.engType||"مهندس")+" · "+(p.roles||[]).join(" · "):"مكتب / شركة"}</div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">${rolesTags}</div>
-        </div>
-        <div style="text-align:center;flex-shrink:0;">
-          <div style="font-size:16px;font-weight:800;color:${pct===100?"#1B7A4A":"var(--gold)"};">${pct}%</div>
-          <div style="font-size:9px;color:var(--t3);">المستندات</div>
-        </div>
-        <div style="display:flex;gap:5px;flex-shrink:0;">
-          <button onclick="openProfDetail('${p.id}')" class="btn btn-gh btn-sm">📂 الملف</button>
-          <button onclick="delProf('${p.id}')" class="btn btn-d btn-xs">🗑</button>
-        </div>
-      </div>
-    </div>`;
-  }).join("")}</div>`;
-};
-
-const openAddProf=()=>{
-  showModal("إضافة مهني جديد",`
-    <div class="fg"><label class="fl">نوع المهني <span class="rq">*</span></label>
-      <select class="fs" id="pf-new-type" onchange="document.getElementById('pf-eng-fields').style.display=this.value==='engineer'?'block':'none'">
-        <option value="">— اختر —</option>
-        <option value="engineer">مهندس</option>
-        <option value="office">مكتب / شركة</option>
-      </select>
-    </div>
-    <div class="fg"><label class="fl">الاسم <span class="rq">*</span></label><input class="fi" id="pf-new-name" placeholder="اسم المهندس أو المكتب"/></div>
-    <div class="fg"><label class="fl">رقم الهاتف</label><input class="fi" id="pf-new-phone" placeholder="01xxxxxxxxx" dir="ltr"/></div>
-    <div id="pf-eng-fields" style="display:none;">
-      <div class="fg"><label class="fl">التخصص</label>
-        <select class="fs" id="pf-new-engtype">
-          <option value="">— اختر —</option>
-          ${ENG_TYPES.map(t=>`<option>${t}</option>`).join("")}
-        </select>
-      </div>
-      <div class="fg"><label class="fl">الأدوار</label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">${ENG_ROLES.map(r=>`<label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;"><input type="checkbox" value="${r}" class="pf-role-chk" style="accent-color:var(--gold);"/>${r}</label>`).join("")}</div>
-      </div>
-    </div>
-  `,`
-    <button class="btn btn-gh" onclick="closeModal()">إلغاء</button>
-    <button class="btn btn-p" onclick="saveNewProf()">+ إضافة</button>
-  `);
-  setTimeout(()=>document.getElementById("pf-new-name")?.focus(),100);
-};
-
-const saveNewProf=()=>{
-  const type=document.getElementById("pf-new-type")?.value;
-  const name=(document.getElementById("pf-new-name")?.value||"").trim();
-  if(!type||!name){toast("يرجى تعبئة النوع والاسم","err");return;}
-  const phone=(document.getElementById("pf-new-phone")?.value||"").trim();
-  const engType=document.getElementById("pf-new-engtype")?.value||"";
-  const roles=[...document.querySelectorAll(".pf-role-chk:checked")].map(c=>c.value);
-  closeModal();
-  const profs=LS.g(K.prof)||[];
-  profs.push({id:"pr_"+Date.now(),name,profType:type,phone,engType,roles,docs:{},created:new Date().toISOString().slice(0,10)});
-  LS.s(K.prof,profs);
-  rProfs();toast("تم إضافة المهني ✓");
-};
-
-const openProfDetail=(id)=>{
-  const profs=LS.g(K.prof)||[];
-  const p=profs.find(x=>x.id===id);if(!p)return;
-  const isEng=p.profType==="engineer";
-  const docs=PROF_DOCS[p.profType]||[];
-  const can=["admin","staff"].includes(CU.role);
-  const slot=(dk,label,req)=>{
-    const f=p.docs?.[dk];
-    const fileHtml=f?`<div style="background:rgba(27,122,74,.08);border:1px solid rgba(27,122,74,.25);border-radius:8px;padding:8px;display:flex;align-items:center;gap:6px;margin-top:4px;">
-      <span>✅</span><div style="flex:1;font-size:10px;font-weight:700;color:#1B7A4A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${f.name}</div>
-      <button onclick="previewFile('${f.url}','${(f.name||"").replace(/'/g,"\\'")}','${f.type||""}')" class="btn btn-gh btn-xs">👁</button>
-      <a href="${f.url}" download="${f.name}" class="btn btn-gh btn-xs">⬇</a>
-      ${can?`<button onclick="delProfDoc('${id}','${dk}')" class="btn btn-d btn-xs">🗑</button>`:""}
-    </div>`:`<div style="background:var(--w2);border-radius:8px;padding:6px;text-align:center;color:var(--t3);font-size:10px;margin-top:4px;">لم يُرفع بعد</div>`;
-    return`<div style="background:var(--w);border:1.5px solid ${req?"rgba(192,57,43,.2)":"var(--bdl)"};border-radius:8px;padding:10px;">
-      <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;">
-        <div style="width:6px;height:6px;border-radius:50%;background:${f?"#1B7A4A":req?"#C0392B":"#8896A4"};flex-shrink:0;"></div>
-        <span style="font-size:11px;font-weight:700;color:var(--t1);flex:1;">${label}</span>
-        ${req?`<span style="font-size:9px;background:rgba(192,57,43,.1);color:#C0392B;border-radius:10px;padding:1px 6px;">مطلوب</span>`:""}
-      </div>
-      ${fileHtml}
-      ${can&&!f?`<label style="display:flex;align-items:center;justify-content:center;gap:4px;border:1.5px dashed var(--bdl);border-radius:7px;padding:7px;cursor:pointer;font-size:11px;color:var(--t3);margin-top:4px;">📤 رفع<input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadProfDoc('${id}','${dk}',this)" style="display:none;"/></label>`:""}
-    </div>`;
-  };
-  const rolesTags=(p.roles||[]).map(r=>`<span style="background:rgba(201,168,76,.15);color:var(--gold);border-radius:12px;padding:2px 9px;font-size:11px;">${r}</span>`).join(" ");
-  showModal(`📂 ${p.name}`,`
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--bdl);">
-      <div style="width:48px;height:48px;border-radius:50%;background:var(--n7);display:flex;align-items:center;justify-content:center;font-size:24px;">${isEng?"🏗":"🏢"}</div>
-      <div>
-        <div style="font-size:15px;font-weight:800;color:var(--t1);">${p.name}</div>
-        <div style="font-size:11px;color:var(--t3);">${isEng?(p.engType||"مهندس"):"مكتب / شركة"}${p.phone?" · "+p.phone:""}</div>
-        ${rolesTags?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;">${rolesTags}</div>`:""}
-      </div>
-    </div>
-    <div style="display:grid;gap:8px;">${docs.map(d=>slot(d.key,d.label,d.req)).join("")}</div>
-  `,`<button class="btn btn-gh" onclick="closeModal()">إغلاق</button>`);
-};
-
-const uploadProfDoc=(id,field,inp)=>{
-  const file=inp.files?.[0];if(!file)return;
-  toast("⏳ جاري الرفع...","info");
-  uploadToST(file,`prof/${id}`,field,field).then(up=>{
-    const profs=LS.g(K.prof)||[];
-    const idx=profs.findIndex(p=>p.id===id);if(idx<0)return;
-    if(!profs[idx].docs)profs[idx].docs={};
-    profs[idx].docs[field]={url:up.url,path:up.path,name:up.name,type:up.type,size:up.size,date:up.date};
-    LS.s(K.prof,profs);
-    toast("✓ تم رفع المستند");
-    openProfDetail(id);
-  }).catch(()=>toast("✗ فشل الرفع","err"));
-};
-
-const delProfDoc=(id,field)=>{
-  if(!confirm("حذف هذا المستند؟"))return;
-  const profs=LS.g(K.prof)||[];
-  const idx=profs.findIndex(p=>p.id===id);if(idx<0)return;
-  if(profs[idx].docs)profs[idx].docs[field]=null;
-  LS.s(K.prof,profs);
-  toast("تم الحذف","info");
-  openProfDetail(id);
-};
-
-const delProf=(id)=>{
-  if(!confirm("حذف هذا المهني نهائياً؟"))return;
-  LS.s(K.prof,(LS.g(K.prof)||[]).filter(p=>p.id!==id));
-  rProfs();toast("تم الحذف","info");
-};
 
 // ── CONTACTS ──
 const rContacts=()=>{
