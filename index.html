@@ -4013,6 +4013,10 @@ const deactivateSub=()=>{
 
 // ── ZIP DOWNLOAD ──
 const downloadProjZip=async(projId)=>{
+  if(!isPaid()&&CU.role!=="admin"){
+    toast("📦 تحميل الملفات متاح في الباقة المدفوعة — تواصل مع الإدارة للترقية","i");
+    return;
+  }
   const proj=(LS.g(K.p)||[]).find(p=>p.id===projId);
   if(!proj){toast("المشروع غير موجود","err");return;}
 
