@@ -4045,13 +4045,19 @@ const downloadProjZip=async(projId)=>{
   toast(`⏳ جاري تجهيز ${allDocs.length} ملف...`,"info");
   const zip=new JSZip();
   const root=zip.folder(proj.ownerName||proj.id);
+  let ok=0,fail=0;
   await Promise.all(allDocs.map(async item=>{
     try{
-      const blob=await ST.ref(item.path).getBlob();
+      const dlUrl=await ST.ref(item.path).getDownloadURL();
+      const r=await fetch(dlUrl);
+      if(!r.ok){console.error("fetch failed",r.status,item.dl);fail++;return;}
+      const blob=await r.blob();
       const ext=(item.name.split(".").pop()||"pdf").toLowerCase();
       root.folder(`${item.si}. ${item.sl}`).file(`${item.dl.replace(/[/\\:*?"<>|]/g,"-")}.${ext}`,blob);
-    }catch(e){}
+      ok++;
+    }catch(e){console.error("zip item error",item.dl,e);fail++;}
   }));
+  console.log(`ZIP: ${ok} نجح / ${fail} فشل`);
   const content=await zip.generateAsync({type:"blob"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(content);
