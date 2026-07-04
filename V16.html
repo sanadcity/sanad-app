@@ -681,12 +681,7 @@ const LS={
   s:(k,v)=>{localStorage.setItem(k,JSON.stringify(v));pushDB(k,v);},
   d:k=>{localStorage.removeItem(k);DB.collection("sanad").doc(k).delete().catch(()=>{});}
 };
-const K={u:"snd_u4",p:"snd_p4",svc:"snd_s4",seq:"snd_q4",ss:"snd_ss4",rm:"snd_rm4",wa:"snd_wa4",lang:"snd_lang4",logo:"snd_logo4",notif:"snd_ntf4",tasks:"snd_tk4",sub:"snd_sub4"};
-const PLANS={free:{projects:2,users:3,storageMB:100,zip:false},paid:{projects:Infinity,users:Infinity,storageMB:Infinity,zip:true}};
-const getSub=()=>LS.g(K.sub)||{plan:"free",expiresAt:null};
-const isPaid=()=>{const s=getSub();if(s.plan!=="paid")return false;if(s.expiresAt&&s.expiresAt<new Date().toISOString().slice(0,10))return false;return true;};
-const getPlan=()=>isPaid()?PLANS.paid:PLANS.free;
-const usedStorageMB=()=>{let b=0;(LS.g(K.p)||[]).forEach(pr=>pr.stages?.forEach(s=>[...(s.docs||[]),...(s.cd||[])].forEach(d=>{if(d.up?.size)b+=d.up.size;})));return b/1024/1024;};
+const K={u:"snd_u4",p:"snd_p4",svc:"snd_s4",seq:"snd_q4",ss:"snd_ss4",rm:"snd_rm4",wa:"snd_wa4",lang:"snd_lang4",logo:"snd_logo4",notif:"snd_ntf4",tasks:"snd_tk4",prof:"snd_pr4"};
 
 // ── INIT DATA ──
 const initData=()=>{
@@ -922,7 +917,7 @@ const CITIES_DATA={
 };
 
 const CTC={"الشيخ زايد":"ZYD","6 أكتوبر":"OCT","أكتوبر الجديدة":"OCT","حدائق أكتوبر":"HOC","مدينة سفنكس":"SFX","القاهرة الجديدة (التجمع)":"TGM","15 مايو":"FMY","مدينة 15 مايو":"FMY","برج العرب الجديدة":"BAJ","العاشر من رمضان":"10R","مدينة بدر":"BDR","مدينة الشروق":"SHK","العبور":"OBR"};
-const DSC={"قيد التخطيط":"#1A3F6B","قيد الترخيص":"#B7770D","قيد التنفيذ":"#C9A84C","مكتمل":"#1B7A4A","تصالح":"#4A1A6B","مكتمل — تصالح":"#4A1A6B","إضافة 75% سطح":"#243D5E","مكتمل — إضافة 75% سطح":"#243D5E","موقف":"#C0392B"};
+const DSC={"قيد التخطيط":"#1A3F6B","قيد الترخيص":"#B7770D","قيد التنفيذ":"#C9A84C","مكتمل":"#1B7A4A","مكتمل — تصالح":"#4A1A6B","مكتمل — إضافة 75% سطح":"#243D5E","موقف":"#C0392B"};
 const DEV_STATUSES=["قيد التخطيط","قيد الترخيص","قيد التنفيذ","تصالح","إضافة 75% سطح","موقف"];
 const MSC={"للبيع":"#1B7A4A","للإيجار":"#1A3F6B","شراكة":"#B7770D","تطوير":"#4A1A6B","مغلق":"#C0392B","غير محدد":"#8896A4"};
 const RL={admin:"مدير النظام",staff:"موظف",office:"مكتب هندسي",developer:"مطور عقاري",client:"عميل / مالك"};
@@ -1101,8 +1096,6 @@ const doReg=()=>{
   }
   if(!p||p.length<8){sm("amsg","كلمة المرور 8 أحرف على الأقل","e");return;}
   const users=LS.g(K.u)||[];
-  const plan=getPlan();
-  if(users.filter(u=>u.status!=="rejected").length>=plan.users){sm("amsg",`وصلت للحد الأقصى من المستخدمين (${plan.users}) — يرجى الترقية للباقة المدفوعة`,"e");return;}
   if(e&&users.find(u=>u.email===e)){sm("amsg","هذا الإيميل مسجل بالفعل","e");return;}
   if(nid&&users.find(u=>u.nationalId===nid)){sm("amsg","هذا الرقم القومي مسجل بالفعل","e");return;}
   const status=r==="staff"?"pending":"active";
@@ -1120,15 +1113,6 @@ const startApp=()=>{
   const savedLogo=LS.g(K.logo);if(savedLogo)applyLogo(savedLogo);
   buildSB();buildTB();updBdg();
   showPage(CU.role==="client"?"projs":"dash");
-  // subscription expiry warning
-  if(CU.role==="admin"){
-    const sub=getSub();
-    if(sub.plan==="paid"&&sub.expiresAt){
-      const days=Math.ceil((new Date(sub.expiresAt)-new Date())/864e5);
-      if(days<=7&&days>0)setTimeout(()=>toast(`⚠ باقتك المدفوعة تنتهي خلال ${days} أيام — يرجى التجديد`,"i"),2000);
-      else if(days<=0)setTimeout(()=>toast("⚠ انتهت صلاحية باقتك المدفوعة — تم التحويل للباقة المجانية","e"),2000);
-    }
-  }
 };
 
 // ── SIDEBAR ──
@@ -1140,15 +1124,10 @@ const buildSB=()=>{
   $("sb-u").innerHTML=`
     <div class="sb-av" style="background:${c}22;border:1.5px solid ${c}33;" title="انقر للإعدادات">${avHtml}</div>
     <div style="min-width:0;">
-      ${isProfileComplete()
-        ?`<div class="sb-un">${CU.name}</div><div class="sb-ro">${RL[CU.role]||CU.role}</div>`
-        :`<div class="sb-un" style="color:#C9A84C;cursor:pointer;" onclick="openCompleteProfile()">⚠ أكمل بياناتك</div><div class="sb-ro" style="color:var(--t3);">${RL[CU.role]||CU.role}</div>`}
+      <div class="sb-un">${CU.name}</div>
+      <div class="sb-ro">${RL[CU.role]||CU.role}</div>
     </div>`;
-  const av=$("tb-av");
-  if(av){
-    if(!isProfileComplete()){av.textContent="!";av.style.background="#C9A84C";av.style.color="#fff";av.title="أكمل بياناتك";}
-    else{av.textContent=CU.name?.charAt(0)||"م";av.style.background="";av.style.color="";}
-  }
+  const av=$("tb-av");if(av)av.textContent=CU.name?.charAt(0)||"م";
 
   const nMap={
     admin:[
@@ -1868,6 +1847,7 @@ const rFile=()=>{
         <span style="font-size:11px;color:#C9A84C;font-family:monospace;font-weight:700;">#${proj.id}</span>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+        <div></div>
         <div style="display:flex;gap:20px;align-items:center;">
           <div style="text-align:center;">
             <div style="font-size:28px;font-weight:900;color:#fff;line-height:1;font-family:monospace;">${completedCount}/${proj.stages.length}</div>
@@ -1944,8 +1924,7 @@ const rFile=()=>{
         const chainOwners=(proj.ownerChain||[]);
         let owners=[];
         if(newOwners.length>0)
-          const subtypeLbl=o=>{if(o.type==="direct")return"مالك مباشر";if(o.subtype==="buyer")return"مشترٍ";return"شريك في الجهاز";};
-          owners=newOwners.map(o=>({name:o.name||"—",sub:subtypeLbl(o)+(o.share?" · "+o.share+"%":""),color:o.type==="direct"?"#1A3F6B":o.subtype==="buyer"?"#1B7A4A":"#8B5CF6",bg:o.type==="direct"?"#E6EEF8":o.subtype==="buyer"?"#E3F5EC":"#EEE6F8"}));
+          owners=newOwners.map(o=>({name:o.name||"—",sub:o.type==="direct"?"مالك مباشر":"شريك"+(o.share?" · "+o.share+"%":""),color:"#1A3F6B",bg:"#E6EEF8"}));
         else if(chainOwners.length>0)
           owners=chainOwners.map((o,i)=>({name:o.name||"—",sub:i===chainOwners.length-1?"المالك الحالي":o.transferType||"مالك سابق",color:i===chainOwners.length-1?"#1A3F6B":"#8896A4",bg:i===chainOwners.length-1?"#E6EEF8":"#F4F5F7"}));
         else if(proj.ownerName)
@@ -2160,7 +2139,7 @@ const rFile=()=>{
                 <div style="width:7px;height:7px;border-radius:50%;background:${o.type==="direct"?"#1A3F6B":"#8B5CF6"};flex-shrink:0;"></div>
                 <div>
                   <div style="font-size:11px;font-weight:700;color:var(--t1);">${o.name||"—"}</div>
-                  <div style="font-size:9px;color:var(--t3);">${o.type==="direct"?"مالك مباشر":o.subtype==="buyer"?"مشترٍ":"شريك في الجهاز"}${o.share?" · "+o.share+"%":""}</div>
+                  <div style="font-size:9px;color:var(--t3);">${o.type==="direct"?"مالك مباشر":"شريك"}${o.share?" · "+o.share+"%":""}</div>
                 </div>
               </div>`)
             :chainOwners.map((o,i)=>`
@@ -2573,45 +2552,8 @@ const tgS=k=>{const b=$("sb-"+k),a=$("sa-"+k);const h=b.classList.contains("hid"
 const gP=()=>(LS.g(K.p)||[]).find(p=>p.id===CPJ);
 const svP=p=>{p.lastUpdated=new Date().toISOString().slice(0,10);LS.s(K.p,(LS.g(K.p)||[]).map(x=>x.id===p.id?p:x));};
 
-const isProfileComplete=()=>{
-  const isNidOnly=/^\d{14}$/.test(CU.name||"");
-  return !isNidOnly && CU.name?.trim().length>2 && CU.phone?.trim().length>5;
-};
-
-const openCompleteProfile=()=>{
-  const h=`<div id="m-complete-profile" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;">
-    <div style="background:var(--w);border-radius:16px;padding:28px;width:340px;box-shadow:0 16px 48px rgba(0,0,0,.2);">
-      <div style="font-size:18px;font-weight:800;color:var(--t1);margin-bottom:4px;">👤 أكمل بياناتك</div>
-      <div style="font-size:12px;color:var(--t3);margin-bottom:18px;">مطلوب قبل رفع أي ملف</div>
-      <div class="fg"><label class="fl">الاسم الكامل <span class="rq">*</span></label><input class="fi" id="cp-name" value="${/^\d{14}$/.test(CU.name||"")?"":(CU.name||"")}" placeholder="مثال: محمد أحمد السيد"/></div>
-      <div class="fg"><label class="fl">رقم الهاتف <span class="rq">*</span></label><input class="fi" id="cp-phone" value="${CU.phone||""}" placeholder="01xxxxxxxxx" dir="ltr" maxlength="11"/></div>
-      <div style="display:flex;gap:8px;margin-top:16px;">
-        <button class="btn btn-p" style="flex:1;" onclick="saveCompleteProfile()">✓ حفظ وتأكيد</button>
-      </div>
-    </div>
-  </div>`;
-  if(!$("m-complete-profile"))document.body.insertAdjacentHTML("beforeend",h);
-};
-
-const saveCompleteProfile=()=>{
-  const name=$("cp-name")?.value?.trim();
-  const phone=$("cp-phone")?.value?.trim();
-  if(!name||name.length<3){toast("أدخل الاسم الكامل","err");return;}
-  if(!phone||phone.length<10){toast("أدخل رقم هاتف صحيح","err");return;}
-  const users=LS.g(K.u)||[];
-  const u=users.find(x=>x.id===CU.id);
-  if(u){u.name=name;u.phone=phone;LS.s(K.u,users);pushDB(K.u,users);}
-  CU.name=name;CU.phone=phone;
-  $("m-complete-profile")?.remove();
-  setSBUser();
-  toast("✓ تم حفظ بياناتك");
-};
-
 const hUp=(sk,dk,isC,inp)=>{
   const file=inp.files[0];if(!file)return;
-  if(!isProfileComplete()){inp.value="";openCompleteProfile();return;}
-  const plan=getPlan();
-  if(usedStorageMB()+file.size/1024/1024>plan.storageMB){inp.value="";showUpgradeModal(`وصلت لحد التخزين (${plan.storageMB}MB) — يرجى الترقية للباقة المدفوعة`);return;}
   if(file.size>50*1024*1024){toast("الملف أكبر من 50MB","err");return;}
   const p=gP();if(!p)return;
   toast("⏳ جاري الرفع...","info");
@@ -2719,13 +2661,9 @@ const LAND_OWNER_DOCS={
   ]
 };
 const addLandOwner=(type)=>{
-  const typeLabel=type==="direct"?"المالك المباشر":"الشريك / المشترى";
+  const typeLabel=type==="direct"?"المالك المباشر":"المالك الشريك";
   showModal(`إضافة ${typeLabel}`,`
     <div class="fg"><label class="fl">الاسم الكامل <span class="rq">*</span></label><input class="fi" id="lo-name" placeholder="مثال: محمد أحمد السيد"/></div>
-    ${type==="partner"?`<div class="fg"><label class="fl">الصفة</label><select class="fs" id="lo-subtype">
-      <option value="partner_gehaaz">شريك في عقد الجهاز</option>
-      <option value="buyer">مشترٍ (اشترى من المالك)</option>
-    </select></div>`:`<input type="hidden" id="lo-subtype" value="direct"/>`}
     <div class="fg"><label class="fl">النسبة % <span style="color:var(--t3);font-size:11px;">— اتركها فارغة للتوزيع بالتساوي</span></label><input class="fi" id="lo-share" type="number" min="1" max="100" placeholder="مثال: 50"/></div>
     <input type="hidden" id="lo-type" value="${type}"/>
   `,`
@@ -2738,13 +2676,12 @@ const confirmAddLandOwner=()=>{
   const name=(document.getElementById("lo-name")?.value||"").trim();
   const share=(document.getElementById("lo-share")?.value||"").trim();
   const type=document.getElementById("lo-type")?.value||"direct";
-  const subtype=document.getElementById("lo-subtype")?.value||type;
   if(!name){toast("يرجى إدخال الاسم","err");return;}
   closeModal();
   const p=gP();if(!p)return;
   const id="lo_"+Date.now();
   if(!p.landOwners)p.landOwners=[];
-  p.landOwners.push({id,name,type,subtype,share});
+  p.landOwners.push({id,name,type,share});
   const landStage=p.stages.find(s=>s.key==="land");
   if(landStage){
     LAND_OWNER_DOCS[type].forEach(d=>{
@@ -2990,10 +2927,6 @@ const uMd=(i,k,v)=>{PFrm.models[i][k]=v;};
 const rMd=i=>{PFrm.models.splice(i,1);rPM();};
 
 const svPF=()=>{
-  // plan limit check
-  const plan=getPlan();
-  const projCount=(LS.g(K.p)||[]).length;
-  if(projCount>=plan.projects){showUpgradeModal(`وصلت للحد الأقصى من المشاريع (${plan.projects}) في باقتك الحالية`);return;}
   if(PS===2){PFrm.propertyState=$("pps")?.value||"أرض فضاء";PFrm.requestType=$("prt")?.value||"مشروع جديد";PFrm.marketStatus=$("pms")?.value||"غير محدد";PFrm.pricePerMeter=$("ppm")?.value||"";PFrm.ownerEmail=$("pem")?.value||"";PFrm.requiredWorks=[...document.querySelectorAll('[id^="rw-"]')].filter(cb=>cb.checked).map(cb=>cb.id.replace("rw-",""));PFrm.nextAction=$("pna")?.value||"";PFrm.note=$("pno")?.value||"";}
   if(PS===3)PFrm.totalUnits=$("pun")?.value||"";
   const isC=PFrm.type==="compound";
@@ -3744,16 +3677,9 @@ const openAddTask=(presetProjId)=>{
             <div id="tk-due-hint" style="font-size:10px;margin-top:3px;color:var(--t3);"></div>
           </div>
           <div class="fg"><label class="fl">المشروع (اختياري)</label>
-            <select class="fs" id="tk-proj" onchange="tkLoadStages(this.value)">
+            <select class="fs" id="tk-proj">
               <option value="">— بدون مشروع —</option>
               ${projs.map(p=>`<option value="${p.id}" ${presetProjId===p.id?"selected":""}>${p.ownerName} · ${p.city}</option>`).join("")}
-            </select>
-          </div>
-          <div class="fg" id="tk-stage-wrap" style="${presetProjId?"":"display:none;"}">
-            <label class="fl">المرحلة</label>
-            <select class="fs" id="tk-stage">
-              <option value="">— كل المشروع —</option>
-              ${presetProjId?(projs.find(p=>p.id===presetProjId)?.stages||[]).map(s=>`<option value="${s.key}">${s.label}</option>`).join(""):""}
             </select>
           </div>
         </div>
@@ -3765,17 +3691,6 @@ const openAddTask=(presetProjId)=>{
     </div>
   </div>`;
   document.body.insertAdjacentHTML("beforeend",h);
-};
-
-const tkLoadStages=(projId)=>{
-  const wrap=document.getElementById("tk-stage-wrap");
-  const sel=document.getElementById("tk-stage");
-  if(!wrap||!sel)return;
-  if(!projId){wrap.style.display="none";sel.innerHTML="";return;}
-  const proj=(LS.g(K.p)||[]).find(p=>p.id===projId);
-  const stages=proj?.stages||[];
-  sel.innerHTML=`<option value="">— كل المشروع —</option>${stages.map(s=>`<option value="${s.key}">${s.label}</option>`).join("")}`;
-  wrap.style.display="";
 };
 
 const tkDateHint=(v,hintId="tk-due-hint")=>{
@@ -3798,14 +3713,11 @@ const saveTask=()=>{
   const schedDate=document.getElementById("tk-sched")?.value;
   const place=document.getElementById("tk-place")?.value?.trim();
   const projId=document.getElementById("tk-proj")?.value;
-  const stageKey=document.getElementById("tk-stage")?.value||"";
-  const proj=(LS.g(K.p)||[]).find(p=>p.id===projId);
-  const stageLabel=stageKey?(proj?.stages||[]).find(s=>s.key===stageKey)?.label||"":"";
   if(!title||!assignedTo){toast("يرجى تعبئة العنوان والمسؤول","err");return;}
   const today=new Date().toISOString().slice(0,10);
   const initStatus=dueDate&&dueDate<today?"late":"new";
   const tasks=LS.g(K.tasks)||[];
-  tasks.push({id:"tk"+Date.now(),title,desc,assignedTo,priority,dueDate,schedDate,place,projId,stageKey,stageLabel,status:initStatus,createdBy:CU.id,createdAt:today});
+  tasks.push({id:"tk"+Date.now(),title,desc,assignedTo,priority,dueDate,schedDate,place,projId,status:initStatus,createdBy:CU.id,createdAt:today});
   LS.s(K.tasks,tasks);
   document.getElementById("m-add-task")?.remove();
   addNotif(`مهمة جديدة: ${title}`,"info","",assignedTo);
@@ -3944,118 +3856,6 @@ const removeStaff=id=>{
 };
 
 // ── SETTINGS ──
-// ── SUBSCRIPTION ──
-const showUpgradeModal=(msg="")=>{
-  const sub=getSub();
-  const h=`<div id="m-upgrade" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;">
-    <div style="background:var(--w);border-radius:18px;padding:28px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center;">
-      <div style="font-size:36px;margin-bottom:8px;">⭐</div>
-      <div style="font-size:18px;font-weight:800;color:var(--t1);margin-bottom:6px;">ترقية الباقة</div>
-      ${msg?`<div style="font-size:12px;color:var(--rd);margin-bottom:12px;">${msg}</div>`:""}
-      <div style="background:linear-gradient(135deg,var(--n9),#1a2a3a);border-radius:12px;padding:16px;margin-bottom:16px;text-align:right;">
-        <div style="font-size:13px;font-weight:800;color:#C9A84C;margin-bottom:8px;">الباقة المدفوعة — 1000 ج/سنة</div>
-        ${["مشاريع غير محدودة","مستخدمين غير محدودين","تخزين غير محدود","تحميل ملفات المشروع ZIP"].map(f=>`<div style="font-size:11px;color:rgba(255,255,255,.8);padding:3px 0;">✓ ${f}</div>`).join("")}
-      </div>
-      <!-- INSTAPAY -->
-      <div style="background:linear-gradient(135deg,#f8f4ff,#ede8ff);border:1px solid #c4b5f4;border-radius:14px;padding:16px;margin-bottom:14px;">
-        <div style="font-size:11px;font-weight:800;color:#6d28d9;margin-bottom:10px;">ادفع عبر انستاباي</div>
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://ipn.eg/S/ab.ismail/instapay/3dYPUP" style="width:130px;height:130px;border-radius:10px;display:block;margin:0 auto 10px;" alt="QR"/>
-        <div style="font-size:12px;font-weight:800;color:#1a1a1a;margin-bottom:8px;direction:ltr;">ab.ismail@instapay</div>
-        <a href="https://ipn.eg/S/ab.ismail/instapay/3dYPUP" target="_blank" style="display:block;background:#6d28d9;color:#fff;border-radius:10px;padding:9px;font-size:12px;font-weight:800;text-decoration:none;font-family:Cairo,sans-serif;">فتح رابط الدفع ←</a>
-      </div>
-      <div style="font-size:11px;color:var(--t3);margin-bottom:14px;">بعد الدفع أرسل رقم الإيصال وسيتم تفعيل باقتك خلال 24 ساعة</div>
-      ${sub.plan==="free"?`<div class="fg" style="margin-bottom:10px;text-align:right;">
-        <label class="fl">رقم الإيصال / المرجع</label>
-        <input class="fi" id="sub-receipt" placeholder="أدخل رقم الإيصال بعد الدفع"/>
-      </div>
-      <button class="btn btn-p" style="width:100%;justify-content:center;" onclick="submitSubRequest()">إرسال طلب التفعيل ✓</button>`
-      :`<div style="background:rgba(27,122,74,.1);border-radius:8px;padding:10px;font-size:12px;color:#1B7A4A;font-weight:700;">✓ باقتك مفعّلة — تنتهي ${sub.expiresAt||"—"}</div>`}
-      <button onclick="document.getElementById('m-upgrade').remove()" style="background:none;border:none;color:var(--t3);font-size:12px;cursor:pointer;margin-top:10px;font-family:Cairo,sans-serif;">إغلاق</button>
-    </div>
-  </div>`;
-  document.getElementById("m-upgrade")?.remove();
-  document.body.insertAdjacentHTML("beforeend",h);
-};
-
-const submitSubRequest=()=>{
-  const receipt=document.getElementById("sub-receipt")?.value?.trim();
-  if(!receipt){toast("أدخل رقم الإيصال","err");return;}
-  const sub=getSub();
-  sub.pendingReceipt=receipt;
-  sub.requestedAt=new Date().toISOString().slice(0,10);
-  sub.requestedBy=CU.id;
-  sub.requestedByName=CU.name;
-  LS.s(K.sub,sub);pushDB(K.sub,sub);
-  document.getElementById("m-upgrade")?.remove();
-  toast("✓ تم إرسال طلبك — سيتم التفعيل خلال 24 ساعة","info");
-  updBdg();
-};
-
-const activateSub=(months=12)=>{
-  const sub=getSub();
-  const today=new Date();
-  today.setMonth(today.getMonth()+months);
-  sub.plan="paid";
-  sub.expiresAt=today.toISOString().slice(0,10);
-  sub.activatedBy=CU.id;
-  sub.activatedAt=new Date().toISOString().slice(0,10);
-  sub.pendingReceipt=null;
-  LS.s(K.sub,sub);pushDB(K.sub,sub);
-  rSettings();toast("✓ تم تفعيل الباقة المدفوعة");
-};
-
-const deactivateSub=()=>{
-  const sub={plan:"free",expiresAt:null};
-  LS.s(K.sub,sub);pushDB(K.sub,sub);
-  rSettings();toast("تم إلغاء الباقة المدفوعة","info");
-};
-
-// ── ZIP DOWNLOAD ──
-const downloadProjZip=async(projId)=>{
-  if(!isPaid()&&CU.role!=="admin"){
-    toast("📦 تحميل الملفات متاح في الباقة المدفوعة — تواصل مع الإدارة للترقية","i");
-    return;
-  }
-  const proj=(LS.g(K.p)||[]).find(p=>p.id===projId);
-  if(!proj){toast("المشروع غير موجود","err");return;}
-
-  // collect all docs with uploaded files
-  const allDocs=[];
-  proj.stages?.forEach((s,si)=>{
-    [...(s.docs||[]),...(s.cd||[])].forEach(d=>{
-      if(d.up?.url) allDocs.push({stageNum:si+1,stageLabel:s.label,docLabel:d.label,url:d.up.url,name:d.up.name||d.label});
-    });
-  });
-
-  if(!allDocs.length){toast("لا توجد ملفات مرفوعة في هذا المشروع","err");return;}
-
-  toast(`⏳ جاري تجهيز ${allDocs.length} ملف...`,"info");
-
-  const zip=new JSZip();
-  const folder=zip.folder(proj.ownerName||proj.id);
-
-  await Promise.all(allDocs.map(async(item)=>{
-    try{
-      const r=await fetch(item.url);
-      if(!r.ok)return;
-      const blob=await r.blob();
-      const ext=(item.name.split(".").pop()||"pdf").toLowerCase();
-      const safeName=item.docLabel.replace(/[/\\:*?"<>|]/g,"-");
-      const stageFolder=folder.folder(`${item.stageNum}. ${item.stageLabel}`);
-      stageFolder.file(`${safeName}.${ext}`,blob);
-    }catch(e){/* skip failed file */}
-  }));
-
-  const content=await zip.generateAsync({type:"blob"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(content);
-  a.download=`${proj.ownerName||proj.id}.zip`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  toast("✓ تم تحميل الملفات");
-};
-
 const rSettings=()=>{
   const waContacts=LS.g(K.wa)||[];
   const lang=LS.g(K.lang)||"ar";
@@ -4123,59 +3923,6 @@ const rSettings=()=>{
       <div style="font-size:14px;font-weight:800;color:var(--t1);margin-bottom:12px;">🔔 الإشعارات</div>
       <div class="trow"><div><div class="ti">إشعارات المستندات</div><div class="ts2">عند رفع أو حذف ملف</div></div><label class="tsw"><input type="checkbox" checked/><span class="tsl"></span></label></div>
       <div class="trow" style="margin-top:8px;"><div><div class="ti">إشعارات طلبات الخدمة</div><div class="ts2">عند وصول طلب جديد</div></div><label class="tsw"><input type="checkbox" checked/><span class="tsl"></span></label></div>
-    </div>
-
-    <!-- SUBSCRIPTION -->
-    <div class="card cp" style="grid-column:1/-1;">
-      ${(()=>{
-        const sub=getSub();
-        const paid=isPaid();
-        const pending=sub.pendingReceipt&&!paid;
-        return `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
-        <div>
-          <div style="font-size:14px;font-weight:800;color:var(--t1);">⭐ الاشتراك والباقة</div>
-          <div style="font-size:11px;color:var(--t3);margin-top:2px;">إدارة باقتك والتخزين المتاح</div>
-        </div>
-        <div style="background:${paid?"rgba(27,122,74,.12)":pending?"rgba(201,168,76,.12)":"rgba(136,150,164,.1)"};border:1px solid ${paid?"rgba(27,122,74,.3)":pending?"rgba(201,168,76,.3)":"var(--bdl)"};border-radius:10px;padding:6px 14px;font-size:12px;font-weight:800;color:${paid?"#1B7A4A":pending?"#C9A84C":"var(--t2)"};">
-          ${paid?"✓ باقة مدفوعة":pending?"⏳ في انتظار التفعيل":"باقة مجانية"}
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
-        ${[
-          ["المشاريع",`${(LS.g(K.p)||[]).length}/${getPlan().projects===Infinity?"∞":getPlan().projects}`,"◆"],
-          ["المستخدمون",`${(LS.g(K.u)||[]).length}/${getPlan().users===Infinity?"∞":getPlan().users}`,"👥"],
-          ["التخزين",`${usedStorageMB().toFixed(1)}/${getPlan().storageMB===Infinity?"∞":getPlan().storageMB} MB`,"💾"],
-          ["ZIP تحميل",paid?"متاح":"غير متاح","📦"],
-        ].map(([l,v,ic])=>`<div style="background:var(--w2);border:1px solid var(--bdl);border-radius:10px;padding:12px;text-align:center;">
-          <div style="font-size:18px;margin-bottom:4px;">${ic}</div>
-          <div style="font-size:15px;font-weight:800;color:var(--t1);">${v}</div>
-          <div style="font-size:10px;color:var(--t3);margin-top:2px;">${l}</div>
-        </div>`).join("")}
-      </div>
-      ${paid?`
-        <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(27,122,74,.08);border:1px solid rgba(27,122,74,.2);border-radius:10px;padding:12px 16px;">
-          <div style="font-size:12px;color:var(--t1);">الباقة المدفوعة مفعّلة — تنتهي <strong>${sub.expiresAt||"—"}</strong></div>
-          ${CU.role==="admin"?`<button class="btn btn-d btn-sm" onclick="if(confirm('إلغاء الباقة؟'))deactivateSub()">إلغاء الباقة</button>`:""}
-        </div>`
-      :pending?`
-        <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.2);border-radius:10px;padding:12px 16px;flex-wrap:wrap;gap:10px;">
-          <div>
-            <div style="font-size:12px;font-weight:700;color:var(--t1);">⏳ طلب الاشتراك قيد المراجعة</div>
-            <div style="font-size:11px;color:var(--t3);">رقم الإيصال: ${sub.pendingReceipt}</div>
-          </div>
-          ${CU.role==="admin"?`<div style="display:flex;gap:8px;">
-            <button class="btn btn-p btn-sm" onclick="activateSub(12)">تفعيل (12 شهر) ✓</button>
-            <button class="btn btn-d btn-sm" onclick="deactivateSub()">رفض</button>
-          </div>`:`<div style="font-size:11px;color:var(--t3);">سيتم التفعيل خلال 24 ساعة</div>`}
-        </div>`
-      :`
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-          <div style="font-size:12px;color:var(--t2);">الباقة المجانية: 2 مشروع · 3 مستخدمين · 100MB</div>
-          <button class="btn btn-p btn-sm" onclick="showUpgradeModal()">الترقية للمدفوعة ⭐</button>
-        </div>`}
-        `;
-      })()}
     </div>
 
     <!-- WHATSAPP CONTACTS -->
@@ -4280,6 +4027,40 @@ document.body.insertAdjacentHTML("beforeend",`<div id="fb-sync" style="position:
   const sess=LS.g(K.ss);
   if(sess){const u=(LS.g(K.u)||[]).find(u=>u.id===sess.uid);if(u&&u.status==="active"){CU=u;startApp();}else LS.d(K.ss);}
 })();
+
+const downloadProjZip=async(projId)=>{
+  if(CU.role!=="admin"){
+    toast("تحميل الملفات متاح للأدمن فقط — تواصل مع الإدارة للترقية","i");
+    return;
+  }
+  const proj=(LS.g(K.p)||[]).find(p=>p.id===projId);
+  if(!proj){toast("المشروع غير موجود","err");return;}
+  const allDocs=[];
+  proj.stages?.forEach((s,si)=>{
+    [...(s.docs||[]),...(s.cd||[])].forEach(d=>{
+      if(d.up?.url) allDocs.push({si:si+1,sl:s.label,dl:d.label,url:d.up.url,name:d.up.name||d.label});
+    });
+  });
+  if(!allDocs.length){toast("لا توجد ملفات مرفوعة في هذا المشروع","err");return;}
+  toast(`⏳ جاري تجهيز ${allDocs.length} ملف...`,"info");
+  const zip=new JSZip();
+  const root=zip.folder(proj.ownerName||proj.id);
+  await Promise.all(allDocs.map(async item=>{
+    try{
+      const r=await fetch(item.url);
+      if(!r.ok)return;
+      const blob=await r.blob();
+      const ext=(item.name.split(".").pop()||"pdf").toLowerCase();
+      root.folder(`${item.si}. ${item.sl}`).file(`${item.dl.replace(/[/\\:*?"<>|]/g,"-")}.${ext}`,blob);
+    }catch(e){}
+  }));
+  const content=await zip.generateAsync({type:"blob"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(content);
+  a.download=`${proj.ownerName||proj.id}.zip`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  toast("✓ تم تحميل الملفات");
+};
 </script>
 </body>
 </html>
