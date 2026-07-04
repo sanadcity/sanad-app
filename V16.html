@@ -1853,6 +1853,7 @@ const rFile=()=>{
     ${can?`<button class="btn btn-gh btn-sm" onclick="openAddTask('${proj.id}')">☑ مهمة</button>`:""}
     <button class="btn btn-gh btn-sm" onclick="openPassport('${proj.id}')">🪪 سند المشروع</button>
     <button class="btn btn-gh btn-sm" onclick="openSvc()">⚡ طلب خدمة</button>
+    <button class="btn btn-gh btn-sm" onclick="downloadProjZip('${proj.id}')" style="color:#C9A84C;border-color:rgba(201,168,76,.4);">📦 تحميل الملفات</button>
     ${canDel?`<button class="btn btn-d btn-sm" onclick="delCP()">🗑 حذف</button>`:""}
   </div>
 
