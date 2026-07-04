@@ -4013,32 +4013,44 @@ const deactivateSub=()=>{
 
 // ── ZIP DOWNLOAD ──
 const downloadProjZip=async(projId)=>{
-  if(!isPaid()){showUpgradeModal("تحميل ملفات المشروع متاح في الباقة المدفوعة فقط");return;}
   const proj=(LS.g(K.p)||[]).find(p=>p.id===projId);
   if(!proj){toast("المشروع غير موجود","err");return;}
-  toast("⏳ جاري تجهيز الملفات...","info");
-  const zip=new JSZip();
-  const folder=zip.folder(`${proj.ownerName} — ${proj.id}`);
-  const fetches=[];
+
+  // collect all docs with uploaded files
+  const allDocs=[];
   proj.stages?.forEach((s,si)=>{
-    const stageFolder=folder.folder(`${si+1}. ${s.label}`);
     [...(s.docs||[]),...(s.cd||[])].forEach(d=>{
-      if(!d.up?.url)return;
-      fetches.push(
-        fetch(d.up.url).then(r=>r.blob()).then(blob=>{
-          const ext=d.up.name?.split(".").pop()||"pdf";
-          stageFolder.file(`${d.label}.${ext}`,blob);
-        }).catch(()=>{})
-      );
+      if(d.up?.url) allDocs.push({stageNum:si+1,stageLabel:s.label,docLabel:d.label,url:d.up.url,name:d.up.name||d.label});
     });
   });
-  await Promise.all(fetches);
+
+  if(!allDocs.length){toast("لا توجد ملفات مرفوعة في هذا المشروع","err");return;}
+
+  toast(`⏳ جاري تجهيز ${allDocs.length} ملف...`,"info");
+
+  const zip=new JSZip();
+  const folder=zip.folder(proj.ownerName||proj.id);
+
+  await Promise.all(allDocs.map(async(item)=>{
+    try{
+      const r=await fetch(item.url);
+      if(!r.ok)return;
+      const blob=await r.blob();
+      const ext=(item.name.split(".").pop()||"pdf").toLowerCase();
+      const safeName=item.docLabel.replace(/[/\\:*?"<>|]/g,"-");
+      const stageFolder=folder.folder(`${item.stageNum}. ${item.stageLabel}`);
+      stageFolder.file(`${safeName}.${ext}`,blob);
+    }catch(e){/* skip failed file */}
+  }));
+
   const content=await zip.generateAsync({type:"blob"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(content);
-  a.download=`${proj.ownerName} — ${proj.id}.zip`;
+  a.download=`${proj.ownerName||proj.id}.zip`;
+  document.body.appendChild(a);
   a.click();
-  toast("✓ تم تحميل ملفات المشروع");
+  document.body.removeChild(a);
+  toast("✓ تم تحميل الملفات");
 };
 
 const rSettings=()=>{
