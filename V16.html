@@ -2581,19 +2581,19 @@ const hUp=(sk,dk,isC,inp)=>{
 // حذف ملف — لازم تأكيد
 const rF=(sk,dk,isC)=>{
   const p=gP();if(!p)return;
+  const isAdminOrStaff=["admin","staff"].includes(CU.role);
   const stage=p.stages.find(s=>s.key===sk);
   const doc=(isC?(stage?.cd||[]):(stage?.docs||[])).find(d=>d.key===dk);
-  const uploadedBy=doc?.up?.uploadedBy;
-  if(uploadedBy&&uploadedBy!==CU.id&&!["admin","staff"].includes(CU.role)){
-    toast("لا يمكنك حذف ملف لم ترفعه","err");return;
+  const up=doc?.up;
+  if(!up){toast("لا يوجد ملف للحذف","err");return;}
+  const byMe=up.uploadedBy===CU.id;
+  const approved=up.status==="approved";
+  // غير أدمن: لازم يكون رفعه هو، وميكونش اتوافق عليه
+  if(!isAdminOrStaff){
+    if(!byMe){toast("لا يمكنك حذف ملف لم ترفعه","err");return;}
+    if(approved){toast("لا يمكن حذف ملف تمت الموافقة عليه — تواصل مع الإدارة","err");return;}
   }
-  if(!confirm("⚠ هل أنت متأكد من حذف هذا الملف؟\nلا يمكن التراجع عن هذا الإجراء."))return;
-  const stage2=p.stages.find(s=>s.key===sk);
-  const doc2=(isC?(stage2?.cd||[]):(stage2?.docs||[])).find(d=>d.key===dk);
-  const upSt2=doc2?.up?.status||(doc2?.up?"approved":null);
-  const byMe=doc2?.up?.uploadedBy===CU.id;
-  if(!["admin","staff"].includes(CU.role)&&upSt2==="approved"){toast("لا يمكن حذف ملف تمت الموافقة عليه","err");return;}
-  if(CU.role==="office"&&!byMe){toast("لا يمكنك حذف ملف لم ترفعه","err");return;}
+  if(!confirm("⚠ هل أنت متأكد من حذف هذا الملف؟"))return;
   const upd=arr=>arr.map(d=>d.key===dk?{...d,up:null}:d);
   p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
   svP(p);rFile();
