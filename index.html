@@ -1070,8 +1070,9 @@ const doLogin=()=>{
   sm("amsg","","");
   if(!e||!p){sm("amsg","يرجى تعبئة بيانات الدخول","e");return;}
   const users=LS.g(K.u)||[];
-  const user=users.find(u=>(u.email===e||u.nationalId===e)&&u.pass===p);
-  if(!user){sm("amsg","البيانات غير صحيحة","e");return;}
+  const el=e.toLowerCase();
+  const user=users.find(u=>((u.email||"").toLowerCase()===el||u.nationalId===e)&&u.pass===p);
+  if(!user){sm("amsg","البيانات غير صحيحة — تأكد من الإيميل وكلمة المرور","e");return;}
   if(user.status==="pending"){sm("amsg","حسابك في انتظار موافقة المدير","i");return;}
   if(user.status==="rejected"){sm("amsg","تم رفض حسابك — تواصل مع الإدارة","e");return;}
   LS.s(K.ss,{uid:user.id,at:new Date().toISOString()});
