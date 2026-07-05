@@ -4206,13 +4206,30 @@ const downloadProjZip=async(projId)=>{
   if(dlBtn&&items.some(i=>i.url))dlBtn.style.display="";
 };
 
+const dlOneFile=async(url,filename)=>{
+  try{
+    const r=await fetch(url);
+    if(!r.ok)throw new Error("fetch failed");
+    const blob=await r.blob();
+    const obj=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=obj;a.download=filename;
+    document.body.appendChild(a);a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(obj),5000);
+  }catch(e){
+    window.open(url+"&response-content-disposition=attachment","_blank");
+  }
+};
+
 window.dlAllFiles=async()=>{
   const items=(window._dlItems||[]).filter(i=>i.url);
+  toast(`⏳ جاري تحميل ${items.length} ملف...`,"info");
   for(let i=0;i<items.length;i++){
-    window.open(items[i].url+"&response-content-disposition=attachment","_blank");
-    await new Promise(r=>setTimeout(r,900));
+    await dlOneFile(items[i].url, items[i].name||items[i].dl);
+    await new Promise(r=>setTimeout(r,700));
   }
-  toast(`✓ تم فتح ${items.length} ملف — تحقق من التبويبات الجديدة`);
+  toast(`✓ تم تحميل ${items.length} ملف`);
 };
 </script>
 </body>
