@@ -648,8 +648,7 @@ firebase.initializeApp({
 });
 const DB=firebase.firestore();
 const ST=firebase.storage();
-const NO_SYNC=[K.ss,K.rm]; // never push session or remember-me to Firestore
-const pushDB=(k,v)=>{if(NO_SYNC.includes(k))return;DB.collection("sanad").doc(k).set({v:JSON.stringify(v)}).catch(()=>{});};
+const pushDB=(k,v)=>{if(k==="snd_ss4"||k==="snd_rm4")return;DB.collection("sanad").doc(k).set({v:JSON.stringify(v)}).catch(()=>{});};
 
 const uploadToST=(file,projId,stageKey,docKey)=>new Promise((resolve,reject)=>{
   const ext=file.name.split(".").pop()||"bin";
@@ -674,7 +673,7 @@ const uploadToST=(file,projId,stageKey,docKey)=>new Promise((resolve,reject)=>{
   }else{doUpload(file);}
 });
 const deleteFromST=path=>{if(path)ST.ref(path).delete().catch(()=>{});};
-const pullDB=async()=>{try{const s=await DB.collection("sanad").get();s.forEach(d=>{if(NO_SYNC.includes(d.id)){DB.collection("sanad").doc(d.id).delete().catch(()=>{});return;}try{localStorage.setItem(d.id,d.data().v||"null");}catch{}});}catch(e){console.warn("offline",e);}};
+const pullDB=async()=>{try{const s=await DB.collection("sanad").get();s.forEach(d=>{if(d.id==="snd_ss4"||d.id==="snd_rm4"){DB.collection("sanad").doc(d.id).delete().catch(()=>{});return;}try{localStorage.setItem(d.id,d.data().v||"null");}catch{}});}catch(e){console.warn("offline",e);}};
 
 // ── STORAGE HELPERS ──
 const LS={
