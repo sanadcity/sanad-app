@@ -1500,7 +1500,7 @@ const rProjs=()=>{
           <text x="23" y="27" text-anchor="middle" font-size="9" font-weight="700" fill="${cc}" font-family="monospace">${comp}%</text>
         </svg>
       </div>
-      ${p.activity?`<div style="display:inline-block;background:${ACT_CLR[p.activity]||"#555"};color:#fff;font-size:9px;font-weight:700;border-radius:4px;padding:2px 8px;margin-bottom:5px;">${p.activity}</div>`:""}
+      ${(()=>{const act=p.activity||"سكني";return`<div style="display:inline-block;background:${ACT_CLR[act]||"#555"};color:#fff;font-size:9px;font-weight:700;border-radius:4px;padding:2px 8px;margin-bottom:5px;">${act}</div>`;})()}
       <div class="pc-title">${p.ownerName}</div>
       <div style="font-size:10px;color:var(--t3);margin-bottom:4px;">أضافه: ${p.byRole==="office"?"مكتب":p.byRole==="staff"?"موظف":"—"} · ${p.byName||"—"}</div>
       <div class="pc-loc"><span>📍</span><span>${p.city} · ${p.district}${p.area?" · "+Number(p.area).toLocaleString()+" م²":""}</span></div>
