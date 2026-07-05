@@ -3016,7 +3016,10 @@ const subSvc=()=>{
 };
 
 const rSvcs=()=>{
-  const svcs=LS.g(K.svc)||[];const el=$("sv");
+  const isAdmin=["admin","staff"].includes(CU.role);
+  const all=LS.g(K.svc)||[];
+  const svcs=isAdmin?all:all.filter(s=>s.by===CU.id||s.byId===CU.id);
+  const el=$("sv");
   if(!svcs.length){el.innerHTML=`<div class="card"><div class="empty"><div class="ei">⚡</div><div class="et">لا توجد طلبات</div><div class="es">لم يتم استلام أي طلبات خدمة بعد</div></div></div>`;return;}
   const sc={pending:"#B7770D",done:"#1B7A4A",cancelled:"#C0392B"};
   const sl={pending:"معلق",done:"منجز",cancelled:"ملغي"};
