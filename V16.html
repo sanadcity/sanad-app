@@ -1079,7 +1079,8 @@ const doLogin=()=>{
 
 const doReg=()=>{
   sm("amsg","","");
-  const r=($("rr")?.value||$("rr-other")?.value||"");
+  const step2c=$("reg-step2-client");
+  const r=step2c&&step2c.style.display!=="none"?($("rr")?.value||""):($("rr-other")?.value||"");
   if(!r){sm("amsg","يرجى اختيار نوع الحساب","e");return;}
   let n,ph,e="",nid="",p;
   if(r==="client"){
