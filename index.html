@@ -4199,7 +4199,7 @@ const downloadProjZip=async(projId)=>{
       <div style="font-size:11px;font-weight:700;color:var(--t1);">${item.sl}</div>
       <div style="font-size:10px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.dl}</div>
     </div>
-    ${item.url?`<a href="${item.url}" download="${item.name||item.dl}" target="_blank" style="background:var(--n8);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap;">⬇ تحميل</a>`:`<span style="font-size:10px;color:var(--rd);">فشل</span>`}
+    ${item.url?`<a href="${item.url}&response-content-disposition=attachment" target="_blank" rel="noopener" style="background:var(--n8);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap;">⬇ تحميل</a>`:`<span style="font-size:10px;color:var(--rd);">فشل</span>`}
   </div>`).join("");
   document.getElementById("dl-list").innerHTML=rows;
   const dlBtn=document.getElementById("dl-all-btn");
@@ -4209,12 +4209,10 @@ const downloadProjZip=async(projId)=>{
 window.dlAllFiles=async()=>{
   const items=(window._dlItems||[]).filter(i=>i.url);
   for(let i=0;i<items.length;i++){
-    const a=document.createElement("a");
-    a.href=items[i].url;a.download=items[i].name||items[i].dl;a.target="_blank";
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-    await new Promise(r=>setTimeout(r,800));
+    window.open(items[i].url+"&response-content-disposition=attachment","_blank");
+    await new Promise(r=>setTimeout(r,900));
   }
-  toast(`✓ تم تحميل ${items.length} ملف`);
+  toast(`✓ تم فتح ${items.length} ملف — تحقق من التبويبات الجديدة`);
 };
 </script>
 </body>
