@@ -2653,8 +2653,12 @@ const rejectFile=(sk,dk,isC)=>{
   const p=gP();if(!p)return;
   const upd=arr=>arr.map(d=>d.key===dk&&d.up?{...d,up:{...d.up,status:"rejected",rejectReason:reason||"غير محدد"}}:d);
   p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
+  // find who uploaded to notify them
+  const stage=p.stages.find(s=>s.key===sk);
+  const doc=(isC?(stage?.cd||[]):(stage?.docs||[])).find(d=>d.key===dk);
+  const uploaderId=doc?.up?.uploadedBy;
   svP(p);
-  addNotif(`تم رفض ملف في مشروع ${p.ownerName} — السبب: ${reason||"غير محدد"}`,"warn",p.id,null);
+  addNotif(`تم رفض ملف في مشروع ${p.ownerName} — السبب: ${reason||"غير محدد"}`,"warn",p.id,uploaderId?[uploaderId]:null);
   rFile();toast("تم رفض الملف مع إشعار المالك","info");
   updBdg();
 };
