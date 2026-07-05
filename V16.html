@@ -964,6 +964,7 @@ const myNotifs=()=>{
   return all.filter(n=>{
     if(!n.forWho||n.forWho===null)return["admin","staff"].includes(CU.role);
     if(n.forWho==="all")return true;
+    if(Array.isArray(n.forWho))return n.forWho.includes(CU.id)||n.forWho.includes(CU.role);
     if(n.forWho===CU.id)return true;
     if(n.forWho===CU.role)return true;
     return false;
