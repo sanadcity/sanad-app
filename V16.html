@@ -1166,7 +1166,7 @@ const buildSB=()=>{
 };
 
 const buildTB=()=>{
-  const can=["admin","staff","office"].includes(CU.role);
+  const can=["admin","staff","office","developer","client"].includes(CU.role);
   $("tb-cta").innerHTML=can?`<button class="btn btn-p btn-sm" onclick="openNP()"><span style="font-size:16px;font-weight:300;">+</span> مشروع جديد</button>`:"";
 };
 
@@ -1427,10 +1427,13 @@ const rDash=()=>{
       <td style="font-family:monospace;color:var(--bl);font-weight:700;font-size:11px;">${p.id}</td>
       <td><div style="font-weight:700;">${p.ownerName}</div><div style="font-size:10px;color:var(--t3);">${p.city} · ${p.district}</div></td>
       <td style="font-size:11px;color:var(--t3);">${addedBy}</td>
-      <td>${pill(p.devStatus||"—",DSC[p.devStatus]||"#8896A4")}</td>
+      <td>${p.status==="pending"?pill("في انتظار الموافقة","#B7770D"):pill(p.devStatus||"—",DSC[p.devStatus]||"#8896A4")}</td>
       <td style="font-family:monospace;font-size:12px;color:var(--gold);font-weight:700;">${p.pricePerMeter&&p.area?fmtM(p.area*p.pricePerMeter):"—"}</td>
       <td style="font-size:11px;color:var(--t3);">${p.createdAt||"—"}</td>
-      <td><button class="btn btn-gh btn-xs" onclick="event.stopPropagation();openProj('${p.id}')">↗ فتح</button></td>
+      <td style="display:flex;gap:4px;flex-wrap:wrap;">
+        <button class="btn btn-gh btn-xs" onclick="event.stopPropagation();openProj('${p.id}')">↗ فتح</button>
+        ${p.status==="pending"&&["admin","staff"].includes(CU.role)?`<button class="btn btn-gr btn-xs" onclick="event.stopPropagation();approveProj('${p.id}')">✓ اعتماد</button><button class="btn btn-d btn-xs" onclick="event.stopPropagation();rejectProj('${p.id}')">✗ رفض</button>`:""}
+      </td>
     </tr>`;
   }).join("");
   html+=`</tbody></table></div></div>`;
@@ -1451,7 +1454,7 @@ const setF=(v,el)=>{PF=v;document.querySelectorAll(".ptab").forEach(b=>b.classLi
 const onSearch=v=>{SQ=v;if(!$("pg-projs").classList.contains("hid"))rProjs();};
 
 const rProjs=()=>{
-  const can=["admin","staff","office"].includes(CU.role);
+  const can=["admin","staff","office","developer","client"].includes(CU.role);
   $("btn-np")?.classList.toggle("hid",!can);
   let list=myP().filter(p=>{
     if(PF!=="all"&&p.devStatus!==PF)return false;
@@ -1492,7 +1495,7 @@ const rFile=()=>{
   const proj=(LS.g(K.p)||[]).find(p=>p.id===CPJ);
   if(!proj){$("fc").innerHTML="<div class='card cp'>المشروع غير موجود</div>";return;}
   const comp=calcC(proj),cc=CC(comp),ci=curI(proj);
-  const can=["admin","staff","office"].includes(CU.role);
+  const can=["admin","staff","office","developer","client"].includes(CU.role);
   const canDel=CU.role==="admin";
   const completedCount=proj.stages.filter((s)=>{const all=[...(s.docs||[]),...(s.cd||[])];const req=all.filter(d=>d.req);return req.length>0&&req.every(d=>d.up);}).length;
   const addedBy=proj.byRole==="staff"?`موظف · ${proj.byName||""}`:proj.byRole==="office"?`مكتب هندسي · ${proj.byName||""}`:proj.byName||"—";
@@ -2600,6 +2603,23 @@ const rF=(sk,dk,isC)=>{
   addNotif(`تم حذف ملف من مشروع ${p.ownerName}`,"warn",p.id,null);
   toast("تم حذف الملف","info");
 };
+const approveProj=(id)=>{
+  const projs=LS.g(K.p)||[];
+  const p=projs.find(x=>x.id===id);if(!p)return;
+  p.status="active";p.approvedBy=CU.id;p.approvedAt=new Date().toISOString().slice(0,10);
+  LS.s(K.p,projs);
+  addNotif(`تم اعتماد المشروع: ${p.ownerName}`,"ok",id,[p.by]);
+  toast("✓ تم اعتماد المشروع");rDash();
+};
+const rejectProj=(id)=>{
+  const reason=prompt("سبب الرفض (اختياري):")||"";
+  const projs=LS.g(K.p)||[];
+  const p=projs.find(x=>x.id===id);if(!p)return;
+  p.status="rejected";p.rejectedBy=CU.id;p.rejectedAt=new Date().toISOString().slice(0,10);p.rejectReason=reason;
+  LS.s(K.p,projs);
+  addNotif(`تم رفض المشروع: ${p.ownerName}${reason?" — "+reason:""}`,"warn",id,[p.by]);
+  toast("تم رفض المشروع","i");rDash();
+};
 const approveFile=(sk,dk,isC)=>{
   const p=gP();if(!p)return;
   const upd=arr=>arr.map(d=>d.key===dk&&d.up?{...d,up:{...d.up,status:"approved",rejectReason:""}}:d);
@@ -2945,6 +2965,7 @@ const svPF=()=>{
     id:genId(PFrm.city),
     createdAt:new Date().toISOString().slice(0,10),
     lastUpdated:new Date().toISOString().slice(0,10),
+    status:["admin","staff"].includes(CU.role)?"active":"pending",
     by:CU.id,byName:CU.name,byRole:CU.role,
     ownerName:PFrm.ownerName,nationalId:PFrm.nationalId||"",isOriginalOwner:PFrm.isOriginalOwner!==false,
     agents:PFrm.agents||[],
@@ -2972,8 +2993,11 @@ const svPF=()=>{
   }
   proj.timeline.push({date:proj.createdAt,event:"إنشاء الملف",by:CU.name,icon:"🗂"});
   const list=LS.g(K.p)||[];list.unshift(proj);LS.s(K.p,list);
-  addNotif(`تم إنشاء مشروع جديد: ${proj.ownerName}`,"info",proj.id,null);
-  cm("mnp");openProj(proj.id);toast("✓ تم إنشاء المشروع — الكود: "+proj.id);
+  const isPending=proj.status==="pending";
+  const admins=(LS.g(K.u)||[]).filter(u=>["admin","staff"].includes(u.role)).map(u=>u.id);
+  addNotif(isPending?`طلب مشروع جديد بانتظار اعتمادك: ${proj.ownerName} — بواسطة ${CU.name}`:`تم إنشاء مشروع جديد: ${proj.ownerName}`,isPending?"warn":"info",proj.id,isPending?admins:null);
+  cm("mnp");openProj(proj.id);
+  toast(isPending?"✓ تم إرسال المشروع — في انتظار موافقة الإدارة":"✓ تم إنشاء المشروع — الكود: "+proj.id);
 };
 
 // ── SERVICES ──
