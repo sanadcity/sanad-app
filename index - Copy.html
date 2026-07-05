@@ -3011,6 +3011,7 @@ const svPF=()=>{
     createdAt:new Date().toISOString().slice(0,10),
     lastUpdated:new Date().toISOString().slice(0,10),
     status:["admin","staff"].includes(CU.role)?"active":"pending",
+    assignedStaff:CU.role==="staff"?[CU.id]:[],
     by:CU.id,byName:CU.name,byRole:CU.role,
     ownerName:PFrm.ownerName,nationalId:PFrm.nationalId||"",isOriginalOwner:PFrm.isOriginalOwner!==false,
     agents:PFrm.agents||[],
@@ -3829,17 +3830,19 @@ const rStaffMgmt=()=>{
 };
 
 const openAssignStaff=(uid,uname)=>{
-  const projs=(LS.g(K.p)||[]).filter(p=>p.status==="active");
+  const allUsers=LS.g(K.u)||[];
+  const projs=(LS.g(K.p)||[]).filter(p=>p.status==="active"||p.status===undefined);
   const projRows=projs.length?projs.map(p=>{
     const assigned=(p.assignedStaff||[]).includes(uid);
+    const otherStaff=(p.assignedStaff||[]).filter(id=>id!==uid).map(id=>allUsers.find(u=>u.id===id)?.name).filter(Boolean);
     return`<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;background:${assigned?"rgba(26,63,107,.08)":"transparent"};border:1px solid ${assigned?"var(--n8)":"var(--bdl)"};margin-bottom:6px;">
       <input type="checkbox" class="as-proj-cb" value="${p.id}" ${assigned?"checked":""} style="width:15px;height:15px;accent-color:var(--n8);flex-shrink:0;"/>
       <div style="flex:1;min-width:0;">
         <div style="font-size:12px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.ownerName}</div>
-        <div style="font-size:10px;color:var(--t3);">${p.id} · ${p.city||""}</div>
+        <div style="font-size:10px;color:var(--t3);">${p.id} · ${p.city||""}${otherStaff.length?" · مسند أيضاً: "+otherStaff.join("، "):""}</div>
       </div>
     </label>`;
-  }).join(""):`<div style="font-size:12px;color:var(--t3);text-align:center;padding:16px;">لا توجد مشاريع نشطة</div>`;
+  }).join(""):`<div style="font-size:12px;color:var(--t3);text-align:center;padding:16px;">لا توجد مشاريع</div>`;
   const el=document.createElement("div");
   el.id="m-assign-staff";
   el.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center;padding:16px;";
