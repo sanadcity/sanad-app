@@ -1362,7 +1362,7 @@ const rDash=()=>{
   const projs=myP(),svcs=LS.g(K.svc)||[];
   const pendU=(LS.g(K.u)||[]).filter(u=>u.status==="pending");
   const avgC=projs.length?Math.round(projs.reduce((a,p)=>a+calcC(p),0)/projs.length):0;
-  $("dg").textContent=`أهلاً بك مجدداً، ${CU.name.split(" ")[0]} 👋`;
+  $("dg").textContent=`أهلاً بك مجدداً، ${CU.name} 👋`;
   $("ds").textContent={admin:"لوحة المدير الكاملة — كل المشاريع والمستخدمين",staff:"لوحة الموظف — إدارة الملفات والمشاريع",office:"لوحة المكتب الهندسي — مشاريعك وفريقك",developer:"لوحة المطور العقاري",client:"مرحباً بك في سند"}[CU.role]||"";
   $("dc").innerHTML=["admin","staff","office"].includes(CU.role)?`<button class="btn btn-g" onclick="openNP()"><span style="font-size:18px;font-weight:300;">+</span> مشروع جديد</button>`:"";
 
