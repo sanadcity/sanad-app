@@ -3816,7 +3816,8 @@ const rStaffMgmt=()=>{
         <td>${u.jobTitle||"—"}</td>
         <td>${u.phone||"—"}</td>
         <td><span style="color:${sc};font-weight:700;">${sl}</span></td>
-        <td style="display:flex;gap:6px;">
+        <td style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-sm" style="background:var(--n8);color:#fff;" onclick="openAssignStaff('${u.id}','${u.name.replace(/'/g,"\\'")}')">إسناد أعمال</button>
           <button class="btn btn-sm btn-gh" onclick="toggleStaffStatus('${u.id}')">${u.status==="active"?"إيقاف":"تفعيل"}</button>
           <button class="btn btn-sm btn-d" onclick="deleteStaff('${u.id}')">حذف</button>
         </td>
@@ -3825,6 +3826,52 @@ const rStaffMgmt=()=>{
     html+=`</tbody></table></div>`;
   }
   $("staff-mgmt-list").innerHTML=html;
+};
+
+const openAssignStaff=(uid,uname)=>{
+  const projs=(LS.g(K.p)||[]).filter(p=>p.status==="active");
+  const projRows=projs.length?projs.map(p=>{
+    const assigned=(p.assignedStaff||[]).includes(uid);
+    return`<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;background:${assigned?"rgba(26,63,107,.08)":"transparent"};border:1px solid ${assigned?"var(--n8)":"var(--bdl)"};margin-bottom:6px;">
+      <input type="checkbox" class="as-proj-cb" value="${p.id}" ${assigned?"checked":""} style="width:15px;height:15px;accent-color:var(--n8);flex-shrink:0;"/>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.ownerName}</div>
+        <div style="font-size:10px;color:var(--t3);">${p.id} · ${p.city||""}</div>
+      </div>
+    </label>`;
+  }).join(""):`<div style="font-size:12px;color:var(--t3);text-align:center;padding:16px;">لا توجد مشاريع نشطة</div>`;
+  const el=document.createElement("div");
+  el.id="m-assign-staff";
+  el.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center;padding:16px;";
+  el.innerHTML=`<div style="background:var(--w);border-radius:16px;padding:22px;width:460px;max-width:100%;max-height:85vh;display:flex;flex-direction:column;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div>
+        <div style="font-size:15px;font-weight:800;color:var(--t1);">إسناد أعمال</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px;">${uname}</div>
+      </div>
+      <button onclick="document.getElementById('m-assign-staff').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--t3);">✕</button>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding-right:4px;">${projRows}</div>
+    <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--bdl);">
+      <button class="btn btn-gh" onclick="document.getElementById('m-assign-staff').remove()">إلغاء</button>
+      <div style="flex:1;"></div>
+      <button class="btn btn-p" onclick="saveAssignStaff('${uid}')">✓ حفظ</button>
+    </div>
+  </div>`;
+  document.body.appendChild(el);
+};
+
+const saveAssignStaff=(uid)=>{
+  const checked=[...document.querySelectorAll(".as-proj-cb:checked")].map(cb=>cb.value);
+  const unchecked=[...document.querySelectorAll(".as-proj-cb:not(:checked)")].map(cb=>cb.value);
+  const projs=LS.g(K.p)||[];
+  projs.forEach(p=>{
+    if(checked.includes(p.id)){if(!(p.assignedStaff||[]).includes(uid)){p.assignedStaff=[...(p.assignedStaff||[]),uid];}}
+    if(unchecked.includes(p.id)){p.assignedStaff=(p.assignedStaff||[]).filter(id=>id!==uid);}
+  });
+  LS.s(K.p,projs);
+  document.getElementById("m-assign-staff")?.remove();
+  toast("✓ تم حفظ إسناد الأعمال");
 };
 
 const openInviteStaff=()=>{
