@@ -2480,6 +2480,10 @@ const openEditProj=id=>{
       <div class="fg"><label class="fl">نوع الطلب</label><select class="fs" id="ep-rt">${["مشروع جديد","استكمال مشروع","خدمة منفردة","أرشفة مشروع","نقل إدارة مشروع"].map(v=>`<option ${proj.requestType===v?"selected":""}>${v}</option>`).join("")}</select></div>
     </div>
     <div class="fg" style="margin-bottom:8px;">
+      <label class="fl" style="margin-bottom:6px;">النشاط</label>
+      <select class="fs" id="ep-activity">${["سكني","تجاري","إداري","سكني تجاري","صحي","صناعي","سياحي"].map(v=>`<option ${proj.activity===v?"selected":""}>${v}</option>`).join("")}</select>
+    </div>
+    <div class="fg" style="margin-bottom:8px;">
       <label class="fl" style="margin-bottom:6px;">حالة السوق</label>
       <select class="fs" id="ep-mkt">${["غير محدد","للبيع","للإيجار","شراكة","تطوير","مغلق"].map(v=>`<option ${proj.marketStatus===v?"selected":""}>${v}</option>`).join("")}</select>
     </div>
@@ -2546,6 +2550,7 @@ const saveEditProj=id=>{
   proj.floors=Number(document.getElementById("ep-floors")?.value)||proj.floors;
   proj.authorityCode=document.getElementById("ep-auth")?.value?.trim()||"";
   proj.note=document.getElementById("ep-note")?.value||"";
+  proj.activity=document.getElementById("ep-activity")?.value||proj.activity||"سكني";
   proj.delegatedTo=document.getElementById("ep-delegate")?.value||"";
   proj.assignedStaff=[...document.querySelectorAll(".ep-staff-cb:checked")].map(cb=>cb.value);
   proj.lastUpdated=new Date().toISOString().slice(0,10);
