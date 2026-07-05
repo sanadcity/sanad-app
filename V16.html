@@ -481,7 +481,8 @@ body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--t1);-webkit
           <div style="position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">
             <div>
               <div class="dh-label">السجل العقاري الرقمي</div>
-              <div class="dh-name" id="dg">أهلاً</div>
+              <div class="dh-name" style="font-size:18px;opacity:.85;font-weight:600;" id="dg-sub">أهلاً بك مجدداً 👋</div>
+              <div class="dh-name" id="dg" style="margin-top:2px;"></div>
               <div class="dh-sub" id="ds"></div>
             </div>
             <div id="dc"></div>
@@ -1362,7 +1363,7 @@ const rDash=()=>{
   const projs=myP(),svcs=LS.g(K.svc)||[];
   const pendU=(LS.g(K.u)||[]).filter(u=>u.status==="pending");
   const avgC=projs.length?Math.round(projs.reduce((a,p)=>a+calcC(p),0)/projs.length):0;
-  $("dg").textContent=`أهلاً بك مجدداً، ${CU.name} 👋`;
+  $("dg").textContent=CU.name;
   $("ds").textContent={admin:"لوحة المدير الكاملة — كل المشاريع والمستخدمين",staff:"لوحة الموظف — إدارة الملفات والمشاريع",office:"لوحة المكتب الهندسي — مشاريعك وفريقك",developer:"لوحة المطور العقاري",client:"مرحباً بك في سند"}[CU.role]||"";
   $("dc").innerHTML=["admin","staff","office"].includes(CU.role)?`<button class="btn btn-g" onclick="openNP()"><span style="font-size:18px;font-weight:300;">+</span> مشروع جديد</button>`:"";
 
