@@ -919,6 +919,7 @@ const CITIES_DATA={
 
 const CTC={"الشيخ زايد":"ZYD","6 أكتوبر":"OCT","أكتوبر الجديدة":"OCT","حدائق أكتوبر":"HOC","مدينة سفنكس":"SFX","القاهرة الجديدة (التجمع)":"TGM","15 مايو":"FMY","مدينة 15 مايو":"FMY","برج العرب الجديدة":"BAJ","العاشر من رمضان":"10R","مدينة بدر":"BDR","مدينة الشروق":"SHK","العبور":"OBR"};
 const DSC={"قيد التخطيط":"#1A3F6B","قيد الترخيص":"#B7770D","قيد التنفيذ":"#C9A84C","مكتمل":"#1B7A4A","مكتمل — تصالح":"#4A1A6B","مكتمل — إضافة 75% سطح":"#243D5E","موقف":"#C0392B"};
+const ACT_CLR={"سكني":"#1A6B3A","تجاري":"#1A3F6B","إداري":"#4A1A6B","سكني تجاري":"#2E5B8A","صحي":"#B7770D","صناعي":"#6B3A1A","سياحي":"#1A6B6B"};
 const DEV_STATUSES=["قيد التخطيط","قيد الترخيص","قيد التنفيذ","تصالح","إضافة 75% سطح","موقف"];
 const MSC={"للبيع":"#1B7A4A","للإيجار":"#1A3F6B","شراكة":"#B7770D","تطوير":"#4A1A6B","مغلق":"#C0392B","غير محدد":"#8896A4"};
 const RL={admin:"مدير النظام",staff:"موظف",office:"مكتب هندسي",developer:"مطور عقاري",client:"عميل / مالك"};
@@ -1498,6 +1499,7 @@ const rProjs=()=>{
           <text x="23" y="27" text-anchor="middle" font-size="9" font-weight="700" fill="${cc}" font-family="monospace">${comp}%</text>
         </svg>
       </div>
+      ${p.activity?`<div style="display:inline-block;background:${ACT_CLR[p.activity]||"#555"};color:#fff;font-size:9px;font-weight:700;border-radius:4px;padding:2px 8px;margin-bottom:5px;">${p.activity}</div>`:""}
       <div class="pc-title">${p.ownerName}</div>
       <div style="font-size:10px;color:var(--t3);margin-bottom:4px;">أضافه: ${p.byRole==="office"?"مكتب":p.byRole==="staff"?"موظف":"—"} · ${p.byName||"—"}</div>
       <div class="pc-loc"><span>📍</span><span>${p.city} · ${p.district}${p.area?" · "+Number(p.area).toLocaleString()+" م²":""}</span></div>
@@ -2838,7 +2840,7 @@ const rPM=()=>{
 
     <div class="fw">
       <div class="fg"><label class="fl">نوع العقار</label><select class="fs" id="pt" onchange="PFrm.type=this.value;rPM();"><option value="normal" ${PFrm.type==="normal"?"selected":""}>مشروع عادي</option><option value="compound" ${PFrm.type==="compound"?"selected":""}>كومباوند</option></select></div>
-      <div class="fg"><label class="fl">النشاط</label><select class="fs" id="pa">${["سكني","تجاري","إداري","سكني تجاري"].map(v=>`<option ${PFrm.activity===v?"selected":""}>${v}</option>`).join("")}</select></div>
+      <div class="fg"><label class="fl">النشاط</label><select class="fs" id="pa">${["سكني","تجاري","إداري","سكني تجاري","صحي","صناعي","سياحي"].map(v=>`<option ${PFrm.activity===v?"selected":""}>${v}</option>`).join("")}</select></div>
     </div>
 
     <div class="fw">

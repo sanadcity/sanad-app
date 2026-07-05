@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>SANAD | سند</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
@@ -480,7 +481,8 @@ body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--t1);-webkit
           <div style="position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">
             <div>
               <div class="dh-label">السجل العقاري الرقمي</div>
-              <div class="dh-name" id="dg">أهلاً</div>
+              <div class="dh-name" style="font-size:18px;opacity:.85;font-weight:600;" id="dg-sub">أهلاً بك مجدداً 👋</div>
+              <div class="dh-name" id="dg" style="margin-top:2px;"></div>
               <div class="dh-sub" id="ds"></div>
             </div>
             <div id="dc"></div>
@@ -647,7 +649,7 @@ firebase.initializeApp({
 });
 const DB=firebase.firestore();
 const ST=firebase.storage();
-const pushDB=(k,v)=>DB.collection("sanad").doc(k).set({v:JSON.stringify(v)}).catch(()=>{});
+const pushDB=(k,v)=>{if(k==="snd_ss4"||k==="snd_rm4")return;DB.collection("sanad").doc(k).set({v:JSON.stringify(v)}).catch(()=>{});};
 
 const uploadToST=(file,projId,stageKey,docKey)=>new Promise((resolve,reject)=>{
   const ext=file.name.split(".").pop()||"bin";
@@ -672,7 +674,7 @@ const uploadToST=(file,projId,stageKey,docKey)=>new Promise((resolve,reject)=>{
   }else{doUpload(file);}
 });
 const deleteFromST=path=>{if(path)ST.ref(path).delete().catch(()=>{});};
-const pullDB=async()=>{try{const s=await DB.collection("sanad").get();s.forEach(d=>{try{localStorage.setItem(d.id,d.data().v||"null");}catch{}});}catch(e){console.warn("offline",e);}};
+const pullDB=async()=>{try{const s=await DB.collection("sanad").get();s.forEach(d=>{if(d.id==="snd_ss4"||d.id==="snd_rm4"){DB.collection("sanad").doc(d.id).delete().catch(()=>{});return;}try{localStorage.setItem(d.id,d.data().v||"null");}catch{}});}catch(e){console.warn("offline",e);}};
 
 // ── STORAGE HELPERS ──
 const LS={
@@ -917,6 +919,7 @@ const CITIES_DATA={
 
 const CTC={"الشيخ زايد":"ZYD","6 أكتوبر":"OCT","أكتوبر الجديدة":"OCT","حدائق أكتوبر":"HOC","مدينة سفنكس":"SFX","القاهرة الجديدة (التجمع)":"TGM","15 مايو":"FMY","مدينة 15 مايو":"FMY","برج العرب الجديدة":"BAJ","العاشر من رمضان":"10R","مدينة بدر":"BDR","مدينة الشروق":"SHK","العبور":"OBR"};
 const DSC={"قيد التخطيط":"#1A3F6B","قيد الترخيص":"#B7770D","قيد التنفيذ":"#C9A84C","مكتمل":"#1B7A4A","مكتمل — تصالح":"#4A1A6B","مكتمل — إضافة 75% سطح":"#243D5E","موقف":"#C0392B"};
+const ACT_CLR={"سكني":"#1A6B3A","تجاري":"#1A3F6B","إداري":"#4A1A6B","سكني تجاري":"#2E5B8A","صحي":"#B7770D","صناعي":"#6B3A1A","سياحي":"#1A6B6B"};
 const DEV_STATUSES=["قيد التخطيط","قيد الترخيص","قيد التنفيذ","تصالح","إضافة 75% سطح","موقف"];
 const MSC={"للبيع":"#1B7A4A","للإيجار":"#1A3F6B","شراكة":"#B7770D","تطوير":"#4A1A6B","مغلق":"#C0392B","غير محدد":"#8896A4"};
 const RL={admin:"مدير النظام",staff:"موظف",office:"مكتب هندسي",developer:"مطور عقاري",client:"عميل / مالك"};
@@ -962,6 +965,7 @@ const myNotifs=()=>{
   return all.filter(n=>{
     if(!n.forWho||n.forWho===null)return["admin","staff"].includes(CU.role);
     if(n.forWho==="all")return true;
+    if(Array.isArray(n.forWho))return n.forWho.includes(CU.id)||n.forWho.includes(CU.role);
     if(n.forWho===CU.id)return true;
     if(n.forWho===CU.role)return true;
     return false;
@@ -1067,8 +1071,9 @@ const doLogin=()=>{
   sm("amsg","","");
   if(!e||!p){sm("amsg","يرجى تعبئة بيانات الدخول","e");return;}
   const users=LS.g(K.u)||[];
-  const user=users.find(u=>(u.email===e||u.nationalId===e)&&u.pass===p);
-  if(!user){sm("amsg","البيانات غير صحيحة","e");return;}
+  const el=e.toLowerCase();
+  const user=users.find(u=>((u.email||"").toLowerCase()===el||u.nationalId===e)&&u.pass===p);
+  if(!user){sm("amsg","البيانات غير صحيحة — تأكد من الإيميل وكلمة المرور","e");return;}
   if(user.status==="pending"){sm("amsg","حسابك في انتظار موافقة المدير","i");return;}
   if(user.status==="rejected"){sm("amsg","تم رفض حسابك — تواصل مع الإدارة","e");return;}
   LS.s(K.ss,{uid:user.id,at:new Date().toISOString()});
@@ -1078,7 +1083,8 @@ const doLogin=()=>{
 
 const doReg=()=>{
   sm("amsg","","");
-  const r=($("rr")?.value||$("rr-other")?.value||"");
+  const step2c=$("reg-step2-client");
+  const r=step2c&&step2c.style.display!=="none"?($("rr")?.value||""):($("rr-other")?.value||"");
   if(!r){sm("amsg","يرجى اختيار نوع الحساب","e");return;}
   let n,ph,e="",nid="",p;
   if(r==="client"){
@@ -1163,7 +1169,7 @@ const buildSB=()=>{
 };
 
 const buildTB=()=>{
-  const can=["admin","staff","office"].includes(CU.role);
+  const can=["admin","staff","office","developer","client"].includes(CU.role);
   $("tb-cta").innerHTML=can?`<button class="btn btn-p btn-sm" onclick="openNP()"><span style="font-size:16px;font-weight:300;">+</span> مشروع جديد</button>`:"";
 };
 
@@ -1209,19 +1215,37 @@ const showPendingFilesPage=()=>{
   pg.innerHTML=`<div style="max-width:780px;margin:0 auto;padding:16px;">
     <div style="font-size:18px;font-weight:800;color:var(--t1);margin-bottom:14px;">⏳ طلبات الموافقة <span style="font-size:13px;color:var(--t3);font-weight:400;">(${items.length})</span></div>
     ${items.length===0?`<div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;padding:48px;text-align:center;color:var(--t3);">لا توجد ملفات تنتظر الموافقة</div>`
-    :items.map(({proj,stage:s,doc:d})=>`
-    <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:800;color:var(--t1);">${d.label}</div>
-        <div style="font-size:11px;color:var(--t3);margin-top:3px;">${proj.ownerName} · ${s.label}</div>
-        <div style="font-size:10px;color:var(--am);margin-top:2px;">رُفع: ${d.up.date||""}</div>
+    :items.map(({proj,stage:s,doc:d})=>{
+      const comp=calcC(proj);
+      const uploader=(LS.g(K.u)||[]).find(u=>u.id===d.up?.uploadedBy);
+      const uploaderName=uploader?uploader.name:d.up?.uploadedBy||"—";
+      return`
+    <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
+      <div style="display:flex;align-items:flex-start;gap:14px;">
+        <!-- info -->
+        <div style="flex:1;min-width:0;cursor:pointer;" onclick="openProj('${proj.id}');showPendingFilesPage()">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="font-size:13px;font-weight:800;color:var(--t1);">${d.label}</span>
+            <span style="font-size:10px;font-family:monospace;color:var(--gold);font-weight:700;">${proj.id}</span>
+          </div>
+          <div style="font-size:11px;color:var(--t2);margin-bottom:2px;">📁 ${proj.ownerName} · ${s.label}</div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:4px;">👤 رفعه: <strong>${uploaderName}</strong> · ${d.up.date||""}</div>
+          <!-- progress bar -->
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="flex:1;height:5px;background:var(--bdl);border-radius:3px;overflow:hidden;">
+              <div style="width:${comp}%;height:100%;background:${comp>=80?"#1B7A4A":comp>=40?"#C9A84C":"#8896A4"};border-radius:3px;transition:width .3s;"></div>
+            </div>
+            <span style="font-size:10px;color:var(--t3);font-weight:700;min-width:28px;">${comp}%</span>
+          </div>
+        </div>
+        <!-- actions -->
+        <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">
+          <button onclick="previewFile('${d.up.url||d.up.data||""}','${(d.up.name||"").replace(/'/g,"\\'")}','${d.up.type||""}')" class="btn btn-gh btn-xs">👁 معاينة</button>
+          <button onclick="CPJ='${proj.id}';approveFile('${s.key}','${d.key}',${!!d.custom});showPendingFilesPage()" style="background:#1B7A4A;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:Cairo,sans-serif;font-weight:700;">✓ قبول</button>
+          <button onclick="CPJ='${proj.id}';rejectFile('${s.key}','${d.key}',${!!d.custom});showPendingFilesPage()" style="background:#C0392B;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:Cairo,sans-serif;font-weight:700;">✕ رفض</button>
+        </div>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;">
-        <button onclick="previewFile('${d.up.url||d.up.data||""}','${(d.up.name||"").replace(/'/g,"\\'")}','${d.up.type||""}')" class="btn btn-gh btn-sm">👁 معاينة</button>
-        <button onclick="CPJ='${proj.id}';approveFile('${s.key}','${d.key}',${!!d.custom});showPendingFilesPage()" style="background:#1B7A4A;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:Cairo,sans-serif;font-weight:700;">✓ قبول</button>
-        <button onclick="CPJ='${proj.id}';rejectFile('${s.key}','${d.key}',${!!d.custom});showPendingFilesPage()" style="background:#C0392B;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:Cairo,sans-serif;font-weight:700;">✕ رفض</button>
-      </div>
-    </div>`).join("")}
+    </div>`;}).join("")}
   </div>`;
 };
 
@@ -1360,7 +1384,7 @@ const rDash=()=>{
   const projs=myP(),svcs=LS.g(K.svc)||[];
   const pendU=(LS.g(K.u)||[]).filter(u=>u.status==="pending");
   const avgC=projs.length?Math.round(projs.reduce((a,p)=>a+calcC(p),0)/projs.length):0;
-  $("dg").textContent=`أهلاً بك مجدداً، ${CU.name.split(" ")[0]} 👋`;
+  $("dg").textContent=CU.name;
   $("ds").textContent={admin:"لوحة المدير الكاملة — كل المشاريع والمستخدمين",staff:"لوحة الموظف — إدارة الملفات والمشاريع",office:"لوحة المكتب الهندسي — مشاريعك وفريقك",developer:"لوحة المطور العقاري",client:"مرحباً بك في سند"}[CU.role]||"";
   $("dc").innerHTML=["admin","staff","office"].includes(CU.role)?`<button class="btn btn-g" onclick="openNP()"><span style="font-size:18px;font-weight:300;">+</span> مشروع جديد</button>`:"";
 
@@ -1422,12 +1446,15 @@ const rDash=()=>{
     const addedBy=p.byRole==="office"?`مكتب · ${p.byName||""}`:p.byRole==="staff"?`موظف · ${p.byName||""}`:p.byName||"—";
     return`<tr onclick="openProj('${p.id}')" style="cursor:pointer;">
       <td style="font-family:monospace;color:var(--bl);font-weight:700;font-size:11px;">${p.id}</td>
-      <td><div style="font-weight:700;">${p.ownerName}</div><div style="font-size:10px;color:var(--t3);">${p.city} · ${p.district}</div></td>
+      <td><div style="font-weight:700;">${p.ownerName}</div><div style="font-size:10px;color:var(--t3);">${[p.plot?"قطعة "+p.plot:"",p.city,p.district].filter(Boolean).join(" · ")}</div></td>
       <td style="font-size:11px;color:var(--t3);">${addedBy}</td>
-      <td>${pill(p.devStatus||"—",DSC[p.devStatus]||"#8896A4")}</td>
+      <td>${p.status==="pending"?pill("في انتظار الموافقة","#B7770D"):pill(p.devStatus||"—",DSC[p.devStatus]||"#8896A4")}</td>
       <td style="font-family:monospace;font-size:12px;color:var(--gold);font-weight:700;">${p.pricePerMeter&&p.area?fmtM(p.area*p.pricePerMeter):"—"}</td>
       <td style="font-size:11px;color:var(--t3);">${p.createdAt||"—"}</td>
-      <td><button class="btn btn-gh btn-xs" onclick="event.stopPropagation();openProj('${p.id}')">↗ فتح</button></td>
+      <td style="display:flex;gap:4px;flex-wrap:wrap;">
+        <button class="btn btn-gh btn-xs" onclick="event.stopPropagation();openProj('${p.id}')">↗ فتح</button>
+        ${p.status==="pending"&&["admin","staff"].includes(CU.role)?`<button class="btn btn-gr btn-xs" onclick="event.stopPropagation();approveProj('${p.id}')">✓ اعتماد</button><button class="btn btn-d btn-xs" onclick="event.stopPropagation();rejectProj('${p.id}')">✗ رفض</button>`:""}
+      </td>
     </tr>`;
   }).join("");
   html+=`</tbody></table></div></div>`;
@@ -1448,7 +1475,7 @@ const setF=(v,el)=>{PF=v;document.querySelectorAll(".ptab").forEach(b=>b.classLi
 const onSearch=v=>{SQ=v;if(!$("pg-projs").classList.contains("hid"))rProjs();};
 
 const rProjs=()=>{
-  const can=["admin","staff","office"].includes(CU.role);
+  const can=["admin","staff","office","developer","client"].includes(CU.role);
   $("btn-np")?.classList.toggle("hid",!can);
   let list=myP().filter(p=>{
     if(PF!=="all"&&p.devStatus!==PF)return false;
@@ -1472,6 +1499,7 @@ const rProjs=()=>{
           <text x="23" y="27" text-anchor="middle" font-size="9" font-weight="700" fill="${cc}" font-family="monospace">${comp}%</text>
         </svg>
       </div>
+      ${p.activity?`<div style="display:inline-block;background:${ACT_CLR[p.activity]||"#555"};color:#fff;font-size:9px;font-weight:700;border-radius:4px;padding:2px 8px;margin-bottom:5px;">${p.activity}</div>`:""}
       <div class="pc-title">${p.ownerName}</div>
       <div style="font-size:10px;color:var(--t3);margin-bottom:4px;">أضافه: ${p.byRole==="office"?"مكتب":p.byRole==="staff"?"موظف":"—"} · ${p.byName||"—"}</div>
       <div class="pc-loc"><span>📍</span><span>${p.city} · ${p.district}${p.area?" · "+Number(p.area).toLocaleString()+" م²":""}</span></div>
@@ -1489,7 +1517,7 @@ const rFile=()=>{
   const proj=(LS.g(K.p)||[]).find(p=>p.id===CPJ);
   if(!proj){$("fc").innerHTML="<div class='card cp'>المشروع غير موجود</div>";return;}
   const comp=calcC(proj),cc=CC(comp),ci=curI(proj);
-  const can=["admin","staff","office"].includes(CU.role);
+  const can=["admin","staff","office","developer","client"].includes(CU.role);
   const canDel=CU.role==="admin";
   const completedCount=proj.stages.filter((s)=>{const all=[...(s.docs||[]),...(s.cd||[])];const req=all.filter(d=>d.req);return req.length>0&&req.every(d=>d.up);}).length;
   const addedBy=proj.byRole==="staff"?`موظف · ${proj.byName||""}`:proj.byRole==="office"?`مكتب هندسي · ${proj.byName||""}`:proj.byName||"—";
@@ -1831,6 +1859,7 @@ const rFile=()=>{
     ${can?`<button class="btn btn-gh btn-sm" onclick="openAddTask('${proj.id}')">☑ مهمة</button>`:""}
     <button class="btn btn-gh btn-sm" onclick="openPassport('${proj.id}')">🪪 سند المشروع</button>
     <button class="btn btn-gh btn-sm" onclick="openSvc()">⚡ طلب خدمة</button>
+    <button class="btn btn-gh btn-sm" onclick="downloadProjZip('${proj.id}')" style="color:#C9A84C;border-color:rgba(201,168,76,.4);">📦 تحميل الملفات</button>
     ${canDel?`<button class="btn btn-d btn-sm" onclick="delCP()">🗑 حذف</button>`:""}
   </div>
 
@@ -2577,24 +2606,41 @@ const hUp=(sk,dk,isC,inp)=>{
 // حذف ملف — لازم تأكيد
 const rF=(sk,dk,isC)=>{
   const p=gP();if(!p)return;
+  const isAdminOrStaff=["admin","staff"].includes(CU.role);
   const stage=p.stages.find(s=>s.key===sk);
   const doc=(isC?(stage?.cd||[]):(stage?.docs||[])).find(d=>d.key===dk);
-  const uploadedBy=doc?.up?.uploadedBy;
-  if(uploadedBy&&uploadedBy!==CU.id&&!["admin","staff"].includes(CU.role)){
-    toast("لا يمكنك حذف ملف لم ترفعه","err");return;
+  const up=doc?.up;
+  if(!up){toast("لا يوجد ملف للحذف","err");return;}
+  const byMe=up.uploadedBy===CU.id;
+  const approved=up.status==="approved";
+  // غير أدمن: لازم يكون رفعه هو، وميكونش اتوافق عليه
+  if(!isAdminOrStaff){
+    if(!byMe){toast("لا يمكنك حذف ملف لم ترفعه","err");return;}
+    if(approved){toast("لا يمكن حذف ملف تمت الموافقة عليه — تواصل مع الإدارة","err");return;}
   }
-  if(!confirm("⚠ هل أنت متأكد من حذف هذا الملف؟\nلا يمكن التراجع عن هذا الإجراء."))return;
-  const stage2=p.stages.find(s=>s.key===sk);
-  const doc2=(isC?(stage2?.cd||[]):(stage2?.docs||[])).find(d=>d.key===dk);
-  const upSt2=doc2?.up?.status||(doc2?.up?"approved":null);
-  const byMe=doc2?.up?.uploadedBy===CU.id;
-  if(!["admin","staff"].includes(CU.role)&&upSt2==="approved"){toast("لا يمكن حذف ملف تمت الموافقة عليه","err");return;}
-  if(CU.role==="office"&&!byMe){toast("لا يمكنك حذف ملف لم ترفعه","err");return;}
+  if(!confirm("⚠ هل أنت متأكد من حذف هذا الملف؟"))return;
   const upd=arr=>arr.map(d=>d.key===dk?{...d,up:null}:d);
   p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
   svP(p);rFile();
   addNotif(`تم حذف ملف من مشروع ${p.ownerName}`,"warn",p.id,null);
   toast("تم حذف الملف","info");
+};
+const approveProj=(id)=>{
+  const projs=LS.g(K.p)||[];
+  const p=projs.find(x=>x.id===id);if(!p)return;
+  p.status="active";p.approvedBy=CU.id;p.approvedAt=new Date().toISOString().slice(0,10);
+  LS.s(K.p,projs);
+  addNotif(`تم اعتماد المشروع: ${p.ownerName}`,"ok",id,[p.by]);
+  toast("✓ تم اعتماد المشروع");rDash();
+};
+const rejectProj=(id)=>{
+  const reason=prompt("سبب الرفض (اختياري):")||"";
+  const projs=LS.g(K.p)||[];
+  const p=projs.find(x=>x.id===id);if(!p)return;
+  p.status="rejected";p.rejectedBy=CU.id;p.rejectedAt=new Date().toISOString().slice(0,10);p.rejectReason=reason;
+  LS.s(K.p,projs);
+  addNotif(`تم رفض المشروع: ${p.ownerName}${reason?" — "+reason:""}`,"warn",id,[p.by]);
+  toast("تم رفض المشروع","i");rDash();
 };
 const approveFile=(sk,dk,isC)=>{
   const p=gP();if(!p)return;
@@ -2611,8 +2657,12 @@ const rejectFile=(sk,dk,isC)=>{
   const p=gP();if(!p)return;
   const upd=arr=>arr.map(d=>d.key===dk&&d.up?{...d,up:{...d.up,status:"rejected",rejectReason:reason||"غير محدد"}}:d);
   p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
+  // find who uploaded to notify them
+  const stage=p.stages.find(s=>s.key===sk);
+  const doc=(isC?(stage?.cd||[]):(stage?.docs||[])).find(d=>d.key===dk);
+  const uploaderId=doc?.up?.uploadedBy;
   svP(p);
-  addNotif(`تم رفض ملف في مشروع ${p.ownerName} — السبب: ${reason||"غير محدد"}`,"warn",p.id,null);
+  addNotif(`تم رفض ملف في مشروع ${p.ownerName} — السبب: ${reason||"غير محدد"}`,"warn",p.id,uploaderId?[uploaderId]:null);
   rFile();toast("تم رفض الملف مع إشعار المالك","info");
   updBdg();
 };
@@ -2790,7 +2840,7 @@ const rPM=()=>{
 
     <div class="fw">
       <div class="fg"><label class="fl">نوع العقار</label><select class="fs" id="pt" onchange="PFrm.type=this.value;rPM();"><option value="normal" ${PFrm.type==="normal"?"selected":""}>مشروع عادي</option><option value="compound" ${PFrm.type==="compound"?"selected":""}>كومباوند</option></select></div>
-      <div class="fg"><label class="fl">النشاط</label><select class="fs" id="pa">${["سكني","تجاري","إداري","سكني تجاري"].map(v=>`<option ${PFrm.activity===v?"selected":""}>${v}</option>`).join("")}</select></div>
+      <div class="fg"><label class="fl">النشاط</label><select class="fs" id="pa">${["سكني","تجاري","إداري","سكني تجاري","صحي","صناعي","سياحي"].map(v=>`<option ${PFrm.activity===v?"selected":""}>${v}</option>`).join("")}</select></div>
     </div>
 
     <div class="fw">
@@ -2941,6 +2991,7 @@ const svPF=()=>{
     id:genId(PFrm.city),
     createdAt:new Date().toISOString().slice(0,10),
     lastUpdated:new Date().toISOString().slice(0,10),
+    status:["admin","staff"].includes(CU.role)?"active":"pending",
     by:CU.id,byName:CU.name,byRole:CU.role,
     ownerName:PFrm.ownerName,nationalId:PFrm.nationalId||"",isOriginalOwner:PFrm.isOriginalOwner!==false,
     agents:PFrm.agents||[],
@@ -2968,8 +3019,11 @@ const svPF=()=>{
   }
   proj.timeline.push({date:proj.createdAt,event:"إنشاء الملف",by:CU.name,icon:"🗂"});
   const list=LS.g(K.p)||[];list.unshift(proj);LS.s(K.p,list);
-  addNotif(`تم إنشاء مشروع جديد: ${proj.ownerName}`,"info",proj.id,null);
-  cm("mnp");openProj(proj.id);toast("✓ تم إنشاء المشروع — الكود: "+proj.id);
+  const isPending=proj.status==="pending";
+  const admins=(LS.g(K.u)||[]).filter(u=>["admin","staff"].includes(u.role)).map(u=>u.id);
+  addNotif(isPending?`طلب مشروع جديد بانتظار اعتمادك: ${proj.ownerName} — بواسطة ${CU.name}`:`تم إنشاء مشروع جديد: ${proj.ownerName}`,isPending?"warn":"info",proj.id,isPending?admins:null);
+  cm("mnp");openProj(proj.id);
+  toast(isPending?"✓ تم إرسال المشروع — في انتظار موافقة الإدارة":"✓ تم إنشاء المشروع — الكود: "+proj.id);
 };
 
 // ── SERVICES ──
@@ -3012,7 +3066,10 @@ const subSvc=()=>{
 };
 
 const rSvcs=()=>{
-  const svcs=LS.g(K.svc)||[];const el=$("sv");
+  const isAdmin=["admin","staff"].includes(CU.role);
+  const all=LS.g(K.svc)||[];
+  const svcs=isAdmin?all:all.filter(s=>s.by===CU.id||s.byId===CU.id);
+  const el=$("sv");
   if(!svcs.length){el.innerHTML=`<div class="card"><div class="empty"><div class="ei">⚡</div><div class="et">لا توجد طلبات</div><div class="es">لم يتم استلام أي طلبات خدمة بعد</div></div></div>`;return;}
   const sc={pending:"#B7770D",done:"#1B7A4A",cancelled:"#C0392B"};
   const sl={pending:"معلق",done:"منجز",cancelled:"ملغي"};
@@ -4025,6 +4082,44 @@ document.body.insertAdjacentHTML("beforeend",`<div id="fb-sync" style="position:
   const sess=LS.g(K.ss);
   if(sess){const u=(LS.g(K.u)||[]).find(u=>u.id===sess.uid);if(u&&u.status==="active"){CU=u;startApp();}else LS.d(K.ss);}
 })();
+
+const downloadProjZip=async(projId)=>{
+  if(CU.role!=="admin"){
+    toast("تحميل الملفات متاح للأدمن فقط — تواصل مع الإدارة للترقية","i");
+    return;
+  }
+  const proj=(LS.g(K.p)||[]).find(p=>p.id===projId);
+  if(!proj){toast("المشروع غير موجود","err");return;}
+  const allDocs=[];
+  proj.stages?.forEach((s,si)=>{
+    [...(s.docs||[]),...(s.cd||[])].forEach(d=>{
+      if(d.up?.path) allDocs.push({si:si+1,sl:s.label,dl:d.label,path:d.up.path,name:d.up.name||d.label});
+    });
+  });
+  if(!allDocs.length){toast("لا توجد ملفات مرفوعة في هذا المشروع","err");return;}
+  toast(`⏳ جاري تجهيز ${allDocs.length} ملف...`,"info");
+  const zip=new JSZip();
+  const root=zip.folder(proj.ownerName||proj.id);
+  let ok=0,fail=0;
+  await Promise.all(allDocs.map(async item=>{
+    try{
+      const dlUrl=await ST.ref(item.path).getDownloadURL();
+      const r=await fetch(dlUrl);
+      if(!r.ok){console.error("fetch failed",r.status,item.dl);fail++;return;}
+      const blob=await r.blob();
+      const ext=(item.name.split(".").pop()||"pdf").toLowerCase();
+      root.folder(`${item.si}. ${item.sl}`).file(`${item.dl.replace(/[/\\:*?"<>|]/g,"-")}.${ext}`,blob);
+      ok++;
+    }catch(e){console.error("zip item error",item.dl,e);fail++;}
+  }));
+  console.log(`ZIP: ${ok} نجح / ${fail} فشل`);
+  const content=await zip.generateAsync({type:"blob"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(content);
+  a.download=`${proj.ownerName||proj.id}.zip`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  toast("✓ تم تحميل الملفات");
+};
 </script>
 </body>
 </html>
