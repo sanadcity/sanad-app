@@ -1319,7 +1319,8 @@ const PARTY_CAN={
 
 const myP=()=>{
   const all=LS.g(K.p)||[];
-  if(["admin","staff"].includes(CU.role))return all;
+  if(CU.role==="admin")return all;
+  if(CU.role==="staff")return all.filter(p=>(p.assignedStaff||[]).includes(CU.id));
   // linked via parties array (ID-based) OR legacy ownerEmail
   return all.filter(p=>{
     if(p.parties?.some(pt=>pt.partyId===CU.id))return true;
@@ -2493,6 +2494,18 @@ const openEditProj=id=>{
     <div class="fg"><label class="fl">كود جهة الولاية</label><input class="fi" id="ep-auth" value="${proj.authorityCode||""}" placeholder="NUCA-2024-XXX"/></div>
     <div class="fg"><label class="fl">ملاحظات</label><textarea class="fi" id="ep-note" rows="3">${proj.note||""}</textarea></div>
     <div style="border-top:1px solid var(--bd);margin:14px 0 10px;padding-top:12px;">
+      <div class="fl" style="font-weight:700;margin-bottom:8px;font-size:13px;">الموظفون المسؤولون عن هذا المشروع</div>
+      ${(()=>{
+        const staffList=(LS.g(K.u)||[]).filter(u=>u.role==="staff"&&u.status==="active");
+        const assigned=proj.assignedStaff||[];
+        if(!staffList.length)return`<div style="font-size:11px;color:var(--t3);">لا يوجد موظفون نشطون</div>`;
+        return staffList.map(s=>`<label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:6px;">
+          <input type="checkbox" class="ep-staff-cb" value="${s.id}" ${assigned.includes(s.id)?"checked":""} style="width:15px;height:15px;accent-color:var(--n8);"/>
+          <span style="font-size:12px;color:var(--t1);">${s.name}</span>
+        </label>`).join("");
+      })()}
+    </div>
+    <div style="border-top:1px solid var(--bd);margin:14px 0 10px;padding-top:12px;">
       <div class="fl" style="font-weight:700;margin-bottom:8px;font-size:13px;">تفويض المشروع لمكتب هندسي</div>
       ${(()=>{
         const offices=(LS.g(K.u)||[]).filter(u=>u.role==="office"&&u.status==="active");
@@ -2534,6 +2547,7 @@ const saveEditProj=id=>{
   proj.authorityCode=document.getElementById("ep-auth")?.value?.trim()||"";
   proj.note=document.getElementById("ep-note")?.value||"";
   proj.delegatedTo=document.getElementById("ep-delegate")?.value||"";
+  proj.assignedStaff=[...document.querySelectorAll(".ep-staff-cb:checked")].map(cb=>cb.value);
   proj.lastUpdated=new Date().toISOString().slice(0,10);
   LS.s(K.p,projs);
   document.getElementById("m-edit-proj")?.remove();
@@ -2606,7 +2620,7 @@ const hUp=(sk,dk,isC,inp)=>{
 // حذف ملف — لازم تأكيد
 const rF=(sk,dk,isC)=>{
   const p=gP();if(!p)return;
-  const isAdminOrStaff=["admin","staff"].includes(CU.role);
+  const isAdminOrStaff=CU.role==="admin";
   const stage=p.stages.find(s=>s.key===sk);
   const doc=(isC?(stage?.cd||[]):(stage?.docs||[])).find(d=>d.key===dk);
   const up=doc?.up;
