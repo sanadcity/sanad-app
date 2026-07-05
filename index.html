@@ -4153,10 +4153,7 @@ document.body.insertAdjacentHTML("beforeend",`<div id="fb-sync" style="position:
 })();
 
 const downloadProjZip=async(projId)=>{
-  if(CU.role!=="admin"){
-    toast("تحميل الملفات متاح للأدمن فقط — تواصل مع الإدارة للترقية","i");
-    return;
-  }
+  if(CU.role!=="admin"){toast("تحميل الملفات متاح للأدمن فقط","i");return;}
   const proj=(LS.g(K.p)||[]).find(p=>p.id===projId);
   if(!proj){toast("المشروع غير موجود","err");return;}
   const allDocs=[];
@@ -4166,28 +4163,58 @@ const downloadProjZip=async(projId)=>{
     });
   });
   if(!allDocs.length){toast("لا توجد ملفات مرفوعة في هذا المشروع","err");return;}
-  toast(`⏳ جاري تجهيز ${allDocs.length} ملف...`,"info");
-  const zip=new JSZip();
-  const root=zip.folder(proj.ownerName||proj.id);
-  let ok=0,fail=0;
-  await Promise.all(allDocs.map(async item=>{
+  // Show modal with download links
+  const el=document.createElement("div");
+  el.id="m-dl-files";
+  el.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;";
+  el.innerHTML=`<div style="background:var(--w);border-radius:16px;padding:22px;width:500px;max-width:100%;max-height:85vh;display:flex;flex-direction:column;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div>
+        <div style="font-size:15px;font-weight:800;color:var(--t1);">ملفات المشروع</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px;">${proj.ownerName} · ${allDocs.length} ملف</div>
+      </div>
+      <button onclick="document.getElementById('m-dl-files').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--t3);">✕</button>
+    </div>
+    <div id="dl-list" style="overflow-y:auto;flex:1;">
+      <div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;">⏳ جاري تجهيز الروابط...</div>
+    </div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bdl);display:flex;gap:8px;">
+      <button class="btn btn-gh" onclick="document.getElementById('m-dl-files').remove()">إغلاق</button>
+      <div style="flex:1;"></div>
+      <button class="btn btn-p" id="dl-all-btn" style="display:none;" onclick="dlAllFiles()">⬇ تحميل الكل</button>
+    </div>
+  </div>`;
+  document.body.appendChild(el);
+  // Fetch all download URLs
+  const items=[];
+  for(const item of allDocs){
     try{
-      const dlUrl=await ST.ref(item.path).getDownloadURL();
-      const r=await fetch(dlUrl);
-      if(!r.ok){console.error("fetch failed",r.status,item.dl);fail++;return;}
-      const blob=await r.blob();
-      const ext=(item.name.split(".").pop()||"pdf").toLowerCase();
-      root.folder(`${item.si}. ${item.sl}`).file(`${item.dl.replace(/[/\\:*?"<>|]/g,"-")}.${ext}`,blob);
-      ok++;
-    }catch(e){console.error("zip item error",item.dl,e);fail++;}
-  }));
-  console.log(`ZIP: ${ok} نجح / ${fail} فشل`);
-  const content=await zip.generateAsync({type:"blob"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(content);
-  a.download=`${proj.ownerName||proj.id}.zip`;
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-  toast("✓ تم تحميل الملفات");
+      const url=await ST.ref(item.path).getDownloadURL();
+      items.push({...item,url});
+    }catch(e){items.push({...item,url:null});}
+  }
+  window._dlItems=items;
+  const rows=items.map((item,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;border:1px solid var(--bdl);margin-bottom:6px;">
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:11px;font-weight:700;color:var(--t1);">${item.sl}</div>
+      <div style="font-size:10px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.dl}</div>
+    </div>
+    ${item.url?`<a href="${item.url}" download="${item.name||item.dl}" target="_blank" style="background:var(--n8);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap;">⬇ تحميل</a>`:`<span style="font-size:10px;color:var(--rd);">فشل</span>`}
+  </div>`).join("");
+  document.getElementById("dl-list").innerHTML=rows;
+  const dlBtn=document.getElementById("dl-all-btn");
+  if(dlBtn&&items.some(i=>i.url))dlBtn.style.display="";
+};
+
+window.dlAllFiles=async()=>{
+  const items=(window._dlItems||[]).filter(i=>i.url);
+  for(let i=0;i<items.length;i++){
+    const a=document.createElement("a");
+    a.href=items[i].url;a.download=items[i].name||items[i].dl;a.target="_blank";
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    await new Promise(r=>setTimeout(r,800));
+  }
+  toast(`✓ تم تحميل ${items.length} ملف`);
 };
 </script>
 </body>
