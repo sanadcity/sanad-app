@@ -2956,26 +2956,33 @@ const rPM=()=>{
     const cityOpts=(CITIES_DATA[selGov]||[]).map(c=>`<option value="${c}" ${PFrm.city===c?"selected":""}>${c}</option>`).join("");
 
     body=`
-    <div class="fw">
-      <div class="fg"><label class="fl">اسم المالك <span class="rq">*</span></label><input class="fi" id="po" value="${PFrm.ownerName||""}" placeholder="الاسم الكامل للمالك"/></div>
-      <div class="fg"><label class="fl">الرقم القومي للمالك <span class="rq">*</span></label><input class="fi" id="pnid" value="${PFrm.nationalId||""}" placeholder="14 رقم" maxlength="14"/></div>
-    </div>
-    <!-- نوع المالك: فرد أم شركة -->
-    <div style="display:flex;gap:8px;margin-bottom:10px;">
-      <label style="flex:1;display:flex;align-items:center;gap:6px;cursor:pointer;background:var(--w2);border:1.5px solid var(--bdl);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--t1);">
+    <!-- نوع المالك: فرد أم شركة — أول حاجة -->
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <label style="flex:1;display:flex;align-items:center;gap:6px;cursor:pointer;background:var(--w2);border:1.5px solid ${PFrm.ownerKind!=="company"?"var(--n8)":"var(--bdl)"};border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--t1);">
         <input type="radio" name="p-owner-kind" id="p-kind-ind" value="individual" ${PFrm.ownerKind!=="company"?"checked":""} onclick="toggleNPOwnerKind()" style="accent-color:var(--n8);"/> 👤 فرد
       </label>
-      <label style="flex:1;display:flex;align-items:center;gap:6px;cursor:pointer;background:var(--w2);border:1.5px solid var(--bdl);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--t1);">
+      <label style="flex:1;display:flex;align-items:center;gap:6px;cursor:pointer;background:var(--w2);border:1.5px solid ${PFrm.ownerKind==="company"?"var(--n8)":"var(--bdl)"};border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--t1);">
         <input type="radio" name="p-owner-kind" id="p-kind-co" value="company" ${PFrm.ownerKind==="company"?"checked":""} onclick="toggleNPOwnerKind()" style="accent-color:var(--n8);"/> 🏢 شركة
       </label>
     </div>
-    <div id="np-co-fields" style="display:${PFrm.ownerKind==="company"?"":"none"};background:var(--w2);border:1px solid var(--bdl);border-radius:10px;padding:12px;margin-bottom:10px;">
+    <!-- حقول الفرد -->
+    <div id="np-ind-fields" style="display:${PFrm.ownerKind==="company"?"none":""};">
+      <div class="fw">
+        <div class="fg"><label class="fl">اسم المالك <span class="rq">*</span></label><input class="fi" id="po" value="${PFrm.ownerName||""}" placeholder="الاسم الكامل للمالك"/></div>
+        <div class="fg"><label class="fl">الرقم القومي <span class="rq">*</span></label><input class="fi" id="pnid" value="${PFrm.nationalId||""}" placeholder="14 رقم" maxlength="14"/></div>
+      </div>
+    </div>
+    <!-- حقول الشركة -->
+    <div id="np-co-fields" style="display:${PFrm.ownerKind==="company"?"":"none"};">
       <div class="fg"><label class="fl">اسم الشركة <span class="rq">*</span></label><input class="fi" id="p-co-name" value="${PFrm.companyName||""}" placeholder="اسم الشركة الرسمي"/></div>
       <div class="fw">
         <div class="fg"><label class="fl">الرقم الضريبي</label><input class="fi" id="p-tax-num" value="${PFrm.taxNum||""}" placeholder="الرقم الضريبي"/></div>
         <div class="fg"><label class="fl">السجل التجاري</label><input class="fi" id="p-com-reg" value="${PFrm.comReg||""}" placeholder="رقم السجل التجاري"/></div>
       </div>
-      <div class="fg"><label class="fl">اسم الممثل القانوني</label><input class="fi" id="p-rep-name" value="${PFrm.repName||""}" placeholder="الممثل القانوني للشركة"/></div>
+      <div class="fw">
+        <div class="fg"><label class="fl">اسم الممثل القانوني</label><input class="fi" id="p-rep-name" value="${PFrm.repName||""}" placeholder="الممثل القانوني للشركة"/></div>
+        <div class="fg"><label class="fl">رقم قومي الممثل</label><input class="fi" id="p-rep-nid" value="${PFrm.repNid||""}" placeholder="14 رقم" maxlength="14"/></div>
+      </div>
     </div>
     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--w2);border:1px solid var(--bdl);border-radius:8px;padding:8px 12px;margin-bottom:12px;">
       <input type="checkbox" id="p-isoriginal" ${PFrm.isOriginalOwner!==false?"checked":""} style="width:15px;height:15px;accent-color:var(--n8);cursor:pointer;"/>
@@ -3074,10 +3081,8 @@ const selCity=sel=>{PFrm.city=sel.value;};
 
 const toggleNPOwnerKind=()=>{
   const isCo=document.getElementById("p-kind-co")?.checked;
-  const coFields=document.getElementById("np-co-fields");
-  if(coFields)coFields.style.display=isCo?"":"none";
-  const indRow=document.querySelector("#po")?.closest(".fw");
-  if(indRow)indRow.style.display=isCo?"none":"";
+  document.getElementById("np-co-fields").style.display=isCo?"":"none";
+  document.getElementById("np-ind-fields").style.display=isCo?"none":"";
 };
 const addAgent=()=>{
   const name=$("ag-name")?.value?.trim(),nid=$("ag-nid")?.value?.trim();
@@ -3109,6 +3114,7 @@ const nxPS=()=>{
       PFrm.taxNum=$("p-tax-num")?.value?.trim()||"";
       PFrm.comReg=$("p-com-reg")?.value?.trim()||"";
       PFrm.repName=$("p-rep-name")?.value?.trim()||"";
+      PFrm.repNid=$("p-rep-nid")?.value?.trim()||"";
     } else {
       o=$("po")?.value?.trim();nid=$("pnid")?.value?.trim();
       if(!o||!nid){toast("يرجى تعبئة الحقول المطلوبة (*)","err");return;}
