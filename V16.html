@@ -3051,6 +3051,19 @@ const svPF=()=>{
   } else if(proj.ownerEmail||proj.ownerName){
     proj.parties.push({partyId:null,role:"owner",name:proj.ownerName,nationalId:proj.nationalId||"",phone:"",addedAt:proj.createdAt,addedBy:CU.id,type:"external"});
   }
+  // Auto-add original owner to landOwners if checkbox was checked
+  if(proj.isOriginalOwner!==false){
+    const oid="lo_"+Date.now();
+    proj.landOwners=[{id:oid,name:proj.ownerName,nid:proj.nationalId||"",type:"direct",share:""}];
+    const landStage=proj.stages.find(s=>s.key==="land");
+    if(landStage){
+      LAND_OWNER_DOCS["direct"].forEach(d=>{
+        landStage.docs.push({key:`${oid}_${d.key}`,label:d.label,req:d.req,up:null,notes:[],_ownerId:oid});
+      });
+    }
+  } else {
+    proj.landOwners=[];
+  }
   proj.timeline.push({date:proj.createdAt,event:"إنشاء الملف",by:CU.name,icon:"🗂"});
   const list=LS.g(K.p)||[];list.unshift(proj);LS.s(K.p,list);
   const isPending=proj.status==="pending";
