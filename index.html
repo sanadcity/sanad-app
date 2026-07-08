@@ -2513,6 +2513,12 @@ const openEditProj=id=>{
     <div class="fg"><label class="fl">كود جهة الولاية</label><input class="fi" id="ep-auth" value="${proj.authorityCode||""}" placeholder="NUCA-2024-XXX"/></div>
     <div class="fg"><label class="fl">ملاحظات</label><textarea class="fi" id="ep-note" rows="3">${proj.note||""}</textarea></div>
     <div style="border-top:1px solid var(--bd);margin:14px 0 10px;padding-top:12px;">
+      <div class="fl" style="font-weight:700;margin-bottom:10px;font-size:13px;">الأعمال المطلوبة</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;">
+        ${["قرار وزاري","تقنين أوضاع","ترخيص بناء","ترخيص هدم","ترخيص تعديل معماري","ترخيص تعديل إنشائي","تصميم معماري","تصميم إنشائي","تصميم كهربائي","MEP","رسومات تنفيذية","إشراف هندسي","تسجيل أونلاين","مجمعة عشرية","تصالح على مخالفة","إضافة 75% سطح","ادخال كهرباء","ادخال مياه"].map(w=>`<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--t1);"><input type="checkbox" class="ep-rw-cb" value="${w}" ${(proj.requiredWorks||[]).includes(w)?"checked":""} style="accent-color:var(--n8);width:13px;height:13px;"/>${w}</label>`).join("")}
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--bd);margin:14px 0 10px;padding-top:12px;">
       <div class="fl" style="font-weight:700;margin-bottom:8px;font-size:13px;">الموظفون المسؤولون عن هذا المشروع</div>
       ${(()=>{
         const staffList=(LS.g(K.u)||[]).filter(u=>u.role==="staff"&&u.status==="active");
@@ -2566,6 +2572,21 @@ const saveEditProj=id=>{
   proj.authorityCode=document.getElementById("ep-auth")?.value?.trim()||"";
   proj.note=document.getElementById("ep-note")?.value||"";
   proj.activity=document.getElementById("ep-activity")?.value||proj.activity||"سكني";
+  const newRW=[...document.querySelectorAll(".ep-rw-cb:checked")].map(cb=>cb.value);
+  proj.requiredWorks=newRW;
+  // auto-update devStatus based on requiredWorks + propertyState
+  const ps=proj.propertyState||"";
+  const autoSt=(()=>{
+    if(newRW.includes("إضافة 75% سطح"))return"إضافة 75% سطح";
+    if(newRW.includes("تصالح على مخالفة"))return"تصالح";
+    if(newRW.some(w=>["ترخيص بناء","ترخيص هدم","ترخيص تعديل معماري","ترخيص تعديل إنشائي"].includes(w)))return"قيد الترخيص";
+    if(newRW.some(w=>["تصميم معماري","تصميم إنشائي","تصميم كهربائي","رسومات تنفيذية"].includes(w)))return"قيد التخطيط";
+    if(newRW.some(w=>["إشراف هندسي","MEP"].includes(w)))return"قيد التنفيذ";
+    if(["مبنى قائم","مبنى قديم / متهالك"].includes(ps))return"قيد التنفيذ";
+    if(ps==="تحت الإنشاء")return"قيد التنفيذ";
+    return null;
+  })();
+  if(autoSt)proj.devStatus=autoSt;
   proj.delegatedTo=document.getElementById("ep-delegate")?.value||"";
   proj.assignedStaff=[...document.querySelectorAll(".ep-staff-cb:checked")].map(cb=>cb.value);
   proj.lastUpdated=new Date().toISOString().slice(0,10);
