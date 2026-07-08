@@ -2289,9 +2289,9 @@ const rFile=()=>{
   </div>`;
 
   const fc=$("fc");
-  const scrollY=fc?fc.scrollTop:0;
+  const scrollY=window.scrollY||0;
   fc.innerHTML=html;
-  if(scrollY)fc.scrollTop=scrollY;
+  if(scrollY)window.scrollTo(0,scrollY);
 };
 
 // ── PARTIES MANAGEMENT ──
