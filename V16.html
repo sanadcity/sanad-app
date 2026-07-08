@@ -1114,9 +1114,33 @@ const doReg=()=>{
 
 const doLogout=()=>{LS.d(K.ss);CU=null;$("app").classList.remove("on");$("auth").style.display="flex";showLogin();};
 
+const migrateExistingOwners=()=>{
+  const projs=LS.g(K.p)||[];
+  let changed=false;
+  projs.forEach(p=>{
+    if(!p.landOwners||p.landOwners.length===0){
+      if(p.isOriginalOwner!==false&&p.ownerName){
+        const oid="lo_"+p.id;
+        p.landOwners=[{id:oid,name:p.ownerName,nid:p.nationalId||"",type:"direct",share:""}];
+        const landStage=p.stages?.find(s=>s.key==="land");
+        if(landStage){
+          const existing=new Set((landStage.docs||[]).map(d=>d.key));
+          LAND_OWNER_DOCS["direct"].forEach(d=>{
+            const dk=`${oid}_${d.key}`;
+            if(!existing.has(dk))landStage.docs.push({key:dk,label:d.label,req:d.req,up:null,notes:[],_ownerId:oid});
+          });
+        }
+        changed=true;
+      }
+    }
+  });
+  if(changed)LS.s(K.p,projs);
+};
+
 const startApp=()=>{
   $("auth").style.display="none";$("app").classList.add("on");
   const savedLogo=LS.g(K.logo);if(savedLogo)applyLogo(savedLogo);
+  migrateExistingOwners();
   buildSB();buildTB();updBdg();
   showPage(CU.role==="client"?"projs":"dash");
 };
