@@ -1119,6 +1119,7 @@ const migrateExistingOwners=()=>{
   let changed=false;
   projs.forEach(p=>{
     if(!p.landOwners||p.landOwners.length===0){
+      // No owners yet — create from project data
       if(p.isOriginalOwner!==false&&p.ownerName){
         const oid="lo_"+p.id;
         p.landOwners=[{id:oid,name:p.ownerName,nid:p.nationalId||"",type:"direct",share:""}];
@@ -1132,6 +1133,17 @@ const migrateExistingOwners=()=>{
         }
         changed=true;
       }
+    } else {
+      // Fix existing owners: if name or nationalId matches project owner → must be "direct"
+      p.landOwners.forEach(o=>{
+        if(o.type!=="direct"){
+          const sameName=p.ownerName&&o.name&&o.name.trim()===p.ownerName.trim();
+          const sameNid=p.nationalId&&o.nid&&o.nid===p.nationalId;
+          if(sameName||sameNid){o.type="direct";changed=true;}
+        }
+        // Ensure nid is set from project if missing
+        if(!o.nid&&o.type==="direct"&&p.nationalId){o.nid=p.nationalId;changed=true;}
+      });
     }
   });
   if(changed)LS.s(K.p,projs);
