@@ -1560,8 +1560,12 @@ const rProjs=()=>{
       ${(()=>{const act=p.activity||"سكني";return`<div style="display:inline-block;background:${ACT_CLR[act]||"#555"};color:#fff;font-size:9px;font-weight:700;border-radius:4px;padding:2px 8px;margin-bottom:5px;">${act}</div>`;})()}
       <div class="pc-title">${p.ownerName}</div>
       <div style="font-size:10px;color:var(--t3);margin-bottom:4px;">أضافه: ${p.byRole==="office"?"مكتب":p.byRole==="staff"?"موظف":"—"} · ${p.byName||"—"}</div>
-      ${p.plot?`<div style="display:flex;align-items:center;gap:6px;background:var(--n8);border-radius:6px;padding:4px 10px;margin-bottom:6px;"><span style="font-size:10px;color:rgba(255,255,255,.7);">قطعة</span><span style="font-size:14px;font-weight:900;color:#fff;font-family:monospace;">${p.plot}</span>${p.city?`<span style="font-size:10px;color:rgba(255,255,255,.8);margin-right:4px;">· ${p.city}</span>`:""}${p.district?`<span style="font-size:10px;color:rgba(255,255,255,.6);">· ${p.district}</span>`:""}}</div>`:""}
-      <div class="pc-loc"><span>📍</span><span>${p.city}${p.district?" · "+p.district:""}${p.area?" · "+Number(p.area).toLocaleString()+" م²":""}</span></div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+        ${p.plot?`<span style="background:var(--w2);border:1px solid var(--bdl);border-radius:5px;padding:2px 8px;font-size:11px;font-weight:800;color:var(--t1);">ق ${p.plot}</span>`:""}
+        ${p.city?`<span style="font-size:11px;color:var(--t2);font-weight:600;">${p.city}</span>`:""}
+        ${p.area?`<span style="font-size:10px;color:var(--t3);">· ${Number(p.area).toLocaleString()} م²</span>`:""}
+      </div>
+      <div class="pc-loc"><span>📍</span><span>${p.district||p.city||"—"}</span></div>
       <div class="pc-stage"><span style="color:var(--t3);">المرحلة الحالية:</span><span style="font-weight:700;">${cs?.label||"—"}</span></div>
       <div class="pb"><div class="pbf" style="width:${comp}%;background:${cc};"></div></div>
       <div class="pc-ft"><span class="pc-id">${p.id}</span>${p.pricePerMeter&&p.area?`<span class="pc-val">${fmtM(p.area*p.pricePerMeter)}</span>`:""}</div>
