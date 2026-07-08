@@ -2185,8 +2185,9 @@ const rFile=()=>{
           const newOwners=(proj.landOwners||[]);
           const chainOwners=(proj.ownerChain||[]);
           if(!newOwners.length&&!chainOwners.length)return"";
+          const sortedOwners=[...newOwners].sort((a,b)=>a.type==="direct"?-1:b.type==="direct"?1:0);
           const cards=newOwners.length>0
-            ?newOwners.map(o=>`
+            ?sortedOwners.map(o=>`
               <div style="display:flex;align-items:center;gap:6px;background:var(--w);border:1px solid var(--bdl);border-radius:8px;padding:5px 10px;">
                 <div style="width:7px;height:7px;border-radius:50%;background:${o.type==="direct"?"#1A3F6B":"#8B5CF6"};flex-shrink:0;"></div>
                 <div>
