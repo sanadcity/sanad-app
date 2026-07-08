@@ -2703,7 +2703,7 @@ const approveFile=(sk,dk,isC)=>{
   p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
   svP(p);
   addNotif(`تمت الموافقة على ملف في مشروع ${p.ownerName}`,"ok",p.id,null);
-  rFile();toast("✓ تمت الموافقة على الملف");
+  rFile();rDash();toast("✓ تمت الموافقة على الملف");
   updBdg();
 };
 const rejectFile=(sk,dk,isC)=>{
@@ -2718,7 +2718,7 @@ const rejectFile=(sk,dk,isC)=>{
   const uploaderId=doc?.up?.uploadedBy;
   svP(p);
   addNotif(`تم رفض ملف في مشروع ${p.ownerName} — السبب: ${reason||"غير محدد"}`,"warn",p.id,uploaderId?[uploaderId]:null);
-  rFile();toast("تم رفض الملف مع إشعار المالك","info");
+  rFile();rDash();toast("تم رفض الملف مع إشعار المالك","info");
   updBdg();
 };
 const sN=(sk,dk,isC,notes)=>{const p=gP();if(!p)return;const upd=arr=>arr.map(d=>d.key===dk?{...d,notes}:d);p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});svP(p);};
