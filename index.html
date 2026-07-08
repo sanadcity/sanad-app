@@ -2788,6 +2788,13 @@ const _loKindToggle=()=>{
   if(indF)indF.style.display=isComp?"none":"";
   if(coF)coF.style.display=isComp?"":"none";
 };
+const toggleNPOwnerKind=()=>{
+  const isCo=document.getElementById("p-kind-co")?.checked;
+  const indF=document.getElementById("np-ind-fields");
+  const coF=document.getElementById("np-co-fields");
+  if(indF)indF.style.display=isCo?"none":"";
+  if(coF)coF.style.display=isCo?"":"none";
+};
 const addLandOwner=(type)=>{
   const typeLabel=type==="direct"?"المالك الأصلي":"المالك الثاني";
   showModal(`إضافة ${typeLabel}`,`
@@ -2957,10 +2964,37 @@ const rPM=()=>{
     const govOpts=govs.map(g=>`<option value="${g}" ${selGov===g?"selected":""}>${g}</option>`).join("");
     const cityOpts=(CITIES_DATA[selGov]||[]).map(c=>`<option value="${c}" ${PFrm.city===c?"selected":""}>${c}</option>`).join("");
 
+    const isCoPrj=PFrm.ownerKind==="company";
     body=`
-    <div class="fw">
-      <div class="fg"><label class="fl">اسم المالك <span class="rq">*</span></label><input class="fi" id="po" value="${PFrm.ownerName||""}" placeholder="الاسم الكامل للمالك"/></div>
-      <div class="fg"><label class="fl">الرقم القومي للمالك <span class="rq">*</span></label><input class="fi" id="pnid" value="${PFrm.nationalId||""}" placeholder="14 رقم" maxlength="14"/></div>
+    <!-- نوع المالك: فرد أم شركة -->
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <label style="flex:1;display:flex;align-items:center;gap:6px;cursor:pointer;background:var(--w2);border:1.5px solid ${!isCoPrj?"var(--n8)":"var(--bdl)"};border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;color:var(--t1);">
+        <input type="radio" name="p-kind" id="p-kind-ind" value="individual" ${!isCoPrj?"checked":""} onclick="toggleNPOwnerKind()" style="accent-color:var(--n8);"/> 👤 فرد
+      </label>
+      <label style="flex:1;display:flex;align-items:center;gap:6px;cursor:pointer;background:var(--w2);border:1.5px solid ${isCoPrj?"var(--n8)":"var(--bdl)"};border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;color:var(--t1);">
+        <input type="radio" name="p-kind" id="p-kind-co" value="company" ${isCoPrj?"checked":""} onclick="toggleNPOwnerKind()" style="accent-color:var(--n8);"/> 🏢 شركة
+      </label>
+    </div>
+    <!-- فرد -->
+    <div id="np-ind-fields" style="display:${isCoPrj?"none":""};">
+      <div class="fw">
+        <div class="fg"><label class="fl">اسم المالك <span class="rq">*</span></label><input class="fi" id="po" value="${PFrm.ownerName||""}" placeholder="الاسم الكامل للمالك"/></div>
+        <div class="fg"><label class="fl">الرقم القومي <span class="rq">*</span></label><input class="fi" id="pnid" value="${PFrm.nationalId||""}" placeholder="14 رقم" maxlength="14"/></div>
+      </div>
+    </div>
+    <!-- شركة -->
+    <div id="np-co-fields" style="display:${isCoPrj?"":"none"};">
+      <div class="fw">
+        <div class="fg"><label class="fl">اسم الشركة <span class="rq">*</span></label><input class="fi" id="p-co-name" value="${PFrm.companyName||""}" placeholder="الاسم الرسمي للشركة"/></div>
+        <div class="fg"><label class="fl">البطاقة الضريبية <span class="rq">*</span></label><input class="fi" id="p-co-tax" value="${PFrm.taxNum||""}" placeholder="رقم البطاقة الضريبية"/></div>
+      </div>
+      <div class="fw">
+        <div class="fg"><label class="fl">السجل التجاري <span class="rq">*</span></label><input class="fi" id="p-co-reg" value="${PFrm.comReg||""}" placeholder="رقم السجل التجاري"/></div>
+      </div>
+      <div class="fw">
+        <div class="fg"><label class="fl">الممثل القانوني <span class="rq">*</span></label><input class="fi" id="po" value="${PFrm.repName||""}" placeholder="اسم الممثل القانوني"/></div>
+        <div class="fg"><label class="fl">رقمه القومي <span class="rq">*</span></label><input class="fi" id="pnid" value="${PFrm.nationalId||""}" placeholder="14 رقم" maxlength="14"/></div>
+      </div>
     </div>
     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--w2);border:1px solid var(--bdl);border-radius:8px;padding:8px 12px;margin-bottom:12px;">
       <input type="checkbox" id="p-isoriginal" ${PFrm.isOriginalOwner!==false?"checked":""} style="width:15px;height:15px;accent-color:var(--n8);cursor:pointer;"/>
@@ -2969,20 +3003,6 @@ const rPM=()=>{
         <div style="font-size:10px;color:var(--t3);">أزل التحديد لو كان المالك الحالي فقط وليس صاحب عقد الجهاز</div>
       </div>
     </label>
-
-    <!-- AGENTS (وكلاء) -->
-    <div style="background:var(--w2);border:1px solid var(--bdl);border-radius:10px;padding:12px;margin-bottom:14px;">
-      <div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:8px;">الوكلاء المعتمدون (اختياري)</div>
-      <div id="agents-list">${(PFrm.agents||[]).map((a,i)=>`<div style="display:flex;gap:7px;margin-bottom:6px;align-items:center;">
-        <span style="font-size:12px;color:var(--t2);flex:1;">${a.name} — ${a.nid}</span>
-        <button onclick="rmAgent(${i})" style="background:none;border:none;cursor:pointer;color:var(--rd);font-size:15px;">×</button>
-      </div>`).join("")}</div>
-      <div class="fw" style="margin-top:6px;">
-        <div class="fg"><input class="fi" id="ag-name" placeholder="اسم الوكيل"/></div>
-        <div class="fg"><input class="fi" id="ag-nid" placeholder="الرقم القومي للوكيل" maxlength="14"/></div>
-        <button class="btn btn-gh btn-sm" onclick="addAgent()" style="flex-shrink:0;">+ إضافة</button>
-      </div>
-    </div>
 
     <div class="fw">
       <div class="fg"><label class="fl">نوع العقار</label><select class="fs" id="pt" onchange="PFrm.type=this.value;rPM();"><option value="normal" ${PFrm.type==="normal"?"selected":""}>مشروع عادي</option><option value="compound" ${PFrm.type==="compound"?"selected":""}>كومباوند</option></select></div>
@@ -3088,11 +3108,19 @@ const rmAgent=i=>{PFrm.agents.splice(i,1);rPM();};
 
 const nxPS=()=>{
   if(PS===1){
+    const isCo=document.getElementById("p-kind-co")?.checked;
     const o=$("po")?.value?.trim(),nid=$("pnid")?.value?.trim(),d=$("pd")?.value?.trim(),pl=$("ppl")?.value?.trim(),ar=$("par")?.value?.trim();
     const city2=$("pc")?.value;
     if(!o||!nid||!city2||!d||!pl||!ar){toast("يرجى تعبئة الحقول المطلوبة (*)","err");return;}
     if(nid.length!==14){toast("الرقم القومي يجب أن يكون 14 رقماً","err");return;}
-    PFrm.ownerName=o;PFrm.nationalId=nid;
+    PFrm.ownerKind=isCo?"company":"individual";
+    if(isCo){
+      PFrm.companyName=$("p-co-name")?.value?.trim()||"";
+      PFrm.taxNum=$("p-co-tax")?.value?.trim()||"";
+      PFrm.comReg=$("p-co-reg")?.value?.trim()||"";
+      PFrm.repName=o;
+    }
+    PFrm.ownerName=isCo?(PFrm.companyName||o):o;PFrm.nationalId=nid;
     PFrm.type=$("pt")?.value||"normal";PFrm.activity=$("pa")?.value||"سكني";
     PFrm.city=city2;PFrm.gov=$("pgov")?.value||PFrm.gov||"";
     PFrm.district=d;PFrm.neighborhood=$("pnb")?.value||"";PFrm.plot=pl;PFrm.area=ar;
@@ -3153,6 +3181,7 @@ const svPF=()=>{
     assignedStaff:CU.role==="staff"?[CU.id]:[],
     by:CU.id,byName:CU.name,byRole:CU.role,
     ownerName:PFrm.ownerName,nationalId:PFrm.nationalId||"",isOriginalOwner:PFrm.isOriginalOwner!==false,
+    ownerKind:PFrm.ownerKind||"individual",companyName:PFrm.companyName||"",taxNum:PFrm.taxNum||"",comReg:PFrm.comReg||"",repName:PFrm.repName||"",
     agents:PFrm.agents||[],
     ownerEmail:PFrm.ownerEmail||"",
     type:PFrm.type,activity:PFrm.activity,
@@ -3179,10 +3208,14 @@ const svPF=()=>{
   // Auto-add original owner to landOwners if checkbox was checked
   if(proj.isOriginalOwner!==false){
     const oid="lo_"+Date.now();
-    proj.landOwners=[{id:oid,name:proj.ownerName,nid:proj.nationalId||"",type:"direct",share:""}];
+    const isCoPrj=PFrm.ownerKind==="company";
+    const ownerEntry={id:oid,name:proj.ownerName,nid:proj.nationalId||"",type:"direct",share:"",ownerKind:isCoPrj?"company":"individual"};
+    if(isCoPrj){ownerEntry.companyName=PFrm.companyName||"";ownerEntry.taxNum=PFrm.taxNum||"";ownerEntry.comReg=PFrm.comReg||"";ownerEntry.repName=PFrm.repName||"";}
+    proj.landOwners=[ownerEntry];
+    const docsKey=isCoPrj?"company_direct":"direct";
     const landStage=proj.stages.find(s=>s.key==="land");
     if(landStage){
-      LAND_OWNER_DOCS["direct"].forEach(d=>{
+      (LAND_OWNER_DOCS[docsKey]||LAND_OWNER_DOCS["direct"]).forEach(d=>{
         landStage.docs.push({key:`${oid}_${d.key}`,label:d.label,req:d.req,up:null,notes:[],_ownerId:oid});
       });
     }
