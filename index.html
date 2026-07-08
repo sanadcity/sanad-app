@@ -1731,15 +1731,22 @@ const rFile=()=>{
       const cols=Math.min(ownerDocs.length,3);
       const autoShare=owners.length?Math.round(100/owners.length):0;
       const shareLabel=owner.share?owner.share+"%":autoShare+"%";
+      const isCo=owner.ownerKind==="company";
+      const subInfo=isCo
+        ?[owner.comReg?"س.ت: "+owner.comReg:"",owner.taxNum?"ضريبي: "+owner.taxNum:"",owner.repName?"ممثل: "+owner.repName:""].filter(Boolean).join(" · ")
+        :owner.nid?"رقم قومي: "+owner.nid:"";
       return`<div style="background:var(--w);border:1.5px solid ${color}33;border-radius:10px;padding:10px 12px;margin-bottom:8px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-          <span style="font-size:18px;">👤</span>
-          <div style="flex:1;font-size:13px;font-weight:800;color:var(--t1);">${owner.name}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:${subInfo?"4px":"8px"};">
+          <span style="font-size:18px;">${isCo?"🏢":"👤"}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:800;color:var(--t1);">${owner.name}</div>
+            ${subInfo?`<div style="font-size:10px;color:var(--t3);margin-top:1px;">${subInfo}</div>`:""}
+          </div>
           <span style="font-size:11px;background:${color}22;color:${color};border-radius:12px;padding:2px 10px;font-weight:700;">${shareLabel}</span>
           ${can?`<button onclick="editLandOwner('${owner.id}')" style="background:none;border:1px solid var(--bd);border-radius:6px;cursor:pointer;font-size:11px;padding:3px 8px;color:var(--t2);font-family:Cairo,sans-serif;">تعديل</button>`:""}
           ${can?`<button onclick="removeLandOwner('${owner.id}')" style="background:none;border:1px solid rgba(192,57,43,.4);border-radius:6px;cursor:pointer;font-size:11px;padding:3px 8px;color:#C0392B;font-family:Cairo,sans-serif;">حذف</button>`:""}
         </div>
-        ${ownerDocs.length?`<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:8px;">${ownerDocs.map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`:""}
+        ${ownerDocs.length?`<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:8px;margin-top:8px;">${ownerDocs.map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`:""}
       </div>`;
     };
 
@@ -2180,8 +2187,8 @@ const rFile=()=>{
               <div style="display:flex;align-items:center;gap:6px;background:var(--w);border:1px solid var(--bdl);border-radius:8px;padding:5px 10px;">
                 <div style="width:7px;height:7px;border-radius:50%;background:${o.type==="direct"?"#1A3F6B":"#8B5CF6"};flex-shrink:0;"></div>
                 <div>
-                  <div style="font-size:11px;font-weight:700;color:var(--t1);">${o.name||"—"}</div>
-                  <div style="font-size:9px;color:var(--t3);">${o.type==="direct"?"المالك الأصلي":"المالك الثاني"}${o.share?" · "+o.share+"%":""}${o.nid?" · "+o.nid:""}</div>
+                  <div style="font-size:11px;font-weight:700;color:var(--t1);">${o.ownerKind==="company"?"🏢 ":""}${o.name||"—"}</div>
+                  <div style="font-size:9px;color:var(--t3);">${o.type==="direct"?"المالك الأصلي":"المالك الثاني"}${o.ownerKind==="company"?" · شركة":""}${o.share?" · "+o.share+"%":""}${o.nid?" · "+o.nid:""}${o.comReg?" · س.ت: "+o.comReg:""}${o.repName?" · ممثل: "+o.repName:""}</div>
                 </div>
               </div>`)
             :chainOwners.map((o,i)=>`
@@ -2760,13 +2767,48 @@ const LAND_OWNER_DOCS={
     {key:"idFront",     label:"صورة البطاقة (وجه)",req:false},
     {key:"idBack",      label:"صورة البطاقة (ظهر)",req:false},
     {key:"poa",         label:"توكيل رسمي",         req:false},
+  ],
+  company_direct:[
+    {key:"contract",    label:"عقد الهيئة / الجهاز",req:true},
+    {key:"comReg",      label:"السجل التجاري",       req:true},
+    {key:"taxCard",     label:"البطاقة الضريبية",    req:true},
+    {key:"poa",         label:"توكيل رسمي (ممثل الشركة)",req:false},
+  ],
+  company_partner:[
+    {key:"saleContract",label:"عقد البيع",           req:false},
+    {key:"comReg",      label:"السجل التجاري",       req:true},
+    {key:"taxCard",     label:"البطاقة الضريبية",    req:true},
+    {key:"poa",         label:"توكيل رسمي (ممثل الشركة)",req:false},
   ]
+};
+const _loKindToggle=()=>{
+  const isComp=document.getElementById("lo-kind-co")?.checked;
+  document.getElementById("lo-ind-fields").style.display=isComp?"none":"";
+  document.getElementById("lo-co-fields").style.display=isComp?"":"none";
 };
 const addLandOwner=(type)=>{
   const typeLabel=type==="direct"?"المالك الأصلي":"المالك الثاني";
   showModal(`إضافة ${typeLabel}`,`
-    <div class="fg"><label class="fl">الاسم الكامل <span class="rq">*</span></label><input class="fi" id="lo-name" placeholder="مثال: محمد أحمد السيد"/></div>
-    <div class="fg"><label class="fl">الرقم القومي <span class="rq">*</span></label><input class="fi" id="lo-nid" maxlength="14" placeholder="14 رقم"/></div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <label style="flex:1;display:flex;align-items:center;gap:6px;cursor:pointer;background:var(--w2);border:1.5px solid var(--bdl);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--t1);">
+        <input type="radio" name="lo-kind" id="lo-kind-ind" value="individual" checked onclick="_loKindToggle()" style="accent-color:var(--n8);"/> 👤 فرد
+      </label>
+      <label style="flex:1;display:flex;align-items:center;gap:6px;cursor:pointer;background:var(--w2);border:1.5px solid var(--bdl);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--t1);">
+        <input type="radio" name="lo-kind" id="lo-kind-co" value="company" onclick="_loKindToggle()" style="accent-color:var(--n8);"/> 🏢 شركة
+      </label>
+    </div>
+    <div id="lo-ind-fields">
+      <div class="fg"><label class="fl">الاسم الكامل <span class="rq">*</span></label><input class="fi" id="lo-name" placeholder="مثال: محمد أحمد السيد"/></div>
+      <div class="fg"><label class="fl">الرقم القومي</label><input class="fi" id="lo-nid" maxlength="14" placeholder="14 رقم"/></div>
+    </div>
+    <div id="lo-co-fields" style="display:none;">
+      <div class="fg"><label class="fl">اسم الشركة <span class="rq">*</span></label><input class="fi" id="lo-co-name" placeholder="مثال: شركة النيل للتطوير العقاري"/></div>
+      <div class="fw">
+        <div class="fg"><label class="fl">الرقم الضريبي</label><input class="fi" id="lo-tax-num" placeholder="مثال: 123456789"/></div>
+        <div class="fg"><label class="fl">رقم السجل التجاري</label><input class="fi" id="lo-com-reg" placeholder="مثال: 12345"/></div>
+      </div>
+      <div class="fg"><label class="fl">اسم الممثل القانوني</label><input class="fi" id="lo-rep-name" placeholder="مثال: أحمد محمد"/></div>
+    </div>
     <div class="fg"><label class="fl">النسبة % <span style="color:var(--t3);font-size:11px;">— اتركها فارغة للتوزيع بالتساوي</span></label><input class="fi" id="lo-share" type="number" min="1" max="100" placeholder="مثال: 50"/></div>
     <input type="hidden" id="lo-type" value="${type}"/>
   `,`
@@ -2776,20 +2818,32 @@ const addLandOwner=(type)=>{
   setTimeout(()=>document.getElementById("lo-name")?.focus(),100);
 };
 const confirmAddLandOwner=()=>{
-  const name=(document.getElementById("lo-name")?.value||"").trim();
-  const nid=(document.getElementById("lo-nid")?.value||"").trim();
-  const share=(document.getElementById("lo-share")?.value||"").trim();
+  const isComp=document.getElementById("lo-kind-co")?.checked;
   const type=document.getElementById("lo-type")?.value||"direct";
-  if(!name){toast("يرجى إدخال الاسم","err");return;}
-  if(nid&&nid.length!==14){toast("الرقم القومي يجب أن يكون 14 رقماً","err");return;}
+  const share=(document.getElementById("lo-share")?.value||"").trim();
+  let name,nid,ownerKind,companyData={};
+  if(isComp){
+    name=(document.getElementById("lo-co-name")?.value||"").trim();
+    if(!name){toast("يرجى إدخال اسم الشركة","err");return;}
+    ownerKind="company";
+    companyData={taxNum:(document.getElementById("lo-tax-num")?.value||"").trim(),comReg:(document.getElementById("lo-com-reg")?.value||"").trim(),repName:(document.getElementById("lo-rep-name")?.value||"").trim()};
+    nid="";
+  } else {
+    name=(document.getElementById("lo-name")?.value||"").trim();
+    nid=(document.getElementById("lo-nid")?.value||"").trim();
+    if(!name){toast("يرجى إدخال الاسم","err");return;}
+    if(nid&&nid.length!==14){toast("الرقم القومي يجب أن يكون 14 رقماً","err");return;}
+    ownerKind="individual";
+  }
   closeModal();
   const p=gP();if(!p)return;
   const id="lo_"+Date.now();
   if(!p.landOwners)p.landOwners=[];
-  p.landOwners.push({id,name,nid,type,share});
+  p.landOwners.push({id,name,nid,type,share,ownerKind,...companyData});
   const landStage=p.stages.find(s=>s.key==="land");
   if(landStage){
-    LAND_OWNER_DOCS[type].forEach(d=>{
+    const docsKey=isComp?`company_${type}`:type;
+    (LAND_OWNER_DOCS[docsKey]||LAND_OWNER_DOCS[type]).forEach(d=>{
       landStage.docs.push({key:`${id}_${d.key}`,label:d.label,req:d.req,up:null,notes:[],_ownerId:id});
     });
   }
@@ -2798,9 +2852,28 @@ const confirmAddLandOwner=()=>{
 const editLandOwner=(ownerId)=>{
   const p=gP();if(!p)return;
   const owner=(p.landOwners||[]).find(o=>o.id===ownerId);if(!owner)return;
+  const isComp=owner.ownerKind==="company";
   showModal("تعديل بيانات المالك",`
-    <div class="fg"><label class="fl">الاسم الكامل <span class="rq">*</span></label><input class="fi" id="lo-name" value="${owner.name.replace(/"/g,"&quot;")}"/></div>
-    <div class="fg"><label class="fl">الرقم القومي</label><input class="fi" id="lo-nid" maxlength="14" value="${owner.nid||""}"/></div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <label style="flex:1;display:flex;align-items:center;gap:6px;cursor:pointer;background:var(--w2);border:1.5px solid var(--bdl);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--t1);">
+        <input type="radio" name="lo-kind" id="lo-kind-ind" value="individual" ${!isComp?"checked":""} onclick="_loKindToggle()" style="accent-color:var(--n8);"/> 👤 فرد
+      </label>
+      <label style="flex:1;display:flex;align-items:center;gap:6px;cursor:pointer;background:var(--w2);border:1.5px solid var(--bdl);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--t1);">
+        <input type="radio" name="lo-kind" id="lo-kind-co" value="company" ${isComp?"checked":""} onclick="_loKindToggle()" style="accent-color:var(--n8);"/> 🏢 شركة
+      </label>
+    </div>
+    <div id="lo-ind-fields" style="display:${isComp?"none":""};">
+      <div class="fg"><label class="fl">الاسم الكامل <span class="rq">*</span></label><input class="fi" id="lo-name" value="${(!isComp?owner.name:"").replace(/"/g,"&quot;")}"/></div>
+      <div class="fg"><label class="fl">الرقم القومي</label><input class="fi" id="lo-nid" maxlength="14" value="${owner.nid||""}"/></div>
+    </div>
+    <div id="lo-co-fields" style="display:${isComp?"":"none"};">
+      <div class="fg"><label class="fl">اسم الشركة <span class="rq">*</span></label><input class="fi" id="lo-co-name" value="${(isComp?owner.name:"").replace(/"/g,"&quot;")}"/></div>
+      <div class="fw">
+        <div class="fg"><label class="fl">الرقم الضريبي</label><input class="fi" id="lo-tax-num" value="${owner.taxNum||""}"/></div>
+        <div class="fg"><label class="fl">رقم السجل التجاري</label><input class="fi" id="lo-com-reg" value="${owner.comReg||""}"/></div>
+      </div>
+      <div class="fg"><label class="fl">اسم الممثل القانوني</label><input class="fi" id="lo-rep-name" value="${(owner.repName||"").replace(/"/g,"&quot;")}"/></div>
+    </div>
     <div class="fg"><label class="fl">النسبة % <span style="color:var(--t3);font-size:11px;">— فارغة = تساوي</span></label><input class="fi" id="lo-share" type="number" min="1" max="100" value="${owner.share||""}"/></div>
     <input type="hidden" id="lo-edit-id" value="${ownerId}"/>
   `,`
@@ -2809,15 +2882,26 @@ const editLandOwner=(ownerId)=>{
   `);
 };
 const confirmEditLandOwner=()=>{
-  const name=(document.getElementById("lo-name")?.value||"").trim();
-  const nid=(document.getElementById("lo-nid")?.value||"").trim();
+  const isComp=document.getElementById("lo-kind-co")?.checked;
   const share=(document.getElementById("lo-share")?.value||"").trim();
   const ownerId=document.getElementById("lo-edit-id")?.value;
-  if(!name){toast("يرجى إدخال الاسم","err");return;}
-  if(nid&&nid.length!==14){toast("الرقم القومي يجب أن يكون 14 رقماً","err");return;}
+  let name,nid,ownerKind,companyData={};
+  if(isComp){
+    name=(document.getElementById("lo-co-name")?.value||"").trim();
+    if(!name){toast("يرجى إدخال اسم الشركة","err");return;}
+    ownerKind="company";
+    companyData={taxNum:(document.getElementById("lo-tax-num")?.value||"").trim(),comReg:(document.getElementById("lo-com-reg")?.value||"").trim(),repName:(document.getElementById("lo-rep-name")?.value||"").trim()};
+    nid="";
+  } else {
+    name=(document.getElementById("lo-name")?.value||"").trim();
+    nid=(document.getElementById("lo-nid")?.value||"").trim();
+    if(!name){toast("يرجى إدخال الاسم","err");return;}
+    if(nid&&nid.length!==14){toast("الرقم القومي يجب أن يكون 14 رقماً","err");return;}
+    ownerKind="individual";
+  }
   closeModal();
   const p=gP();if(!p)return;
-  p.landOwners=(p.landOwners||[]).map(o=>o.id===ownerId?{...o,name,nid,share}:o);
+  p.landOwners=(p.landOwners||[]).map(o=>o.id===ownerId?{...o,name,nid,share,ownerKind,...companyData}:o);
   svP(p);rFile();toast("تم تعديل بيانات المالك ✓");
 };
 const removeLandOwner=(ownerId)=>{
