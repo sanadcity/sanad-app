@@ -1433,8 +1433,32 @@ const rDash=()=>{
     </div>
   </div>`:"";
 
+  // ── طلبات الخدمة الأخيرة ──
+  const recentSvcs=(LS.g(K.svc)||[])
+    .filter(s=>["admin","staff"].includes(CU.role)?true:(s.by===CU.id||s.byId===CU.id))
+    .sort((a,b)=>new Date(b.date||0)-new Date(a.date||0))
+    .slice(0,5);
+  const svcSC={pending:"#B7770D",done:"#1B7A4A",rejected:"#C0392B",inprogress:"#1A3F6B"};
+  const svcSL={pending:"قيد المراجعة",done:"مكتمل",rejected:"مرفوض",inprogress:"جاري التنفيذ"};
+  const svcsSection=recentSvcs.length?`<div class="card" style="margin-bottom:16px;">
+    <div class="ch"><div class="cht">طلبات الخدمة الأخيرة</div>
+    <button class="btn btn-gh btn-sm" onclick="showPage('svcs')">عرض الكل</button></div>
+    <div style="overflow:auto;"><table class="tbl"><thead><tr>
+      <th>رقم الطلب</th><th>الخدمة</th><th>المشروع</th><th>مقدم الطلب</th><th>الحالة</th><th>التاريخ</th>
+    </tr></thead><tbody>
+    ${recentSvcs.map(s=>`<tr onclick="showPage('svcs')" style="cursor:pointer;">
+      <td style="font-family:monospace;font-size:11px;color:var(--bl);font-weight:700;">${s.id||"—"}</td>
+      <td style="font-weight:700;">${s.service||s.svcKey||"—"}</td>
+      <td style="font-size:11px;color:var(--t3);">${s.projOwner||s.projId||"—"}</td>
+      <td style="font-size:11px;color:var(--t3);">${s.name||"—"}</td>
+      <td>${pill(svcSL[s.status]||s.status||"—",svcSC[s.status]||"#8896A4")}</td>
+      <td style="font-size:11px;color:var(--t3);">${s.date||"—"}</td>
+    </tr>`).join("")}
+    </tbody></table></div>
+  </div>`:"";
+
   const recent=projs.slice(0,5);
-  let html=`${pendingSection}<div class="card" style="margin-bottom:16px;">
+  let html=`${pendingSection}${svcsSection}<div class="card" style="margin-bottom:16px;">
     <div class="ch"><div class="cht">المشاريع الأخيرة</div>
     <button class="btn btn-gh btn-sm" onclick="showPage('projs')">عرض كافة المشاريع</button>
     </div>
