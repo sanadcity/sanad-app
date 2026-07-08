@@ -2170,7 +2170,7 @@ const rFile=()=>{
     </div>
 
     <!-- RIGHT COL: documents -->
-    <div style="display:flex;flex-direction:column;">
+    <div>
       <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;">
         <div style="padding:14px 16px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;background:var(--w);">
           <div style="font-size:14px;font-weight:800;color:var(--t1);">${stage.icon} ${stage.label}</div>
@@ -2250,8 +2250,9 @@ const rFile=()=>{
         <button class="btn btn-p" onclick="switchStage(${CSV+1})" ${CSV===proj.stages.length-1?"disabled style='opacity:.4;pointer-events:none;'":""}>التالية ›</button>
       </div>
 
+      <!-- OWNERSHIP CHAIN (land stage only) — آخر الصفحة -->
       ${stage.key==="land"?`
-      <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-top:auto;">
+      <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-top:40px;">
         <div style="padding:12px 14px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;">
           <div style="font-size:12px;font-weight:800;color:var(--t1);">⛓ سلسلة الملكية</div>
           ${can?`<button class="btn btn-p btn-xs" onclick="openAddOwner('${proj.id}')">+ إضافة</button>`:""}
@@ -2288,9 +2289,9 @@ const rFile=()=>{
   </div>`;
 
   const fc=$("fc");
-  const scrollY=fc?fc.scrollTop:0;
+  const scrollY=window.scrollY||document.documentElement.scrollTop||0;
   fc.innerHTML=html;
-  if(scrollY)fc.scrollTop=scrollY;
+  if(scrollY)requestAnimationFrame(()=>window.scrollTo(0,scrollY));
 };
 
 // ── PARTIES MANAGEMENT ──
