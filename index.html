@@ -506,6 +506,7 @@ body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--t1);-webkit
               <button class="ptab" onclick="setF('قيد التنفيذ',this)">التنفيذ</button>
               <button class="ptab" onclick="setF('مكتمل',this)">المكتملة</button>
             </div>
+            <select id="city-filter" onchange="setCityF(this.value)" style="border:1px solid var(--bdl);border-radius:8px;padding:5px 10px;font-family:Cairo,sans-serif;font-size:12px;background:var(--w);color:var(--t1);cursor:pointer;min-width:110px;"><option value="">كل المدن</option></select>
             <button class="btn btn-p" id="btn-np" onclick="openNP()"><span style="font-size:17px;font-weight:300;">+</span> مشروع جديد</button>
           </div>
         </div>
@@ -1496,15 +1497,23 @@ const rDash=()=>{
 };
 
 // ── PROJECTS ──
+let CF="";
 const setF=(v,el)=>{PF=v;document.querySelectorAll(".ptab").forEach(b=>b.classList.remove("on"));el.classList.add("on");rProjs();};
+const setCityF=v=>{CF=v;rProjs();};
 const onSearch=v=>{SQ=v;if(!$("pg-projs").classList.contains("hid"))rProjs();};
 
 const rProjs=()=>{
   const can=["admin","staff","office","developer","client"].includes(CU.role);
   $("btn-np")?.classList.toggle("hid",!can);
+  // populate city dropdown
+  const allCities=[...new Set((myP()).map(p=>p.city).filter(Boolean))].sort();
+  const cf=$("city-filter");
+  if(cf){const cur=cf.value;cf.innerHTML=`<option value="">كل المدن</option>`+allCities.map(c=>`<option value="${c}" ${c===cur?"selected":""}>${c}</option>`).join("");}
+
   let list=myP().filter(p=>{
     if(PF!=="all"&&p.devStatus!==PF)return false;
-    if(SQ){const q=SQ.toLowerCase();return(p.ownerName+p.city+p.id+p.district).toLowerCase().includes(q);}
+    if(CF&&p.city!==CF)return false;
+    if(SQ){const q=SQ.toLowerCase();return(p.ownerName+p.city+p.id+p.district+p.plot).toLowerCase().includes(q);}
     return true;
   });
   $("pcnt").textContent=`إجمالي المشاريع: ${list.length}`;
@@ -1527,7 +1536,8 @@ const rProjs=()=>{
       ${(()=>{const act=p.activity||"سكني";return`<div style="display:inline-block;background:${ACT_CLR[act]||"#555"};color:#fff;font-size:9px;font-weight:700;border-radius:4px;padding:2px 8px;margin-bottom:5px;">${act}</div>`;})()}
       <div class="pc-title">${p.ownerName}</div>
       <div style="font-size:10px;color:var(--t3);margin-bottom:4px;">أضافه: ${p.byRole==="office"?"مكتب":p.byRole==="staff"?"موظف":"—"} · ${p.byName||"—"}</div>
-      <div class="pc-loc"><span>📍</span><span>${p.city} · ${p.district}${p.area?" · "+Number(p.area).toLocaleString()+" م²":""}</span></div>
+      ${p.plot?`<div style="display:flex;align-items:center;gap:6px;background:var(--n8);border-radius:6px;padding:4px 10px;margin-bottom:6px;"><span style="font-size:10px;color:rgba(255,255,255,.7);">قطعة</span><span style="font-size:14px;font-weight:900;color:#fff;font-family:monospace;">${p.plot}</span>${p.city?`<span style="font-size:10px;color:rgba(255,255,255,.8);margin-right:4px;">· ${p.city}</span>`:""}${p.district?`<span style="font-size:10px;color:rgba(255,255,255,.6);">· ${p.district}</span>`:""}}</div>`:""}
+      <div class="pc-loc"><span>📍</span><span>${p.city}${p.district?" · "+p.district:""}${p.area?" · "+Number(p.area).toLocaleString()+" م²":""}</span></div>
       <div class="pc-stage"><span style="color:var(--t3);">المرحلة الحالية:</span><span style="font-weight:700;">${cs?.label||"—"}</span></div>
       <div class="pb"><div class="pbf" style="width:${comp}%;background:${cc};"></div></div>
       <div class="pc-ft"><span class="pc-id">${p.id}</span>${p.pricePerMeter&&p.area?`<span class="pc-val">${fmtM(p.area*p.pricePerMeter)}</span>`:""}</div>
