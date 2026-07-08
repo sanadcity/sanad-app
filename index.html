@@ -2755,8 +2755,10 @@ const LAND_OWNER_DOCS={
 };
 const _loKindToggle=()=>{
   const isComp=document.getElementById("lo-kind-co")?.checked;
-  document.getElementById("lo-ind-fields").style.display=isComp?"none":"";
-  document.getElementById("lo-co-fields").style.display=isComp?"":"none";
+  const indF=document.getElementById("lo-ind-fields");
+  const coF=document.getElementById("lo-co-fields");
+  if(indF)indF.style.display=isComp?"none":"";
+  if(coF)coF.style.display=isComp?"":"none";
 };
 const addLandOwner=(type)=>{
   const typeLabel=type==="direct"?"المالك الأصلي":"المالك الثاني";
