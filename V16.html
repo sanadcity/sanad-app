@@ -762,16 +762,6 @@ const initData=()=>{
     if(dirty)LS.s(K.p,projects);
   };
   patchDocs();
-  // remove owner-role entries from parties (owners now live in land stage)
-  const allProjs=LS.g(K.p)||[];
-  let partyFixed=false;
-  allProjs.forEach(proj=>{
-    if((proj.parties||[]).some(pt=>pt.role==="owner")){
-      proj.parties=proj.parties.filter(pt=>pt.role!=="owner");
-      partyFixed=true;
-    }
-  });
-  if(partyFixed)LS.s(K.p,allProjs);
   // strip "مكتمل — " prefix from devStatus
   const allProjs2=LS.g(K.p)||[];
   let statusFixed=false;
