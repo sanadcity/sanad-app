@@ -1436,9 +1436,8 @@ const rDash=()=>{
   const pendingItems=[];
   if(["admin","staff"].includes(CU.role)){
     (LS.g(K.p)||[]).forEach(proj=>proj.stages?.forEach(s=>{
-      [...(s.docs||[]),...(s.cd||[])].forEach(d=>{
-        if(d.up?.status==="pending")pendingItems.push({proj,stage:s,doc:d});
-      });
+      (s.docs||[]).forEach(d=>{if(d.up?.status==="pending")pendingItems.push({proj,stage:s,doc:d,isC:false});});
+      (s.cd||[]).forEach(d=>{if(d.up?.status==="pending")pendingItems.push({proj,stage:s,doc:d,isC:true});});
     }));
   }
   const pendingSection=pendingItems.length?`<div class="card" style="margin-bottom:16px;border:1.5px solid rgba(183,119,13,.4);">
@@ -1453,8 +1452,8 @@ const rDash=()=>{
           </div>
           <div style="display:flex;gap:5px;flex-shrink:0;">
             <button onclick="previewFile('${doc.up.url}','${(doc.up.name||"").replace(/'/g,"\\'")}','${doc.up.type||""}')" class="btn btn-gh btn-xs">👁</button>
-            <button onclick="CPJ='${proj.id}';approveFile('${stage.key}','${doc.key}',false)" class="btn btn-xs" style="background:#1B7A4A;color:#fff;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:Cairo,sans-serif;font-size:11px;">✓ قبول</button>
-            <button onclick="CPJ='${proj.id}';rejectFile('${stage.key}','${doc.key}',false)" class="btn btn-xs" style="background:#C0392B;color:#fff;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:Cairo,sans-serif;font-size:11px;">✕ رفض</button>
+            <button onclick="CPJ='${proj.id}';approveFile('${stage.key}','${doc.key}',${isC})" class="btn btn-xs" style="background:#1B7A4A;color:#fff;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:Cairo,sans-serif;font-size:11px;">✓ قبول</button>
+            <button onclick="CPJ='${proj.id}';rejectFile('${stage.key}','${doc.key}',${isC})" class="btn btn-xs" style="background:#C0392B;color:#fff;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:Cairo,sans-serif;font-size:11px;">✕ رفض</button>
           </div>
         </div>`).join("")}
     </div>
