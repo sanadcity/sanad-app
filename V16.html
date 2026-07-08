@@ -1443,7 +1443,7 @@ const rDash=()=>{
   const pendingSection=pendingItems.length?`<div class="card" style="margin-bottom:16px;border:1.5px solid rgba(183,119,13,.4);">
     <div class="ch"><div class="cht" style="color:#B7770D;">⏳ ملفات تنتظر المراجعة <span id="bdg-pending-files" style="background:#B7770D;color:#fff;border-radius:20px;padding:1px 8px;font-size:11px;margin-right:6px;">${pendingItems.length}</span></div></div>
     <div style="display:flex;flex-direction:column;gap:8px;padding:4px 0;">
-      ${pendingItems.map(({proj,stage,doc})=>`
+      ${pendingItems.map(({proj,stage,doc,isC})=>`
         <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--w2);border-radius:8px;">
           <span style="font-size:20px;">⏳</span>
           <div style="flex:1;min-width:0;">
