@@ -817,7 +817,6 @@ const STAGES=[
     {key:"p10",label:"عقد المقاولة",req:true},
     {key:"p11",label:"شهادة الإشراف الهندسي",req:true},
     {key:"p12",label:"تصريح الحفر",req:true},
-    {key:"p13",label:"تجديد تصريح الحفر",req:false},
     {key:"eng1",label:"المهندس — صورة البطاقة (وجه)",req:true},
     {key:"eng2",label:"المهندس — صورة البطاقة (ظهر)",req:true},
     {key:"eng3",label:"المهندس — كارنيه النقابة",req:true},
@@ -1699,7 +1698,7 @@ const rFile=()=>{
       const sk=stage.key;
       const engKeys=["eng1","eng2","eng3","eng4","eng5","eng6"];
       const elevKeys=["p7","p7b","p7c"];
-      const exKeys=["p10","p11","p12","p13"];
+      const exKeys=["p10","p11","p12"];
       // inject missing template docs into allDocs for this render
       const tplPermits=STAGES.find(s=>s.key==="permits")?.docs||[];
       const allDocsEx=[...allDocs];
