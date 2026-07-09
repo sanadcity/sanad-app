@@ -357,10 +357,6 @@ body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--t1);-webkit
         <button id="tab-login-btn" onclick="showLogin()" style="flex:1;padding:8px;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;background:var(--n8);color:#fff;transition:all .18s;">تسجيل الدخول</button>
         <button id="tab-reg-btn" onclick="showReg()" style="flex:1;padding:8px;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;background:transparent;color:var(--t3);transition:all .18s;">حساب جديد</button>
       </div>
-      <div id="maintenance-banner" style="display:none;background:#1a2540;border:1.5px solid var(--gold);border-radius:10px;padding:14px 16px;margin-bottom:16px;text-align:center;">
-        <div style="font-size:15px;font-weight:800;color:var(--gold);margin-bottom:4px;">🔧 النظام في وضع الصيانة المؤقتة</div>
-        <div style="font-size:13px;color:rgba(255,255,255,.7);">يرجى التواصل عبر واتساب: <span style="color:var(--gold);font-weight:700;">01115509998</span></div>
-      </div>
       <div id="amsg"></div>
       <div id="lf">
         <div class="fg"><label class="fl">البريد الإلكتروني أو الرقم القومي</label><div class="fi-wrap"><input class="fi ico" id="le" placeholder="name@company.com أو 14 رقم" onkeydown="if(event.key==='Enter')doLogin()"/><span class="fi-ico">✉</span></div></div>
@@ -1029,15 +1025,10 @@ if(lw){
 }
 
 // ── AUTH ──
-const MAINTENANCE_MODE = false; // ← غيّر إلى true لتفعيل وضع الصيانة
 const showLogin=()=>{
   $("lf").classList.remove("hid");$("rf").classList.add("hid");
   $("tab-login-btn").style.background="var(--n8)";$("tab-login-btn").style.color="#fff";
   $("tab-reg-btn").style.background="transparent";$("tab-reg-btn").style.color="var(--t3)";
-  if(MAINTENANCE_MODE){
-    $("maintenance-banner").style.display="block";
-    $("tab-reg-btn").style.display="none";
-  }
 };
 const showReg=()=>{
   $("lf").classList.add("hid");$("rf").classList.remove("hid");
@@ -1067,7 +1058,6 @@ const pickRegRole=(role)=>{
 };
 
 const doLogin=()=>{
-  if(MAINTENANCE_MODE){sm("amsg","🔧 النظام في وضع الصيانة — سيعود قريباً","i");return;}
   const e=$("le").value.trim(),p=$("lp").value,rem=$("rm").checked;
   sm("amsg","","");
   if(!e||!p){sm("amsg","يرجى تعبئة بيانات الدخول","e");return;}
@@ -1083,7 +1073,6 @@ const doLogin=()=>{
 };
 
 const doReg=()=>{
-  if(MAINTENANCE_MODE){sm("amsg","🔧 النظام في وضع الصيانة — سيعود قريباً","i");return;}
   sm("amsg","","");
   const step2c=$("reg-step2-client");
   const r=step2c&&step2c.style.display!=="none"?($("rr")?.value||""):($("rr-other")?.value||"");
@@ -2211,10 +2200,7 @@ const rFile=()=>{
                 </div>
               </div>`);
           return`<div style="padding:10px 14px;border-bottom:1px solid var(--bdl);background:linear-gradient(135deg,rgba(26,63,107,.04),rgba(26,63,107,.01));">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
-              <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.08em;">الملاك</div>
-              ${can?`<button onclick="openAddOwner('${proj.id}')" style="background:none;border:1px solid var(--bd);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--t2);font-family:Cairo,sans-serif;">+ إضافة</button>`:""}
-            </div>
+            <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.08em;margin-bottom:7px;">الملاك</div>
             <div style="display:flex;flex-wrap:wrap;gap:6px;">${cards.join("")}</div>
           </div>`;
         })()}
@@ -2227,6 +2213,41 @@ const rFile=()=>{
         </div>
       </div>
 
+      <!-- OWNERSHIP CHAIN (land stage only) -->
+      ${stage.key==="land"?`
+      <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:12px;font-weight:800;color:var(--t1);">⛓ سلسلة الملكية</div>
+          ${can?`<button class="btn btn-p btn-xs" onclick="openAddOwner('${proj.id}')">+ إضافة</button>`:""}
+        </div>
+        <div style="padding:12px 14px;">
+          ${(proj.ownerChain||[]).length===0?`<div style="text-align:center;color:var(--t3);font-size:11px;padding:12px;">لا توجد سجلات — أضف المالك الأصلي أولاً</div>`:""}
+          ${(proj.ownerChain||[]).map((o,i)=>`
+          <div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">
+            <div style="width:26px;height:26px;border-radius:50%;background:${i===((proj.ownerChain||[]).length-1)?"var(--n8)":"var(--bdl)"};color:${i===((proj.ownerChain||[]).length-1)?"#fff":"var(--t2)"};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">${i+1}</div>
+            <div style="flex:1;background:${i===((proj.ownerChain||[]).length-1)?"var(--bll)":"var(--w2)"};border:1px solid ${i===((proj.ownerChain||[]).length-1)?"rgba(26,63,107,.2)":"var(--bdl)"};border-radius:9px;padding:10px 12px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <div style="font-size:12px;font-weight:800;color:var(--t1);">${o.name}</div>
+                <div style="display:flex;gap:5px;align-items:center;">
+                  <span style="font-size:9px;font-weight:700;background:var(--gl);color:var(--gd);border-radius:5px;padding:1px 6px;">${o.transferType||"—"}</span>
+                  ${i===((proj.ownerChain||[]).length-1)?`<span style="font-size:9px;font-weight:700;background:var(--bll);color:var(--bl);border-radius:5px;padding:1px 6px;">المالك الحالي</span>`:""}
+                  ${can?`<button onclick="removeOwner('${proj.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:13px;padding:0;">×</button>`:""}
+                </div>
+              </div>
+              <div style="font-size:10px;color:var(--t3);">${o.date||""} ${o.docType?"· "+o.docType:""}</div>
+              <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;">
+                ${["idFront","idBack","doc"].map(fk=>{
+                  const fl=o.files?.[fk];
+                  const lbl=fk==="idFront"?"بطاقة وجه":fk==="idBack"?"بطاقة ظهر":"مستند الملكية";
+                  if(fl)return`<button onclick="previewFile('${fl.data}','${fl.name}','${fl.type||""}')" class="btn btn-gh btn-xs">👁 ${lbl}</button>`;
+                  if(!can)return`<span style="font-size:9px;color:var(--t3);background:var(--w2);border-radius:5px;padding:2px 6px;">${lbl}: غير مرفوع</span>`;
+                  return`<label class="btn btn-gh btn-xs" style="cursor:pointer;">📎 ${lbl}<input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="uploadOwnerFile('${proj.id}',${i},'${fk}',this)"/></label>`;
+                }).join("")}
+              </div>
+            </div>
+          </div>`).join("")}
+        </div>
+      </div>
 
       <!-- POWER OF ATTORNEYS (hidden - POA now embedded in party/owner cards) -->
       <div style="display:none;">
@@ -2268,9 +2289,9 @@ const rFile=()=>{
   </div>`;
 
   const fc=$("fc");
-  const scrollY=window.scrollY||0;
+  const scrollY=fc?fc.scrollTop:0;
   fc.innerHTML=html;
-  if(scrollY)requestAnimationFrame(()=>window.scrollTo(0,scrollY));
+  if(scrollY)fc.scrollTop=scrollY;
 };
 
 // ── PARTIES MANAGEMENT ──
@@ -2971,8 +2992,8 @@ const rPM=()=>{
         <div class="fg"><label class="fl">السجل التجاري <span class="rq">*</span></label><input class="fi" id="p-co-reg" value="${PFrm.comReg||""}" placeholder="رقم السجل التجاري"/></div>
       </div>
       <div class="fw">
-        <div class="fg"><label class="fl">الممثل القانوني <span class="rq">*</span></label><input class="fi" id="p-co-rep" value="${PFrm.repName||""}" placeholder="اسم الممثل القانوني"/></div>
-        <div class="fg"><label class="fl">رقمه القومي <span class="rq">*</span></label><input class="fi" id="p-co-nid" value="${PFrm.nationalId||""}" placeholder="14 رقم" maxlength="14"/></div>
+        <div class="fg"><label class="fl">الممثل القانوني <span class="rq">*</span></label><input class="fi" id="po" value="${PFrm.repName||""}" placeholder="اسم الممثل القانوني"/></div>
+        <div class="fg"><label class="fl">رقمه القومي <span class="rq">*</span></label><input class="fi" id="pnid" value="${PFrm.nationalId||""}" placeholder="14 رقم" maxlength="14"/></div>
       </div>
     </div>
     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--w2);border:1px solid var(--bdl);border-radius:8px;padding:8px 12px;margin-bottom:12px;">
@@ -3088,9 +3109,7 @@ const rmAgent=i=>{PFrm.agents.splice(i,1);rPM();};
 const nxPS=()=>{
   if(PS===1){
     const isCo=document.getElementById("p-kind-co")?.checked;
-    const o=isCo?$("p-co-rep")?.value?.trim():$("po")?.value?.trim();
-    const nid=isCo?$("p-co-nid")?.value?.trim():$("pnid")?.value?.trim();
-    const d=$("pd")?.value?.trim(),pl=$("ppl")?.value?.trim(),ar=$("par")?.value?.trim();
+    const o=$("po")?.value?.trim(),nid=$("pnid")?.value?.trim(),d=$("pd")?.value?.trim(),pl=$("ppl")?.value?.trim(),ar=$("par")?.value?.trim();
     const city2=$("pc")?.value;
     if(!o||!nid||!city2||!d||!pl||!ar){toast("يرجى تعبئة الحقول المطلوبة (*)","err");return;}
     if(nid.length!==14){toast("الرقم القومي يجب أن يكون 14 رقماً","err");return;}
