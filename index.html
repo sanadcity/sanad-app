@@ -1802,7 +1802,11 @@ const rFile=()=>{
         // For non-compound: hide عقد الهيئة (not applicable for normal projects)
         if(!isComp) ownerDocs=ownerDocs.filter(d=>d.key!==`${owner.id}_contract`);
         [{key:`${owner.id}_repIdFront`,label:"بطاقة الممثل (وجه)",req:false},{key:`${owner.id}_repIdBack`,label:"بطاقة الممثل (ظهر)",req:false}]
-          .forEach(mk=>{if(!ownerDocs.find(d=>d.key===mk.key))ownerDocs=[...ownerDocs,{...mk,up:null}];});
+          .forEach(mk=>{
+            const ex=ownerDocs.find(d=>d.key===mk.key);
+            if(!ex)ownerDocs=[...ownerDocs,{...mk,up:null}];
+            else if(ex.label===mk.key||!ex.label)ownerDocs=ownerDocs.map(d=>d.key===mk.key?{...d,label:mk.label}:d);
+          });
       }
       const cols=Math.min(ownerDocs.length,3);
       const autoShare=owners.length?Math.round(100/owners.length):0;
