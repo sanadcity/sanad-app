@@ -2645,6 +2645,7 @@ const hUp=(sk,dk,isC,inp)=>{
   if(file.size>50*1024*1024){toast("الملف أكبر من 50MB","err");return;}
   const p=gP();if(!p)return;
   toast("⏳ جاري الرفع...","info");
+  const _sy=window.scrollY||0;
   uploadToST(file,p.id,sk,dk).then(up=>{
     const now=new Date();
     const needsReview=!["admin","staff"].includes(CU.role);
@@ -2655,7 +2656,7 @@ const hUp=(sk,dk,isC,inp)=>{
     const docLbl=p.stages.find(s=>s.key===sk)?.docs?.find(d=>d.key===dk)?.label||file.name;
     if(!p.timeline)p.timeline=[];
     p.timeline.push({date:now.toISOString().slice(0,10),time:now.toLocaleTimeString("ar-EG",{hour:"2-digit",minute:"2-digit"}),event:`رفع "${docLbl}"`,stage:stageLbl,by:CU.name,icon:"📎"});
-    svP(p);rFile();
+    svP(p);rFile();if(_sy)setTimeout(()=>window.scrollTo(0,_sy),0);
     addNotif(`تم رفع ملف في مشروع ${p.ownerName}`,"info",p.id,null);
     toast("✓ تم رفع الملف بنجاح");
   }).catch(err=>{
