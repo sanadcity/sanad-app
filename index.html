@@ -357,6 +357,10 @@ body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--t1);-webkit
         <button id="tab-login-btn" onclick="showLogin()" style="flex:1;padding:8px;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;background:var(--n8);color:#fff;transition:all .18s;">تسجيل الدخول</button>
         <button id="tab-reg-btn" onclick="showReg()" style="flex:1;padding:8px;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;background:transparent;color:var(--t3);transition:all .18s;">حساب جديد</button>
       </div>
+      <div id="maintenance-banner" style="display:none;background:#1a2540;border:1.5px solid var(--gold);border-radius:10px;padding:14px 16px;margin-bottom:16px;text-align:center;">
+        <div style="font-size:15px;font-weight:800;color:var(--gold);margin-bottom:4px;">🔧 النظام في وضع الصيانة المؤقتة</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.7);">يرجى التواصل عبر واتساب: <span style="color:var(--gold);font-weight:700;">01115509998</span></div>
+      </div>
       <div id="amsg"></div>
       <div id="lf">
         <div class="fg"><label class="fl">البريد الإلكتروني أو الرقم القومي</label><div class="fi-wrap"><input class="fi ico" id="le" placeholder="name@company.com أو 14 رقم" onkeydown="if(event.key==='Enter')doLogin()"/><span class="fi-ico">✉</span></div></div>
@@ -1025,10 +1029,15 @@ if(lw){
 }
 
 // ── AUTH ──
+const MAINTENANCE_MODE = false; // ← غيّر إلى true لتفعيل وضع الصيانة
 const showLogin=()=>{
   $("lf").classList.remove("hid");$("rf").classList.add("hid");
   $("tab-login-btn").style.background="var(--n8)";$("tab-login-btn").style.color="#fff";
   $("tab-reg-btn").style.background="transparent";$("tab-reg-btn").style.color="var(--t3)";
+  if(MAINTENANCE_MODE){
+    $("maintenance-banner").style.display="block";
+    $("tab-reg-btn").style.display="none";
+  }
 };
 const showReg=()=>{
   $("lf").classList.add("hid");$("rf").classList.remove("hid");
@@ -1058,6 +1067,7 @@ const pickRegRole=(role)=>{
 };
 
 const doLogin=()=>{
+  if(MAINTENANCE_MODE){sm("amsg","🔧 النظام في وضع الصيانة — سيعود قريباً","i");return;}
   const e=$("le").value.trim(),p=$("lp").value,rem=$("rm").checked;
   sm("amsg","","");
   if(!e||!p){sm("amsg","يرجى تعبئة بيانات الدخول","e");return;}
@@ -1073,6 +1083,7 @@ const doLogin=()=>{
 };
 
 const doReg=()=>{
+  if(MAINTENANCE_MODE){sm("amsg","🔧 النظام في وضع الصيانة — سيعود قريباً","i");return;}
   sm("amsg","","");
   const step2c=$("reg-step2-client");
   const r=step2c&&step2c.style.display!=="none"?($("rr")?.value||""):($("rr-other")?.value||"");
