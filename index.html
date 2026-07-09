@@ -1697,10 +1697,16 @@ const rFile=()=>{
     if(stage.key==="permits"){
       const sk=stage.key;
       const engKeys=["eng1","eng2","eng3","eng4","eng5","eng6"];
+      const elevKeys=["p7","p7b","p7c"];
       const engDocs=engKeys.map(k=>allDocs.find(d=>d.key===k)).filter(Boolean);
-      const regularDocs=allDocs.filter(d=>!engKeys.includes(d.key)&&!(stage.cd||[]).some(c=>c.key===d.key));
+      const elevDocs=elevKeys.map(k=>allDocs.find(d=>d.key===k)).filter(Boolean);
+      const regularDocs=allDocs.filter(d=>!engKeys.includes(d.key)&&!elevKeys.includes(d.key)&&!(stage.cd||[]).some(c=>c.key===d.key));
       const cdDocs=stage.cd||[];
       let html=regularDocs.map(d=>`${mkDocCard(d,sk,false,false)}<div style="margin-bottom:8px;"></div>`).join("");
+      if(elevDocs.length){
+        html+=ownerHeader("مستندات المصعد","🛗","#5A3A8A");
+        html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">${elevDocs.map(d=>mkDocCard(d,sk,false,true)).join("")}</div><div style="margin-bottom:8px;"></div>`;
+      }
       if(engDocs.length){
         html+=ownerHeader("مستندات المهندس المشرف","🏗","#3D5A8A");
         html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">${engDocs.slice(0,2).map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`;
