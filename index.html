@@ -1698,11 +1698,17 @@ const rFile=()=>{
       const sk=stage.key;
       const engKeys=["eng1","eng2","eng3","eng4","eng5","eng6"];
       const elevKeys=["p7","p7b","p7c"];
+      const exKeys=["p10","p11","p12"];
       const engDocs=engKeys.map(k=>allDocs.find(d=>d.key===k)).filter(Boolean);
       const elevDocs=elevKeys.map(k=>allDocs.find(d=>d.key===k)).filter(Boolean);
-      const regularDocs=allDocs.filter(d=>!engKeys.includes(d.key)&&!elevKeys.includes(d.key)&&!(stage.cd||[]).some(c=>c.key===d.key));
+      const exDocs=exKeys.map(k=>allDocs.find(d=>d.key===k)).filter(Boolean);
+      const regularDocs=allDocs.filter(d=>!engKeys.includes(d.key)&&!elevKeys.includes(d.key)&&!exKeys.includes(d.key)&&!(stage.cd||[]).some(c=>c.key===d.key));
       const cdDocs=stage.cd||[];
       let html=regularDocs.map(d=>`${mkDocCard(d,sk,false,false)}<div style="margin-bottom:8px;"></div>`).join("");
+      if(exDocs.length){
+        html+=ownerHeader("تصريح الحفر والتنفيذ","⛏","#7A3A1C");
+        html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">${exDocs.map(d=>mkDocCard(d,sk,false,true,true)).join("")}</div><div style="margin-bottom:8px;"></div>`;
+      }
       if(elevDocs.length){
         html+=ownerHeader("مستندات المصعد","🛗","#5A3A8A");
         html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">${elevDocs.map(d=>mkDocCard(d,sk,false,true)).join("")}</div><div style="margin-bottom:8px;"></div>`;
