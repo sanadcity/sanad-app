@@ -2301,11 +2301,12 @@ const rFile=()=>{
 
   const fc=$("fc");
   const scrollY=fc?fc.scrollTop:0;
-  console.log("[SCROLL DEBUG] Before render - window.scrollY:", window.scrollY, "| fc.scrollTop:", fc?fc.scrollTop:"N/A");
+  window.addEventListener("scroll",()=>{console.log("🔴 SCROLL EVENT fired - window.scrollY:",window.scrollY);},{once:true});
+  console.log("Before innerHTML - window.scrollY:", window.scrollY);
   fc.innerHTML=html;
-  requestAnimationFrame(()=>{
-    console.log("[SCROLL DEBUG] After render - window.scrollY:", window.scrollY, "| fc.scrollTop:", fc?fc.scrollTop:"N/A");
-  });
+  console.log("Immediately After innerHTML - window.scrollY:", window.scrollY);
+  requestAnimationFrame(()=>{console.log("RAF - window.scrollY:", window.scrollY);});
+  setTimeout(()=>{console.log("setTimeout 0 - window.scrollY:", window.scrollY);},0);
   if(scrollY)fc.scrollTop=scrollY;
 };
 
@@ -2656,6 +2657,9 @@ const gP=()=>(LS.g(K.p)||[]).find(p=>p.id===CPJ);
 const svP=p=>{p.lastUpdated=new Date().toISOString().slice(0,10);LS.s(K.p,(LS.g(K.p)||[]).map(x=>x.id===p.id?p:x));};
 
 const hUp=(sk,dk,isC,inp)=>{
+  console.log("=== Upload Started ===");
+  console.log("window.scrollY at upload start:", window.scrollY);
+  console.trace("Upload Stack");
   const file=inp.files[0];if(!file)return;
   if(file.size>50*1024*1024){toast("الملف أكبر من 50MB","err");return;}
   const p=gP();if(!p)return;
