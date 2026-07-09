@@ -2291,7 +2291,7 @@ const rFile=()=>{
           return`<div style="padding:10px 14px;border-bottom:1px solid var(--bdl);background:linear-gradient(135deg,rgba(26,63,107,.04),rgba(26,63,107,.01));">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
               <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.08em;">الملاك</div>
-              ${can?`<button onclick="openAddOwner('${proj.id}')" style="background:none;border:1px solid var(--bd);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--t2);font-family:Cairo,sans-serif;">+ إضافة</button>`:""}
+              ${can?`<button onclick="addLandOwner('partner')" style="background:none;border:1px solid var(--bd);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--t2);font-family:Cairo,sans-serif;">+ إضافة</button>`:""}
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:6px;">${cards.join("")}</div>
           </div>`;
@@ -2835,7 +2835,10 @@ const toggleNPOwnerKind=()=>{
   if(coF)coF.style.display=isCo?"":"none";
 };
 const addLandOwner=(type)=>{
-  const typeLabel=type==="direct"?"المالك الأصلي":"المالك الثاني";
+  const p=gP();
+  const partnerCount=(p?.landOwners||[]).filter(o=>o.type==="partner").length;
+  const nums=["الثاني","الثالث","الرابع","الخامس","السادس"];
+  const typeLabel=type==="direct"?"المالك الأصلي":`المالك ${nums[partnerCount]||"الجديد"}`;
   showModal(`إضافة ${typeLabel}`,`
     <div style="display:flex;gap:8px;margin-bottom:12px;">
       <label style="flex:1;display:flex;align-items:center;gap:6px;cursor:pointer;background:var(--w2);border:1.5px solid var(--bdl);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--t1);">
