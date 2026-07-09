@@ -2321,7 +2321,7 @@ const rFile=()=>{
           return`<div style="padding:10px 14px;border-bottom:1px solid var(--bdl);background:linear-gradient(135deg,rgba(26,63,107,.04),rgba(26,63,107,.01));">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
               <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.08em;">الملاك</div>
-              ${can?`<button onclick="addLandOwner('direct')" style="background:none;border:1px solid var(--bd);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--t2);font-family:Cairo,sans-serif;">+ مالك جديد</button>`:""}
+              ${can?`<button onclick="addLandOwner('partner')" style="background:none;border:1px solid var(--bd);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--t2);font-family:Cairo,sans-serif;">+ مالك جديد</button>`:""}
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:6px;">${cards.join("")}</div>
           </div>`;
@@ -2895,9 +2895,9 @@ const addLandOwner=(type,parentId=null)=>{
       </div>
       <div class="fg"><label class="fl">اسم الممثل القانوني</label><input class="fi" id="lo-rep-name" placeholder="مثال: أحمد محمد"/></div>
     </div>
-    ${type==="direct"?`<div class="fg"><label class="fl">نوع الانتقال <span class="rq">*</span></label><select class="fi" id="lo-transfer-type"><option value="">اختر نوع الانتقال</option><option>شراء</option><option>ورثة</option><option>قرار</option><option>هبة</option><option>مزاد</option><option>تنازل</option></select></div>`:""}
+    ${!parentId?`<div class="fg"><label class="fl">نوع الانتقال <span class="rq">*</span></label><select class="fi" id="lo-transfer-type"><option value="">اختر نوع الانتقال</option><option>شراء</option><option>ورثة</option><option>قرار</option><option>هبة</option><option>مزاد</option><option>تنازل</option></select></div>`:""}
     <div class="fg"><label class="fl">النسبة % <span style="color:var(--t3);font-size:11px;">— اتركها فارغة للتوزيع بالتساوي</span></label><input class="fi" id="lo-share" type="number" min="1" max="100" placeholder="مثال: 50"/></div>
-    ${type==="partner"?`<div class="fg"><label class="fl">نوع الشراكة</label><select class="fi" id="lo-partner-type"><option value="">اختر النوع</option><option>شريك ملكية</option><option>شريك تطوير</option><option>شريك استثماري</option><option>شريك تمويل</option><option>ورثة مشارك</option></select></div>`:""}
+    ${parentId?`<div class="fg"><label class="fl">نوع الشراكة</label><select class="fi" id="lo-partner-type"><option value="">اختر النوع</option><option>شريك ملكية</option><option>شريك تطوير</option><option>شريك استثماري</option><option>شريك تمويل</option><option>ورثة مشارك</option></select></div>`:""}
     <input type="hidden" id="lo-type" value="${type}"/>
     <input type="hidden" id="lo-parent-id" value="${parentId||""}"/>
   `,`
