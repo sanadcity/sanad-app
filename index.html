@@ -1709,11 +1709,9 @@ const rFile=()=>{
       const exDocs=exKeys.map(k=>allDocsEx.find(d=>d.key===k)).filter(Boolean);
       const regularDocs=allDocs.filter(d=>!engKeys.includes(d.key)&&!elevKeys.includes(d.key)&&!exKeys.includes(d.key)&&!(stage.cd||[]).some(c=>c.key===d.key));
       const cdDocs=stage.cd||[];
+      const exCdDocs=cdDocs.filter(d=>d.key.startsWith("ex_cd_"));
+      const otherCdDocs=cdDocs.filter(d=>!d.key.startsWith("ex_cd_"));
       let html=regularDocs.map(d=>`${mkDocCard(d,sk,false,false)}<div style="margin-bottom:8px;"></div>`).join("");
-      if(exDocs.length){
-        html+=ownerHeader("تصريح الحفر والتنفيذ","⛏","#7A3A1C");
-        html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">${exDocs.map(d=>mkDocCard(d,sk,false,true)).join("")}</div><div style="margin-bottom:8px;"></div>`;
-      }
       if(elevDocs.length){
         html+=ownerHeader("مستندات المصعد","🛗","#5A3A8A");
         html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">${elevDocs.map(d=>mkDocCard(d,sk,false,true)).join("")}</div><div style="margin-bottom:8px;"></div>`;
@@ -1722,8 +1720,17 @@ const rFile=()=>{
         html+=ownerHeader("مستندات المهندس المشرف","🏗","#3D5A8A");
         html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">${engDocs.slice(0,3).map(d=>mkDocCard(d,sk,false,true,true)).join("")}</div>`;
         if(engDocs.length>3)html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px;">${engDocs.slice(3).map(d=>mkDocCard(d,sk,false,true,true)).join("")}</div>`;
+        html+=`<div style="margin-bottom:8px;"></div>`;
       }
-      if(cdDocs.length)html+=`<div style="margin-top:8px;">${cdDocs.map(d=>mkDocCard(d,sk,true,false)).join("")}</div>`;
+      if(otherCdDocs.length)html+=`<div style="margin-top:8px;">${otherCdDocs.map(d=>mkDocCard(d,sk,true,false)).join("")}</div>`;
+      if(exDocs.length||exCdDocs.length){
+        html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          ${ownerHeader("مستندات تصريح الحفر","⛏","#7A3A1C")}
+          ${can?`<button onclick="openAddExDoc('${proj.id}')" style="background:#7A3A1C;border:none;border-radius:7px;color:#fff;cursor:pointer;font-size:12px;padding:5px 12px;font-family:Cairo,sans-serif;font-weight:700;">+ إضافة</button>`:""}
+        </div>`;
+        const allExDocs=[...exDocs,...exCdDocs];
+        html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">${allExDocs.map(d=>mkDocCard(d,sk,exCdDocs.includes(d),true)).join("")}</div>`;
+      }
       return html;
     }
 
@@ -3670,6 +3677,23 @@ const saveNewUtility=projId=>{
     {key:`cu_${idx}_ins`,label:`${name} — تركيب`,req:false,up:null,note:""},
   ];
   p.stages=p.stages.map(s=>s.key!=="utilities"?s:{...s,cd:[...(s.cd||[]),...newDocs]});
+  closeModal();svP(p);rFile();toast(`تمت إضافة ${name}`);
+};
+const openAddExDoc=projId=>{
+  showModal("إضافة مستند للحفر",`<div style="display:flex;flex-direction:column;gap:10px;padding:4px 0;">
+    <input id="exdoc-name" placeholder="اسم المستند (مثل: موافقة الشبكات، تجديد التصريح)" class="inp" style="font-size:13px;"/>
+  </div>`,`
+    <button class="btn btn-p" onclick="saveNewExDoc('${projId}')">إضافة</button>
+    <button class="btn btn-gh" onclick="closeModal()">إلغاء</button>
+  `);
+};
+const saveNewExDoc=projId=>{
+  const name=$("exdoc-name")?.value?.trim();
+  if(!name)return toast("أدخل اسم المستند");
+  const p=gP();if(!p)return;
+  const idx=Date.now();
+  const newDoc={key:`ex_cd_${idx}`,label:name,req:false,up:null,note:""};
+  p.stages=p.stages.map(s=>s.key!=="permits"?s:{...s,cd:[...(s.cd||[]),newDoc]});
   closeModal();svP(p);rFile();toast(`تمت إضافة ${name}`);
 };
 const removeUtilGroup=(projId,idx)=>{
