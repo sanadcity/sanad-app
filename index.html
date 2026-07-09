@@ -2188,9 +2188,8 @@ const rFile=()=>{
           ["حالة العقار",proj.propertyState||"—"],
           ["نوع الطلب",proj.requestType||"—"],
           ["النشاط",proj.activity||"—"],
-          ["الأدوار",(()=>{const pts=[];if(proj.hasBasement)pts.push("ساسي");if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكررة");return pts.join(" + ")||"—";})()],
+          ["الأدوار",(()=>{const pts=[];if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكررة");return pts.join(" + ")||"—";})()],
           ["مصعد",proj.hasElevator?"نعم ✓":"لا"],
-          ["بدروم",proj.hasBasement?"نعم ✓":"لا"],
           ["حالة السوق",proj.marketStatus||"—"],
           ["كود الجهاز",proj.authorityCode||"—"],
         ].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bdl);"><span style="font-size:10px;color:var(--t3);">${l}</span><span style="font-size:11px;font-weight:600;color:var(--t1);">${v}</span></div>`).join("")}
@@ -2578,7 +2577,6 @@ const openEditProj=id=>{
       <div class="fg"><label class="fl">الأدوار المتكررة</label><input class="fi" id="ep-floors" type="number" value="${proj.floors||""}" placeholder="عدد الأدوار المتكررة"/></div>
     </div>
     <div style="display:flex;gap:16px;margin-top:4px;">
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="ep-basement" ${proj.hasBasement?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> دور ساسي / بدروم</label>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="ep-ground" ${proj.hasGround?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> دور أرضي</label>
     </div>
     <div class="fg"><label class="fl">كود جهة الولاية</label><input class="fi" id="ep-auth" value="${proj.authorityCode||""}" placeholder="NUCA-2024-XXX"/></div>
@@ -3117,13 +3115,11 @@ const rPM=()=>{
       <div class="fg"><label class="fl">الأدوار المتكررة</label><input class="fi" id="pfl" type="number" value="${PFrm.floors||""}" placeholder="عدد الأدوار المتكررة"/></div>
     </div>
     <div style="display:flex;gap:16px;margin-top:4px;">
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="p-basement" ${PFrm.hasBasement?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> دور ساسي / بدروم</label>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="p-ground" ${PFrm.hasGround?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> دور أرضي</label>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
       <div class="trow"><div><div class="ti">مصعد كهربائي</div></div><label class="tsw"><input type="checkbox" id="pel2" ${PFrm.hasElevator?"checked":""}/><span class="tsl"></span></label></div>
-      <div class="trow"><div><div class="ti">بدروم</div></div><label class="tsw"><input type="checkbox" id="pbas" ${PFrm.hasBasement?"checked":""}/><span class="tsl"></span></label></div>
       <div class="trow"><div><div class="ti">حمام سباحة</div></div><label class="tsw"><input type="checkbox" id="ppoo" ${PFrm.hasPool?"checked":""}/><span class="tsl"></span></label></div>
       <div class="trow"><div><div class="ti">برجولة</div></div><label class="tsw"><input type="checkbox" id="pper" ${PFrm.hasPergola?"checked":""}/><span class="tsl"></span></label></div>
     </div>`;
@@ -3445,7 +3441,7 @@ const openPassport=projId=>{
               <span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-size:9px;font-weight:700;">${proj.id}</span>
               ${proj.area?`<span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-size:9px;">${Number(proj.area).toLocaleString()} م²</span>`:""}
               ${proj.activity?`<span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-size:9px;">${proj.activity}</span>`:""}
-              ${(()=>{const pts=[];if(proj.hasBasement)pts.push("ساسي");if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكررة");const lbl=pts.join(" + ");return lbl?`<span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-size:9px;">${lbl}</span>`:"";})()}
+              ${(()=>{const pts=[];if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكررة");const lbl=pts.join(" + ");return lbl?`<span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-size:9px;">${lbl}</span>`:"";})()}
             </div>
           </div>
 
@@ -3485,9 +3481,8 @@ const openPassport=projId=>{
                   ${infoRow("المجاورة",proj.neighborhood)}
                   ${infoRow("المساحة",proj.area?Number(proj.area).toLocaleString()+" م²":"")}
                   ${infoRow("النشاط",proj.activity)}
-                  ${infoRow("الأدوار",(()=>{const pts=[];if(proj.hasBasement)pts.push("ساسي");if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكررة");return pts.join(" + ");})())}
+                  ${infoRow("الأدوار",(()=>{const pts=[];if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكررة");return pts.join(" + ");})())}
                   ${infoRow("مصعد",proj.hasElevator?"نعم":proj.hasElevator===false?"لا":"")}
-                  ${infoRow("بدروم",proj.hasBasement?"نعم":proj.hasBasement===false?"لا":"")}
                   ${infoRow("كود الجهاز",proj.authorityCode)}
                   ${infoRow("سبب التسجيل",proj.serviceReason)}
                 </table>
