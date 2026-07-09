@@ -2281,7 +2281,7 @@ const rFile=()=>{
                 <div style="width:7px;height:7px;border-radius:50%;background:${o.type==="direct"?"#1A3F6B":"#8B5CF6"};flex-shrink:0;"></div>
                 <div>
                   <div style="font-size:11px;font-weight:700;color:var(--t1);">${o.ownerKind==="company"?"🏢 ":""}${o.name||"—"}</div>
-                  <div style="font-size:9px;color:var(--t3);">${o.type==="direct"?"المالك الأصلي":"المالك الثاني"}${o.ownerKind==="company"?" · شركة":""}${o.share?" · "+o.share+"%":""}${o.nid?" · "+o.nid:""}${o.comReg?" · س.ت: "+o.comReg:""}${o.repName?" · ممثل: "+o.repName:""}</div>
+                  <div style="font-size:9px;color:var(--t3);">${o.type==="direct"?"المالك الأصلي":o.parentId?o.partnerType||"شريك":"المالك الثاني"}${o.ownerKind==="company"?" · شركة":""}${o.share?" · "+o.share+"%":""}${o.nid?" · "+o.nid:""}${o.comReg?" · س.ت: "+o.comReg:""}${o.repName?" · ممثل: "+o.repName:""}</div>
                 </div>
               </div>`)
             :chainOwners.map((o,i)=>{
@@ -2875,6 +2875,7 @@ const addLandOwner=(type,parentId=null)=>{
       <div class="fg"><label class="fl">اسم الممثل القانوني</label><input class="fi" id="lo-rep-name" placeholder="مثال: أحمد محمد"/></div>
     </div>
     <div class="fg"><label class="fl">النسبة % <span style="color:var(--t3);font-size:11px;">— اتركها فارغة للتوزيع بالتساوي</span></label><input class="fi" id="lo-share" type="number" min="1" max="100" placeholder="مثال: 50"/></div>
+    ${parentId?`<div class="fg"><label class="fl">نوع الشراكة</label><select class="fi" id="lo-partner-type"><option value="">اختر النوع</option><option>شريك ملكية</option><option>شريك تطوير</option><option>شريك استثماري</option><option>شريك تمويل</option><option>ورثة مشارك</option></select></div>`:""}
     <input type="hidden" id="lo-type" value="${type}"/>
     <input type="hidden" id="lo-parent-id" value="${parentId||""}"/>
   `,`
@@ -2906,7 +2907,8 @@ const confirmAddLandOwner=()=>{
   const id="lo_"+Date.now();
   if(!p.landOwners)p.landOwners=[];
   const parentId=document.getElementById("lo-parent-id")?.value||null;
-  p.landOwners.push({id,name,nid,type,share,ownerKind,...companyData,...(parentId?{parentId}:{})});
+  const partnerType=document.getElementById("lo-partner-type")?.value||"";
+  p.landOwners.push({id,name,nid,type,share,ownerKind,...companyData,...(parentId?{parentId}:{}),...(partnerType?{partnerType}:{})});
   const landStage=p.stages.find(s=>s.key==="land");
   if(landStage){
     const docsKey=isComp?`company_${type}`:type;
