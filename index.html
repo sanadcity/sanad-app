@@ -2992,8 +2992,8 @@ const rPM=()=>{
         <div class="fg"><label class="fl">السجل التجاري <span class="rq">*</span></label><input class="fi" id="p-co-reg" value="${PFrm.comReg||""}" placeholder="رقم السجل التجاري"/></div>
       </div>
       <div class="fw">
-        <div class="fg"><label class="fl">الممثل القانوني <span class="rq">*</span></label><input class="fi" id="po" value="${PFrm.repName||""}" placeholder="اسم الممثل القانوني"/></div>
-        <div class="fg"><label class="fl">رقمه القومي <span class="rq">*</span></label><input class="fi" id="pnid" value="${PFrm.nationalId||""}" placeholder="14 رقم" maxlength="14"/></div>
+        <div class="fg"><label class="fl">الممثل القانوني <span class="rq">*</span></label><input class="fi" id="p-co-rep" value="${PFrm.repName||""}" placeholder="اسم الممثل القانوني"/></div>
+        <div class="fg"><label class="fl">رقمه القومي <span class="rq">*</span></label><input class="fi" id="p-co-nid" value="${PFrm.nationalId||""}" placeholder="14 رقم" maxlength="14"/></div>
       </div>
     </div>
     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--w2);border:1px solid var(--bdl);border-radius:8px;padding:8px 12px;margin-bottom:12px;">
@@ -3109,7 +3109,9 @@ const rmAgent=i=>{PFrm.agents.splice(i,1);rPM();};
 const nxPS=()=>{
   if(PS===1){
     const isCo=document.getElementById("p-kind-co")?.checked;
-    const o=$("po")?.value?.trim(),nid=$("pnid")?.value?.trim(),d=$("pd")?.value?.trim(),pl=$("ppl")?.value?.trim(),ar=$("par")?.value?.trim();
+    const o=isCo?$("p-co-rep")?.value?.trim():$("po")?.value?.trim();
+    const nid=isCo?$("p-co-nid")?.value?.trim():$("pnid")?.value?.trim();
+    const d=$("pd")?.value?.trim(),pl=$("ppl")?.value?.trim(),ar=$("par")?.value?.trim();
     const city2=$("pc")?.value;
     if(!o||!nid||!city2||!d||!pl||!ar){toast("يرجى تعبئة الحقول المطلوبة (*)","err");return;}
     if(nid.length!==14){toast("الرقم القومي يجب أن يكون 14 رقماً","err");return;}
