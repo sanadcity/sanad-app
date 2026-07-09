@@ -2200,7 +2200,10 @@ const rFile=()=>{
                 </div>
               </div>`);
           return`<div style="padding:10px 14px;border-bottom:1px solid var(--bdl);background:linear-gradient(135deg,rgba(26,63,107,.04),rgba(26,63,107,.01));">
-            <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.08em;margin-bottom:7px;">الملاك</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
+              <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.08em;">الملاك</div>
+              ${can?`<button onclick="openAddOwner('${proj.id}')" style="background:none;border:1px solid var(--bd);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--t2);font-family:Cairo,sans-serif;">+ إضافة</button>`:""}
+            </div>
             <div style="display:flex;flex-wrap:wrap;gap:6px;">${cards.join("")}</div>
           </div>`;
         })()}
