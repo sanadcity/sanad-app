@@ -2181,7 +2181,7 @@ const rFile=()=>{
     </div>
 
     <!-- RIGHT COL: documents -->
-    <div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
       <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;">
         <div style="padding:14px 16px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;background:var(--w);">
           <div style="font-size:14px;font-weight:800;color:var(--t1);">${stage.icon} ${stage.label}</div>
@@ -2215,7 +2215,7 @@ const rFile=()=>{
             <div style="display:flex;flex-wrap:wrap;gap:6px;">${cards.join("")}</div>
           </div>`;
         })()}
-        <div style="padding:14px;max-height:500px;overflow-y:auto;">
+        <div style="padding:14px;">
           ${docsHtml||`<div style="padding:28px;text-align:center;color:var(--t3);font-size:12px;">لا توجد مستندات</div>`}
           ${can?`<div style="display:flex;gap:8px;margin-top:4px;padding-top:10px;border-top:1px dashed var(--bdl);">
             <input id="cd-${stage.key}" style="flex:1;background:var(--w);border:1.5px solid var(--bd);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--t1);outline:none;font-family:Cairo,sans-serif;" placeholder="إضافة مستند مخصص..."/>
@@ -2226,7 +2226,7 @@ const rFile=()=>{
 
       <!-- OWNERSHIP CHAIN (land stage only) -->
       ${stage.key==="land"?`
-      <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+      <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-top:0;">
         <div style="padding:12px 14px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;">
           <div style="font-size:12px;font-weight:800;color:var(--t1);">⛓ سلسلة الملكية</div>
           ${can?`<button class="btn btn-p btn-xs" onclick="openAddOwner('${proj.id}')">+ إضافة</button>`:""}
