@@ -3688,21 +3688,16 @@ const openAddOwner=projId=>{
 const saveOwner=projId=>{
   const name=document.getElementById("oc-name")?.value?.trim();
   if(!name){toast("أدخل اسم المالك","warn");return;}
-  const projs=LS.g(K.p)||[];
-  const proj=projs.find(p=>p.id===projId);
-  if(!proj)return;
-  if(!proj.ownerChain)proj.ownerChain=[];
-  proj.ownerChain.push({
+  const p=gP();if(!p)return;
+  if(!p.ownerChain)p.ownerChain=[];
+  p.ownerChain.push({
     name,
     transferType:document.getElementById("oc-type")?.value||"",
     date:document.getElementById("oc-date")?.value||"",
     docType:document.getElementById("oc-doctype")?.value||"",
     files:{}
   });
-  LS.s(K.p,projs);
-  closeModal();
-  openProj(projId);
-  toast("تم إضافة المالك");
+  closeModal();svP(p);rFile();toast("تم إضافة المالك");
 };
 const removeOwner=(projId,idx)=>{
   if(!confirm("حذف هذا المالك؟"))return;
