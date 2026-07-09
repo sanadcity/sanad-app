@@ -1710,33 +1710,61 @@ const rFile=()=>{
 
     if(stage.key==="utilities"){
       const sk=stage.key;
-      const groups=[
-        {label:"الكهرباء",  icon:"⚡", color:"#F59E0B", req:"u_e1", contract:"u_e3", install:"u_e4"},
-        {label:"المياه",    icon:"💧", color:"#0EA5E9", req:"u_w1", contract:"u_w3", install:"u_w4"},
-        {label:"الصرف الصحي",icon:"🚿",color:"#6B7280", req:"u_s1", contract:"u_s3", install:"u_s4"},
-        {label:"الغاز",    icon:"🔥", color:"#EF4444", req:"u_g1", contract:"u_g3", install:"u_g4"},
-        {label:"الاتصالات",icon:"📞", color:"#8B5CF6", req:"u_t1", contract:"u_t3", install:"u_t4"},
-        {label:"الإنترنت", icon:"🌐", color:"#10B981", req:"u_i1", contract:"u_i3", install:"u_i4"},
-      ];
-      let html="";
-      for(const g of groups){
-        const reqDoc=allDocs.find(d=>d.key===g.req);
-        const contractDoc=allDocs.find(d=>d.key===g.contract);
-        const installDoc=allDocs.find(d=>d.key===g.install);
-        html+=`<div style="background:var(--w);border:1.5px solid ${g.color}44;border-radius:12px;padding:12px 14px;margin-bottom:10px;">
+      const mkUtilCard=(label,icon,color,reqKey,conKey,insKey)=>{
+        const d1=allDocs.find(d=>d.key===reqKey);
+        const d2=allDocs.find(d=>d.key===conKey);
+        const d3=allDocs.find(d=>d.key===insKey);
+        return`<div style="background:var(--w);border:1.5px solid ${color}44;border-radius:12px;padding:12px 14px;margin-bottom:10px;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-            <span style="font-size:18px;">${g.icon}</span>
-            <span style="font-size:13px;font-weight:800;color:var(--t1);">${g.label}</span>
+            <span style="font-size:18px;">${icon}</span>
+            <span style="font-size:13px;font-weight:800;color:var(--t1);">${label}</span>
           </div>
-          <div style="display:flex;flex-direction:column;gap:6px;">
-            ${reqDoc?mkDocCard(reqDoc,sk,false,false):""}
-            ${contractDoc?`<div style="border-radius:9px;outline:2px solid ${g.color}66;outline-offset:1px;">${mkDocCard(contractDoc,sk,false,false)}</div>`:""}
-            ${installDoc?mkDocCard(installDoc,sk,false,false):""}
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+            ${d1?mkDocCard(d1,sk,false,true):""}
+            ${d2?`<div style="border-radius:9px;outline:2px solid ${color}88;outline-offset:2px;">${mkDocCard(d2,sk,false,true)}</div>`:""}
+            ${d3?mkDocCard(d3,sk,false,true):""}
           </div>
         </div>`;
-      }
+      };
+      let html="";
+      if(can)html+=`<div style="display:flex;justify-content:flex-start;margin-bottom:10px;">
+        <button onclick="openAddUtility('${proj.id}')" style="background:var(--n8);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:12px;padding:6px 14px;font-family:Cairo,sans-serif;font-weight:700;">+ إضافة خدمة</button>
+      </div>`;
+      html+=mkUtilCard("الكهرباء","⚡","#F59E0B","u_e1","u_e3","u_e4");
+      html+=mkUtilCard("المياه","💧","#0EA5E9","u_w1","u_w3","u_w4");
+      html+=mkUtilCard("الغاز","🔥","#EF4444","u_g1","u_g3","u_g4");
+      html+=mkUtilCard("الاتصالات","📞","#8B5CF6","u_t1","u_t3","u_t4");
+      // Custom utilities added via openAddUtility
       const cdDocs=(stage.cd||[]);
-      if(cdDocs.length)html+=`<div style="margin-top:8px;">${cdDocs.map(d=>mkDocCard(d,sk,true,false)).join("")}</div>`;
+      const utilGroups={};
+      const standalone=[];
+      for(const d of cdDocs){
+        const m=d.key.match(/^cu_(\d+)_(req|con|ins)$/);
+        if(m){const idx=m[1];(utilGroups[idx]=utilGroups[idx]||[]).push(d);}
+        else standalone.push(d);
+      }
+      Object.keys(utilGroups).sort().forEach(idx=>{
+        const grp=utilGroups[idx];
+        const d1=grp.find(d=>d.key.endsWith("_req"));
+        const d2=grp.find(d=>d.key.endsWith("_con"));
+        const d3=grp.find(d=>d.key.endsWith("_ins"));
+        const name=d1?.label?.replace(" — طلب الخدمة","")||d2?.label?.replace(" — عقد الخدمة","")||"خدمة إضافية";
+        html+=`<div style="background:var(--w);border:1.5px solid var(--bdl);border-radius:12px;padding:12px 14px;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:18px;">🔌</span>
+              <span style="font-size:13px;font-weight:800;color:var(--t1);">${name}</span>
+            </div>
+            ${can?`<button onclick="removeUtilGroup('${proj.id}','${idx}')" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:18px;line-height:1;">×</button>`:""}
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+            ${d1?mkDocCard(d1,sk,true,true):""}
+            ${d2?mkDocCard(d2,sk,true,true):""}
+            ${d3?mkDocCard(d3,sk,true,true):""}
+          </div>
+        </div>`;
+      });
+      if(standalone.length)html+=`<div style="margin-top:8px;">${standalone.map(d=>mkDocCard(d,sk,true,false)).join("")}</div>`;
       return html;
     }
 
@@ -3549,6 +3577,34 @@ const copyPassportLink=projId=>{
 };
 
 // ── OWNERSHIP CHAIN ──
+const openAddUtility=projId=>{
+  const html=`<div style="display:flex;flex-direction:column;gap:10px;padding:4px 0;">
+    <input id="util-name" placeholder="اسم الخدمة (مثل: صرف صحي، إنترنت)" class="inp" style="font-size:13px;"/>
+  </div>`;
+  showModal("إضافة خدمة جديدة",html,`
+    <button class="btn btn-p" onclick="saveNewUtility('${projId}')">إضافة</button>
+    <button class="btn btn-gh" onclick="closeModal()">إلغاء</button>
+  `);
+};
+const saveNewUtility=projId=>{
+  const name=$("util-name")?.value?.trim();
+  if(!name)return toast("أدخل اسم الخدمة");
+  const p=gP();if(!p)return;
+  const stage=p.stages?.find(s=>s.key==="utilities");if(!stage)return;
+  const idx=Date.now();
+  const newDocs=[
+    {key:`cu_${idx}_req`,label:`${name} — طلب الخدمة`,req:false,up:null,note:""},
+    {key:`cu_${idx}_con`,label:`${name} — عقد الخدمة`,req:true,up:null,note:""},
+    {key:`cu_${idx}_ins`,label:`${name} — تركيب`,req:false,up:null,note:""},
+  ];
+  p.stages=p.stages.map(s=>s.key!=="utilities"?s:{...s,cd:[...(s.cd||[]),...newDocs]});
+  closeModal();svP(p);rFile();toast(`تمت إضافة ${name}`);
+};
+const removeUtilGroup=(projId,idx)=>{
+  const p=gP();if(!p)return;
+  p.stages=p.stages.map(s=>s.key!=="utilities"?s:{...s,cd:(s.cd||[]).filter(d=>!d.key.startsWith(`cu_${idx}_`))});
+  svP(p);rFile();toast("تم الحذف");
+};
 const openAddOwner=projId=>{
   const html=`<div style="display:flex;flex-direction:column;gap:10px;padding:4px 0;">
     <input id="oc-name" placeholder="اسم المالك" class="inp" style="font-size:13px;"/>
