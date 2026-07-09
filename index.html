@@ -357,10 +357,6 @@ body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--t1);-webkit
         <button id="tab-login-btn" onclick="showLogin()" style="flex:1;padding:8px;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;background:var(--n8);color:#fff;transition:all .18s;">تسجيل الدخول</button>
         <button id="tab-reg-btn" onclick="showReg()" style="flex:1;padding:8px;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;background:transparent;color:var(--t3);transition:all .18s;">حساب جديد</button>
       </div>
-      <div id="maintenance-banner" style="display:none;background:#1a2540;border:1.5px solid var(--gold);border-radius:10px;padding:14px 16px;margin-bottom:16px;text-align:center;">
-        <div style="font-size:15px;font-weight:800;color:var(--gold);margin-bottom:4px;">🔧 النظام في وضع الصيانة المؤقتة</div>
-        <div style="font-size:13px;color:rgba(255,255,255,.7);">يرجى التواصل عبر واتساب: <span style="color:var(--gold);font-weight:700;">01115509998</span></div>
-      </div>
       <div id="amsg"></div>
       <div id="lf">
         <div class="fg"><label class="fl">البريد الإلكتروني أو الرقم القومي</label><div class="fi-wrap"><input class="fi ico" id="le" placeholder="name@company.com أو 14 رقم" onkeydown="if(event.key==='Enter')doLogin()"/><span class="fi-ico">✉</span></div></div>
@@ -1029,15 +1025,10 @@ if(lw){
 }
 
 // ── AUTH ──
-const MAINTENANCE_MODE = false; // ← غيّر إلى true لتفعيل وضع الصيانة
 const showLogin=()=>{
   $("lf").classList.remove("hid");$("rf").classList.add("hid");
   $("tab-login-btn").style.background="var(--n8)";$("tab-login-btn").style.color="#fff";
   $("tab-reg-btn").style.background="transparent";$("tab-reg-btn").style.color="var(--t3)";
-  if(MAINTENANCE_MODE){
-    $("maintenance-banner").style.display="block";
-    $("tab-reg-btn").style.display="none";
-  }
 };
 const showReg=()=>{
   $("lf").classList.add("hid");$("rf").classList.remove("hid");
@@ -1067,7 +1058,6 @@ const pickRegRole=(role)=>{
 };
 
 const doLogin=()=>{
-  if(MAINTENANCE_MODE){sm("amsg","🔧 النظام في وضع الصيانة — سيعود قريباً","i");return;}
   const e=$("le").value.trim(),p=$("lp").value,rem=$("rm").checked;
   sm("amsg","","");
   if(!e||!p){sm("amsg","يرجى تعبئة بيانات الدخول","e");return;}
@@ -1083,7 +1073,6 @@ const doLogin=()=>{
 };
 
 const doReg=()=>{
-  if(MAINTENANCE_MODE){sm("amsg","🔧 النظام في وضع الصيانة — سيعود قريباً","i");return;}
   sm("amsg","","");
   const step2c=$("reg-step2-client");
   const r=step2c&&step2c.style.display!=="none"?($("rr")?.value||""):($("rr-other")?.value||"");
@@ -2181,7 +2170,7 @@ const rFile=()=>{
     </div>
 
     <!-- RIGHT COL: documents -->
-    <div style="display:flex;flex-direction:column;gap:12px;">
+    <div>
       <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;">
         <div style="padding:14px 16px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;background:var(--w);">
           <div style="font-size:14px;font-weight:800;color:var(--t1);">${stage.icon} ${stage.label}</div>
@@ -2211,14 +2200,11 @@ const rFile=()=>{
                 </div>
               </div>`);
           return`<div style="padding:10px 14px;border-bottom:1px solid var(--bdl);background:linear-gradient(135deg,rgba(26,63,107,.04),rgba(26,63,107,.01));">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
-              <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.08em;">⛓ الملاك · سلسلة الملكية</div>
-              ${can?`<button onclick="openAddOwner('${proj.id}')" style="background:none;border:1px solid var(--bd);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--t2);font-family:Cairo,sans-serif;">+ إضافة</button>`:""}
-            </div>
+            <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.08em;margin-bottom:7px;">الملاك</div>
             <div style="display:flex;flex-wrap:wrap;gap:6px;">${cards.join("")}</div>
           </div>`;
         })()}
-        <div style="padding:14px;">
+        <div style="padding:14px;max-height:500px;overflow-y:auto;">
           ${docsHtml||`<div style="padding:28px;text-align:center;color:var(--t3);font-size:12px;">لا توجد مستندات</div>`}
           ${can?`<div style="display:flex;gap:8px;margin-top:4px;padding-top:10px;border-top:1px dashed var(--bdl);">
             <input id="cd-${stage.key}" style="flex:1;background:var(--w);border:1.5px solid var(--bd);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--t1);outline:none;font-family:Cairo,sans-serif;" placeholder="إضافة مستند مخصص..."/>
@@ -2227,6 +2213,41 @@ const rFile=()=>{
         </div>
       </div>
 
+      <!-- OWNERSHIP CHAIN (land stage only) -->
+      ${stage.key==="land"?`
+      <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:12px;font-weight:800;color:var(--t1);">⛓ سلسلة الملكية</div>
+          ${can?`<button class="btn btn-p btn-xs" onclick="openAddOwner('${proj.id}')">+ إضافة</button>`:""}
+        </div>
+        <div style="padding:12px 14px;">
+          ${(proj.ownerChain||[]).length===0?`<div style="text-align:center;color:var(--t3);font-size:11px;padding:12px;">لا توجد سجلات — أضف المالك الأصلي أولاً</div>`:""}
+          ${(proj.ownerChain||[]).map((o,i)=>`
+          <div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">
+            <div style="width:26px;height:26px;border-radius:50%;background:${i===((proj.ownerChain||[]).length-1)?"var(--n8)":"var(--bdl)"};color:${i===((proj.ownerChain||[]).length-1)?"#fff":"var(--t2)"};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">${i+1}</div>
+            <div style="flex:1;background:${i===((proj.ownerChain||[]).length-1)?"var(--bll)":"var(--w2)"};border:1px solid ${i===((proj.ownerChain||[]).length-1)?"rgba(26,63,107,.2)":"var(--bdl)"};border-radius:9px;padding:10px 12px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <div style="font-size:12px;font-weight:800;color:var(--t1);">${o.name}</div>
+                <div style="display:flex;gap:5px;align-items:center;">
+                  <span style="font-size:9px;font-weight:700;background:var(--gl);color:var(--gd);border-radius:5px;padding:1px 6px;">${o.transferType||"—"}</span>
+                  ${i===((proj.ownerChain||[]).length-1)?`<span style="font-size:9px;font-weight:700;background:var(--bll);color:var(--bl);border-radius:5px;padding:1px 6px;">المالك الحالي</span>`:""}
+                  ${can?`<button onclick="removeOwner('${proj.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:13px;padding:0;">×</button>`:""}
+                </div>
+              </div>
+              <div style="font-size:10px;color:var(--t3);">${o.date||""} ${o.docType?"· "+o.docType:""}</div>
+              <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;">
+                ${["idFront","idBack","doc"].map(fk=>{
+                  const fl=o.files?.[fk];
+                  const lbl=fk==="idFront"?"بطاقة وجه":fk==="idBack"?"بطاقة ظهر":"مستند الملكية";
+                  if(fl)return`<button onclick="previewFile('${fl.data}','${fl.name}','${fl.type||""}')" class="btn btn-gh btn-xs">👁 ${lbl}</button>`;
+                  if(!can)return`<span style="font-size:9px;color:var(--t3);background:var(--w2);border-radius:5px;padding:2px 6px;">${lbl}: غير مرفوع</span>`;
+                  return`<label class="btn btn-gh btn-xs" style="cursor:pointer;">📎 ${lbl}<input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="uploadOwnerFile('${proj.id}',${i},'${fk}',this)"/></label>`;
+                }).join("")}
+              </div>
+            </div>
+          </div>`).join("")}
+        </div>
+      </div>
 
       <!-- POWER OF ATTORNEYS (hidden - POA now embedded in party/owner cards) -->
       <div style="display:none;">
@@ -2634,7 +2655,7 @@ const hUp=(sk,dk,isC,inp)=>{
     const docLbl=p.stages.find(s=>s.key===sk)?.docs?.find(d=>d.key===dk)?.label||file.name;
     if(!p.timeline)p.timeline=[];
     p.timeline.push({date:now.toISOString().slice(0,10),time:now.toLocaleTimeString("ar-EG",{hour:"2-digit",minute:"2-digit"}),event:`رفع "${docLbl}"`,stage:stageLbl,by:CU.name,icon:"📎"});
-    const _sy1=window.scrollY||0;svP(p);rFile();requestAnimationFrame(()=>window.scrollTo({top:_sy1,behavior:"instant"}));
+    svP(p);rFile();
     addNotif(`تم رفع ملف في مشروع ${p.ownerName}`,"info",p.id,null);
     toast("✓ تم رفع الملف بنجاح");
   }).catch(err=>{
@@ -2661,7 +2682,7 @@ const rF=(sk,dk,isC)=>{
   if(!confirm("⚠ هل أنت متأكد من حذف هذا الملف؟"))return;
   const upd=arr=>arr.map(d=>d.key===dk?{...d,up:null}:d);
   p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
-  const _sy2=window.scrollY||0;svP(p);rFile();requestAnimationFrame(()=>window.scrollTo({top:_sy2,behavior:"instant"}));
+  svP(p);rFile();
   addNotif(`تم حذف ملف من مشروع ${p.ownerName}`,"warn",p.id,null);
   toast("تم حذف الملف","info");
 };
@@ -2900,7 +2921,7 @@ const removeLandOwner=(ownerId)=>{
   if(landStage)landStage.docs=landStage.docs.filter(d=>!d.key.startsWith(ownerId+"_"));
   svP(p);rFile();toast("تم حذف المالك","info");
 };
-const aCD=sk=>{const inp=$("cd-"+sk);const label=inp?.value?.trim();if(!label)return;const p=gP();if(!p)return;p.stages=p.stages.map(s=>s.key!==sk?s:{...s,cd:[...(s.cd||[]),{key:"c_"+Date.now(),label,req:false,up:null,note:""}]});inp.value="";const _sy3=window.scrollY||0;svP(p);rFile();requestAnimationFrame(()=>window.scrollTo({top:_sy3,behavior:"instant"}));toast("تم إضافة المستند");};
+const aCD=sk=>{const inp=$("cd-"+sk);const label=inp?.value?.trim();if(!label)return;const p=gP();if(!p)return;p.stages=p.stages.map(s=>s.key!==sk?s:{...s,cd:[...(s.cd||[]),{key:"c_"+Date.now(),label,req:false,up:null,note:""}]});inp.value="";svP(p);rFile();toast("تم إضافة المستند");};
 const renameCD=(sk,dk)=>{
   const p=gP();if(!p)return;
   const stage=p.stages.find(s=>s.key===sk);
@@ -2914,7 +2935,7 @@ const rCD=(sk,dk)=>{
   if(!confirm("⚠ حذف هذا المستند المخصص؟"))return;
   const p=gP();if(!p)return;
   p.stages=p.stages.map(s=>s.key!==sk?s:{...s,cd:(s.cd||[]).filter(d=>d.key!==dk)});
-  const _sy4=window.scrollY||0;svP(p);rFile();requestAnimationFrame(()=>window.scrollTo({top:_sy4,behavior:"instant"}));
+  svP(p);rFile();
 };
 // حذف مشروع — لازم تأكيد مزدوج
 const delCP=()=>{
