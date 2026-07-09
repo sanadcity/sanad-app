@@ -2270,14 +2270,24 @@ const rFile=()=>{
                   <div style="font-size:9px;color:var(--t3);">${o.type==="direct"?"المالك الأصلي":"المالك الثاني"}${o.ownerKind==="company"?" · شركة":""}${o.share?" · "+o.share+"%":""}${o.nid?" · "+o.nid:""}${o.comReg?" · س.ت: "+o.comReg:""}${o.repName?" · ممثل: "+o.repName:""}</div>
                 </div>
               </div>`)
-            :chainOwners.map((o,i)=>`
-              <div style="display:flex;align-items:center;gap:6px;background:var(--w);border:1px solid var(--bdl);border-radius:8px;padding:5px 10px;">
-                <div style="width:7px;height:7px;border-radius:50%;background:${i===chainOwners.length-1?"#1A3F6B":"var(--t3)"};flex-shrink:0;"></div>
-                <div>
-                  <div style="font-size:11px;font-weight:700;color:var(--t1);">${o.name||"—"}</div>
-                  <div style="font-size:9px;color:var(--t3);">${i===chainOwners.length-1?"المالك الحالي":o.transferType||"سابق"}</div>
+            :chainOwners.map((o,i)=>{
+              const isCurrent=i===chainOwners.length-1;
+              const partners=o.partners||[];
+              return`<div style="background:var(--w);border:1px solid var(--bdl);border-radius:8px;padding:6px 10px;min-width:140px;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <div style="width:7px;height:7px;border-radius:50%;background:${isCurrent?"#1A3F6B":"var(--t3)"};flex-shrink:0;"></div>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:11px;font-weight:700;color:var(--t1);">${o.name||"—"}</div>
+                    <div style="font-size:9px;color:var(--t3);">${isCurrent?"المالك الحالي":o.transferType||"سابق"}</div>
+                  </div>
+                  ${can?`<button onclick="openAddChainPartner('${proj.id}',${i})" style="background:none;border:1px solid var(--bdl);border-radius:5px;padding:1px 6px;font-size:10px;cursor:pointer;color:var(--t2);font-family:Cairo,sans-serif;flex-shrink:0;">+ شريك</button>`:""}
                 </div>
-              </div>`);
+                ${partners.length?`<div style="margin-top:5px;padding-top:5px;border-top:1px solid var(--bdl);display:flex;flex-wrap:wrap;gap:3px;">
+                  ${partners.map((p,pi)=>`<span style="font-size:9px;background:var(--w2);border:1px solid var(--bdl);border-radius:4px;padding:1px 6px;color:var(--t2);display:inline-flex;align-items:center;gap:3px;">${p.name}${p.share?" "+p.share+"%":""}${can?`<button onclick="removeChainPartner('${proj.id}',${i},${pi})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:11px;padding:0;line-height:1;">×</button>`:""}
+                  </span>`).join("")}
+                </div>`:""}
+              </div>`;
+            });
           return`<div style="padding:10px 14px;border-bottom:1px solid var(--bdl);background:linear-gradient(135deg,rgba(26,63,107,.04),rgba(26,63,107,.01));">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
               <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.08em;">الملاك</div>
@@ -3631,6 +3641,33 @@ const saveNewUtility=projId=>{
 const removeUtilGroup=(projId,idx)=>{
   const p=gP();if(!p)return;
   p.stages=p.stages.map(s=>s.key!=="utilities"?s:{...s,cd:(s.cd||[]).filter(d=>!d.key.startsWith(`cu_${idx}_`))});
+  svP(p);rFile();toast("تم الحذف");
+};
+const openAddChainPartner=(projId,ownerIdx)=>{
+  showModal("إضافة شريك",`<div style="display:flex;flex-direction:column;gap:10px;padding:4px 0;">
+    <input id="cp-name" placeholder="اسم الشريك" class="inp" style="font-size:13px;"/>
+    <input id="cp-nid"  placeholder="رقم قومي (اختياري)" class="inp" style="font-size:13px;"/>
+    <input id="cp-share" placeholder="نسبة الملكية % (اختياري)" class="inp" type="number" min="1" max="100" style="font-size:13px;"/>
+  </div>`,`
+    <button class="btn btn-p" onclick="saveChainPartner('${projId}',${ownerIdx})">إضافة</button>
+    <button class="btn btn-gh" onclick="closeModal()">إلغاء</button>
+  `);
+};
+const saveChainPartner=(projId,ownerIdx)=>{
+  const name=$("cp-name")?.value?.trim();
+  if(!name)return toast("أدخل اسم الشريك");
+  const nid=$("cp-nid")?.value?.trim();
+  const share=$("cp-share")?.value?.trim();
+  const p=gP();if(!p)return;
+  p.ownerChain=p.ownerChain||[];
+  if(!p.ownerChain[ownerIdx])return;
+  p.ownerChain[ownerIdx].partners=[...(p.ownerChain[ownerIdx].partners||[]),{name,nid,share}];
+  closeModal();svP(p);rFile();toast("تمت إضافة الشريك");
+};
+const removeChainPartner=(projId,ownerIdx,partnerIdx)=>{
+  const p=gP();if(!p)return;
+  if(!p.ownerChain?.[ownerIdx])return;
+  p.ownerChain[ownerIdx].partners=(p.ownerChain[ownerIdx].partners||[]).filter((_,i)=>i!==partnerIdx);
   svP(p);rFile();toast("تم الحذف");
 };
 const openAddOwner=projId=>{
