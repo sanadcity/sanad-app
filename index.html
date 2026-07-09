@@ -2170,7 +2170,7 @@ const rFile=()=>{
     </div>
 
     <!-- RIGHT COL: documents -->
-    <div>
+    <div style="display:flex;flex-direction:column;">
       <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;">
         <div style="padding:14px 16px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;background:var(--w);">
           <div style="font-size:14px;font-weight:800;color:var(--t1);">${stage.icon} ${stage.label}</div>
@@ -2213,42 +2213,6 @@ const rFile=()=>{
         </div>
       </div>
 
-      <!-- OWNERSHIP CHAIN (land stage only) -->
-      ${stage.key==="land"?`
-      <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);">
-        <div style="padding:12px 14px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;">
-          <div style="font-size:12px;font-weight:800;color:var(--t1);">⛓ سلسلة الملكية</div>
-          ${can?`<button class="btn btn-p btn-xs" onclick="openAddOwner('${proj.id}')">+ إضافة</button>`:""}
-        </div>
-        <div style="padding:12px 14px;">
-          ${(proj.ownerChain||[]).length===0?`<div style="text-align:center;color:var(--t3);font-size:11px;padding:12px;">لا توجد سجلات — أضف المالك الأصلي أولاً</div>`:""}
-          ${(proj.ownerChain||[]).map((o,i)=>`
-          <div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">
-            <div style="width:26px;height:26px;border-radius:50%;background:${i===((proj.ownerChain||[]).length-1)?"var(--n8)":"var(--bdl)"};color:${i===((proj.ownerChain||[]).length-1)?"#fff":"var(--t2)"};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">${i+1}</div>
-            <div style="flex:1;background:${i===((proj.ownerChain||[]).length-1)?"var(--bll)":"var(--w2)"};border:1px solid ${i===((proj.ownerChain||[]).length-1)?"rgba(26,63,107,.2)":"var(--bdl)"};border-radius:9px;padding:10px 12px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-                <div style="font-size:12px;font-weight:800;color:var(--t1);">${o.name}</div>
-                <div style="display:flex;gap:5px;align-items:center;">
-                  <span style="font-size:9px;font-weight:700;background:var(--gl);color:var(--gd);border-radius:5px;padding:1px 6px;">${o.transferType||"—"}</span>
-                  ${i===((proj.ownerChain||[]).length-1)?`<span style="font-size:9px;font-weight:700;background:var(--bll);color:var(--bl);border-radius:5px;padding:1px 6px;">المالك الحالي</span>`:""}
-                  ${can?`<button onclick="removeOwner('${proj.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:13px;padding:0;">×</button>`:""}
-                </div>
-              </div>
-              <div style="font-size:10px;color:var(--t3);">${o.date||""} ${o.docType?"· "+o.docType:""}</div>
-              <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;">
-                ${["idFront","idBack","doc"].map(fk=>{
-                  const fl=o.files?.[fk];
-                  const lbl=fk==="idFront"?"بطاقة وجه":fk==="idBack"?"بطاقة ظهر":"مستند الملكية";
-                  if(fl)return`<button onclick="previewFile('${fl.data}','${fl.name}','${fl.type||""}')" class="btn btn-gh btn-xs">👁 ${lbl}</button>`;
-                  if(!can)return`<span style="font-size:9px;color:var(--t3);background:var(--w2);border-radius:5px;padding:2px 6px;">${lbl}: غير مرفوع</span>`;
-                  return`<label class="btn btn-gh btn-xs" style="cursor:pointer;">📎 ${lbl}<input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="uploadOwnerFile('${proj.id}',${i},'${fk}',this)"/></label>`;
-                }).join("")}
-              </div>
-            </div>
-          </div>`).join("")}
-        </div>
-      </div>
-
       <!-- POWER OF ATTORNEYS (hidden - POA now embedded in party/owner cards) -->
       <div style="display:none;">
         <div>
@@ -2285,13 +2249,48 @@ const rFile=()=>{
         </div>
         <button class="btn btn-p" onclick="switchStage(${CSV+1})" ${CSV===proj.stages.length-1?"disabled style='opacity:.4;pointer-events:none;'":""}>التالية ›</button>
       </div>
+
+      ${stage.key==="land"?`
+      <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-top:auto;">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:12px;font-weight:800;color:var(--t1);">⛓ سلسلة الملكية</div>
+          ${can?`<button class="btn btn-p btn-xs" onclick="openAddOwner('${proj.id}')">+ إضافة</button>`:""}
+        </div>
+        <div style="padding:12px 14px;">
+          ${(proj.ownerChain||[]).length===0?`<div style="text-align:center;color:var(--t3);font-size:11px;padding:12px;">لا توجد سجلات — أضف المالك الأصلي أولاً</div>`:""}
+          ${(proj.ownerChain||[]).map((o,i)=>`
+          <div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">
+            <div style="width:26px;height:26px;border-radius:50%;background:${i===((proj.ownerChain||[]).length-1)?"var(--n8)":"var(--bdl)"};color:${i===((proj.ownerChain||[]).length-1)?"#fff":"var(--t2)"};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">${i+1}</div>
+            <div style="flex:1;background:${i===((proj.ownerChain||[]).length-1)?"var(--bll)":"var(--w2)"};border:1px solid ${i===((proj.ownerChain||[]).length-1)?"rgba(26,63,107,.2)":"var(--bdl)"};border-radius:9px;padding:10px 12px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <div style="font-size:12px;font-weight:800;color:var(--t1);">${o.name}</div>
+                <div style="display:flex;gap:5px;align-items:center;">
+                  <span style="font-size:9px;font-weight:700;background:var(--gl);color:var(--gd);border-radius:5px;padding:1px 6px;">${o.transferType||"—"}</span>
+                  ${i===((proj.ownerChain||[]).length-1)?`<span style="font-size:9px;font-weight:700;background:var(--bll);color:var(--bl);border-radius:5px;padding:1px 6px;">المالك الحالي</span>`:""}
+                  ${can?`<button onclick="removeOwner('${proj.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:13px;padding:0;">×</button>`:""}
+                </div>
+              </div>
+              <div style="font-size:10px;color:var(--t3);">${o.date||""} ${o.docType?"· "+o.docType:""}</div>
+              <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;">
+                ${["idFront","idBack","doc"].map(fk=>{
+                  const fl=o.files?.[fk];
+                  const lbl=fk==="idFront"?"بطاقة وجه":fk==="idBack"?"بطاقة ظهر":"مستند الملكية";
+                  if(fl)return`<button onclick="previewFile('${fl.data}','${fl.name}','${fl.type||""}')" class="btn btn-gh btn-xs">👁 ${lbl}</button>`;
+                  if(!can)return`<span style="font-size:9px;color:var(--t3);background:var(--w2);border-radius:5px;padding:2px 6px;">${lbl}: غير مرفوع</span>`;
+                  return`<label class="btn btn-gh btn-xs" style="cursor:pointer;">📎 ${lbl}<input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="uploadOwnerFile('${proj.id}',${i},'${fk}',this)"/></label>`;
+                }).join("")}
+              </div>
+            </div>
+          </div>`).join("")}
+        </div>
+      </div>`:""}
     </div>
   </div>`;
 
   const fc=$("fc");
   const scrollY=window.scrollY||0;
   fc.innerHTML=html;
-  if(scrollY)window.scrollTo(0,scrollY);
+  if(scrollY)setTimeout(()=>window.scrollTo(0,scrollY),0);
 };
 
 // ── PARTIES MANAGEMENT ──
