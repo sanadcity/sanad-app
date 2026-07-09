@@ -2188,7 +2188,7 @@ const rFile=()=>{
           ["حالة العقار",proj.propertyState||"—"],
           ["نوع الطلب",proj.requestType||"—"],
           ["النشاط",proj.activity||"—"],
-          ["الأدوار",proj.floors?proj.floors+" أدوار":"—"],
+          ["الأدوار",(()=>{const pts=[];if(proj.hasBasement)pts.push("ساسي");if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكررة");return pts.join(" + ")||"—";})()],
           ["مصعد",proj.hasElevator?"نعم ✓":"لا"],
           ["بدروم",proj.hasBasement?"نعم ✓":"لا"],
           ["حالة السوق",proj.marketStatus||"—"],
@@ -2575,7 +2575,11 @@ const openEditProj=id=>{
     </div>
     <div class="fw">
       <div class="fg"><label class="fl">سعر المتر (ج.م)</label><input class="fi" id="ep-price" type="number" value="${proj.pricePerMeter||""}"/></div>
-      <div class="fg"><label class="fl">عدد الأدوار</label><input class="fi" id="ep-floors" type="number" value="${proj.floors||""}"/></div>
+      <div class="fg"><label class="fl">الأدوار المتكررة</label><input class="fi" id="ep-floors" type="number" value="${proj.floors||""}" placeholder="عدد الأدوار المتكررة"/></div>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:4px;">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="ep-basement" ${proj.hasBasement?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> دور ساسي / بدروم</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="ep-ground" ${proj.hasGround?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> دور أرضي</label>
     </div>
     <div class="fg"><label class="fl">كود جهة الولاية</label><input class="fi" id="ep-auth" value="${proj.authorityCode||""}" placeholder="NUCA-2024-XXX"/></div>
     <div class="fg"><label class="fl">ملاحظات</label><textarea class="fi" id="ep-note" rows="3">${proj.note||""}</textarea></div>
@@ -2635,7 +2639,9 @@ const saveEditProj=id=>{
   proj.district=document.getElementById("ep-dist")?.value?.trim()||proj.district;
   proj.area=Number(document.getElementById("ep-area")?.value)||proj.area;
   proj.pricePerMeter=Number(document.getElementById("ep-price")?.value)||proj.pricePerMeter;
-  proj.floors=Number(document.getElementById("ep-floors")?.value)||proj.floors;
+  proj.floors=Number(document.getElementById("ep-floors")?.value)||0;
+  proj.hasBasement=document.getElementById("ep-basement")?.checked||false;
+  proj.hasGround=document.getElementById("ep-ground")?.checked||false;
   proj.authorityCode=document.getElementById("ep-auth")?.value?.trim()||"";
   proj.note=document.getElementById("ep-note")?.value||"";
   proj.activity=document.getElementById("ep-activity")?.value||proj.activity||"سكني";
@@ -3108,7 +3114,11 @@ const rPM=()=>{
 
     <div class="fw">
       <div class="fg"><label class="fl">كود جهة الولاية</label><input class="fi" id="pau" value="${PFrm.authorityCode||""}" placeholder="NUCA-2024-XXX"/></div>
-      <div class="fg"><label class="fl">عدد الأدوار</label><input class="fi" id="pfl" type="number" value="${PFrm.floors||""}" placeholder="مثال: 5"/></div>
+      <div class="fg"><label class="fl">الأدوار المتكررة</label><input class="fi" id="pfl" type="number" value="${PFrm.floors||""}" placeholder="عدد الأدوار المتكررة"/></div>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:4px;">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="p-basement" ${PFrm.hasBasement?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> دور ساسي / بدروم</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="p-ground" ${PFrm.hasGround?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> دور أرضي</label>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
@@ -3206,8 +3216,9 @@ const nxPS=()=>{
     PFrm.city=city2;PFrm.gov=$("pgov")?.value||PFrm.gov||"";
     PFrm.district=d;PFrm.neighborhood=$("pnb")?.value||"";PFrm.plot=pl;PFrm.area=ar;
     PFrm.authorityCode=$("pau")?.value||"";PFrm.floors=$("pfl")?.value||"";
+    PFrm.hasBasement=$("p-basement")?.checked||$("pbas")?.checked||false;
+    PFrm.hasGround=$("p-ground")?.checked||false;
     PFrm.hasElevator=$("pel2")?.checked||false;
-    PFrm.hasBasement=$("pbas")?.checked||false;
     PFrm.hasPool=$("ppoo")?.checked||false;
     PFrm.hasPergola=$("pper")?.checked||false;
     PFrm.isOriginalOwner=$("p-isoriginal")?.checked!==false;
@@ -3269,7 +3280,7 @@ const svPF=()=>{
     gov:PFrm.gov||"",city:PFrm.city,district:PFrm.district,neighborhood:PFrm.neighborhood||"",plot:PFrm.plot,
     area:Number(PFrm.area)||0,
     authorityCode:PFrm.authorityCode||"",floors:Number(PFrm.floors)||0,
-    hasElevator:PFrm.hasElevator||false,hasBasement:PFrm.hasBasement||false,
+    hasElevator:PFrm.hasElevator||false,hasBasement:PFrm.hasBasement||false,hasGround:PFrm.hasGround||false,
     hasPool:PFrm.hasPool||false,hasPergola:PFrm.hasPergola||false,
     propertyState:PFrm.propertyState||"أرض فضاء",requestType:PFrm.requestType||"مشروع جديد",
     requiredWorks:PFrm.requiredWorks||[],marketStatus:PFrm.marketStatus||"غير محدد",
@@ -3434,7 +3445,7 @@ const openPassport=projId=>{
               <span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-size:9px;font-weight:700;">${proj.id}</span>
               ${proj.area?`<span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-size:9px;">${Number(proj.area).toLocaleString()} م²</span>`:""}
               ${proj.activity?`<span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-size:9px;">${proj.activity}</span>`:""}
-              ${proj.floors?`<span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-size:9px;">${proj.floors} أدوار</span>`:""}
+              ${(()=>{const pts=[];if(proj.hasBasement)pts.push("ساسي");if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكررة");const lbl=pts.join(" + ");return lbl?`<span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-size:9px;">${lbl}</span>`:"";})()}
             </div>
           </div>
 
@@ -3474,7 +3485,7 @@ const openPassport=projId=>{
                   ${infoRow("المجاورة",proj.neighborhood)}
                   ${infoRow("المساحة",proj.area?Number(proj.area).toLocaleString()+" م²":"")}
                   ${infoRow("النشاط",proj.activity)}
-                  ${infoRow("الأدوار",proj.floors?proj.floors+" أدوار":"")}
+                  ${infoRow("الأدوار",(()=>{const pts=[];if(proj.hasBasement)pts.push("ساسي");if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكررة");return pts.join(" + ");})())}
                   ${infoRow("مصعد",proj.hasElevator?"نعم":proj.hasElevator===false?"لا":"")}
                   ${infoRow("بدروم",proj.hasBasement?"نعم":proj.hasBasement===false?"لا":"")}
                   ${infoRow("كود الجهاز",proj.authorityCode)}
