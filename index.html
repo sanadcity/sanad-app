@@ -2207,7 +2207,7 @@ const rFile=()=>{
             <div style="display:flex;flex-wrap:wrap;gap:6px;">${cards.join("")}</div>
           </div>`;
         })()}
-        <div style="padding:14px;max-height:500px;overflow-y:auto;">
+        <div style="padding:14px;">
           ${docsHtml||`<div style="padding:28px;text-align:center;color:var(--t3);font-size:12px;">لا توجد مستندات</div>`}
           ${can?`<div style="display:flex;gap:8px;margin-top:4px;padding-top:10px;border-top:1px dashed var(--bdl);">
             <input id="cd-${stage.key}" style="flex:1;background:var(--w);border:1.5px solid var(--bd);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--t1);outline:none;font-family:Cairo,sans-serif;" placeholder="إضافة مستند مخصص..."/>
@@ -2216,69 +2216,7 @@ const rFile=()=>{
         </div>
       </div>
 
-      <!-- OWNERSHIP CHAIN (land stage only) -->
-      ${stage.key==="land"?`
-      <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);">
-        <div style="padding:12px 14px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;">
-          <div style="font-size:12px;font-weight:800;color:var(--t1);">⛓ سلسلة الملكية</div>
-          ${can?`<button class="btn btn-p btn-xs" onclick="openAddOwner('${proj.id}')">+ إضافة</button>`:""}
-        </div>
-        <div style="padding:12px 14px;">
-          ${(proj.ownerChain||[]).length===0?`<div style="text-align:center;color:var(--t3);font-size:11px;padding:12px;">لا توجد سجلات — أضف المالك الأصلي أولاً</div>`:""}
-          ${(proj.ownerChain||[]).map((o,i)=>`
-          <div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">
-            <div style="width:26px;height:26px;border-radius:50%;background:${i===((proj.ownerChain||[]).length-1)?"var(--n8)":"var(--bdl)"};color:${i===((proj.ownerChain||[]).length-1)?"#fff":"var(--t2)"};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">${i+1}</div>
-            <div style="flex:1;background:${i===((proj.ownerChain||[]).length-1)?"var(--bll)":"var(--w2)"};border:1px solid ${i===((proj.ownerChain||[]).length-1)?"rgba(26,63,107,.2)":"var(--bdl)"};border-radius:9px;padding:10px 12px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-                <div style="font-size:12px;font-weight:800;color:var(--t1);">${o.name}</div>
-                <div style="display:flex;gap:5px;align-items:center;">
-                  <span style="font-size:9px;font-weight:700;background:var(--gl);color:var(--gd);border-radius:5px;padding:1px 6px;">${o.transferType||"—"}</span>
-                  ${i===((proj.ownerChain||[]).length-1)?`<span style="font-size:9px;font-weight:700;background:var(--bll);color:var(--bl);border-radius:5px;padding:1px 6px;">المالك الحالي</span>`:""}
-                  ${can?`<button onclick="removeOwner('${proj.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:13px;padding:0;">×</button>`:""}
-                </div>
-              </div>
-              <div style="font-size:10px;color:var(--t3);">${o.date||""} ${o.docType?"· "+o.docType:""}</div>
-              <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;">
-                ${["idFront","idBack","doc"].map(fk=>{
-                  const fl=o.files?.[fk];
-                  const lbl=fk==="idFront"?"بطاقة وجه":fk==="idBack"?"بطاقة ظهر":"مستند الملكية";
-                  if(fl)return`<button onclick="previewFile('${fl.data}','${fl.name}','${fl.type||""}')" class="btn btn-gh btn-xs">👁 ${lbl}</button>`;
-                  if(!can)return`<span style="font-size:9px;color:var(--t3);background:var(--w2);border-radius:5px;padding:2px 6px;">${lbl}: غير مرفوع</span>`;
-                  return`<label class="btn btn-gh btn-xs" style="cursor:pointer;">📎 ${lbl}<input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="uploadOwnerFile('${proj.id}',${i},'${fk}',this)"/></label>`;
-                }).join("")}
-              </div>
-            </div>
-          </div>`).join("")}
-        </div>
-      </div>
 
-      <!-- POWER OF ATTORNEYS (hidden - POA now embedded in party/owner cards) -->
-      <div style="display:none;">
-        <div>
-        <div style="padding:12px 14px;">
-          ${(proj.poas||[]).length===0?`<div style="text-align:center;color:var(--t3);font-size:11px;padding:12px;">لا توجد توكيلات مسجلة</div>`:""}
-          ${(proj.poas||[]).map((p,i)=>{
-            const today=new Date().toISOString().slice(0,10);
-            const expired=p.expiryDate&&p.expiryDate<today;
-            return`<div style="background:${expired?"var(--rdl)":"var(--w2)"};border:1px solid ${expired?"rgba(192,57,43,.2)":"var(--bdl)"};border-radius:9px;padding:10px 12px;margin-bottom:8px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;">
-                <div style="font-size:12px;font-weight:800;color:var(--t1);">${p.name}</div>
-                <div style="display:flex;gap:5px;align-items:center;">
-                  ${expired?`<span style="font-size:9px;font-weight:700;background:var(--rdl);color:var(--rd);border-radius:5px;padding:1px 6px;">منتهي</span>`:`<span style="font-size:9px;font-weight:700;background:var(--grl);color:var(--gr);border-radius:5px;padding:1px 6px;">ساري</span>`}
-                  ${can?`<button onclick="removePOA('${proj.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:13px;">×</button>`:""}
-                </div>
-              </div>
-              <div style="font-size:10px;color:${expired?"var(--rd)":"var(--t3)"};margin-top:3px;">ينتهي: ${p.expiryDate||"—"} ${p.poaType?"· "+p.poaType:""}</div>
-              ${expired?`<div style="font-size:10px;color:var(--rd);font-weight:700;margin-top:4px;">⚠ التوكيل منتهي — يحتاج تجديد</div>`:""}
-              <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;">
-                ${p.files?.doc?`<button onclick="previewFile('${p.files.doc.data}','${p.files.doc.name}','${p.files.doc.type||""}')" class="btn btn-gh btn-xs">👁 التوكيل</button>`:(can?`<label class="btn btn-gh btn-xs" style="cursor:pointer;">📎 رفع التوكيل<input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="uploadPOAFile('${proj.id}',${i},'doc',this)"/></label>`:`<span style="font-size:9px;color:var(--t3);">التوكيل: غير مرفوع</span>`)}
-                ${p.files?.idFront?`<button onclick="previewFile('${p.files.idFront.data}','${p.files.idFront.name}','${p.files.idFront.type||""}')" class="btn btn-gh btn-xs">👁 بطاقة وجه</button>`:(can?`<label class="btn btn-gh btn-xs" style="cursor:pointer;">📎 بطاقة وجه<input type="file" accept=".jpg,.jpeg,.png" style="display:none;" onchange="uploadPOAFile('${proj.id}',${i},'idFront',this)"/></label>`:"")}
-                ${p.files?.idBack?`<button onclick="previewFile('${p.files.idBack.data}','${p.files.idBack.name}','${p.files.idBack.type||""}')" class="btn btn-gh btn-xs">👁 بطاقة ظهر</button>`:(can?`<label class="btn btn-gh btn-xs" style="cursor:pointer;">📎 بطاقة ظهر<input type="file" accept=".jpg,.jpeg,.png" style="display:none;" onchange="uploadPOAFile('${proj.id}',${i},'idBack',this)"/></label>`:"")}
-              </div>
-            </div>`;
-          }).join("")}
-        </div>
-      </div>`:""}
 
       <!-- Stage navigation -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
