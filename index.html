@@ -1799,13 +1799,8 @@ const rFile=()=>{
       const isCo=owner.ownerKind==="company";
       const isComp=proj.isCompound||proj.type==="compound";
       if(isCo){
-        // For non-compound: replace عقد الهيئة with إخطار التخصيص + محضر الاستلام
-        if(!isComp){
-          ownerDocs=ownerDocs.filter(d=>d.key!==`${owner.id}_contract`);
-          [{key:`${owner.id}_allocationNotice`,label:"إخطار التخصيص",req:true},
-           {key:`${owner.id}_handoverReport`,label:"محضر الاستلام",req:true}]
-            .forEach(mk=>{if(!ownerDocs.find(d=>d.key===mk.key))ownerDocs=[...ownerDocs,{...mk,up:null}];});
-        }
+        // For non-compound: hide عقد الهيئة (not applicable for normal projects)
+        if(!isComp) ownerDocs=ownerDocs.filter(d=>d.key!==`${owner.id}_contract`);
         [{key:`${owner.id}_repIdFront`,label:"بطاقة الممثل (وجه)",req:false},{key:`${owner.id}_repIdBack`,label:"بطاقة الممثل (ظهر)",req:false}]
           .forEach(mk=>{if(!ownerDocs.find(d=>d.key===mk.key))ownerDocs=[...ownerDocs,{...mk,up:null}];});
       }
