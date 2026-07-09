@@ -2666,7 +2666,7 @@ const hUp=(sk,dk,isC,inp)=>{
     const docLbl=p.stages.find(s=>s.key===sk)?.docs?.find(d=>d.key===dk)?.label||file.name;
     if(!p.timeline)p.timeline=[];
     p.timeline.push({date:now.toISOString().slice(0,10),time:now.toLocaleTimeString("ar-EG",{hour:"2-digit",minute:"2-digit"}),event:`رفع "${docLbl}"`,stage:stageLbl,by:CU.name,icon:"📎"});
-    svP(p);rFile();
+    const _sy1=window.scrollY||0;svP(p);rFile();requestAnimationFrame(()=>window.scrollTo({top:_sy1,behavior:"instant"}));
     addNotif(`تم رفع ملف في مشروع ${p.ownerName}`,"info",p.id,null);
     toast("✓ تم رفع الملف بنجاح");
   }).catch(err=>{
@@ -2693,7 +2693,7 @@ const rF=(sk,dk,isC)=>{
   if(!confirm("⚠ هل أنت متأكد من حذف هذا الملف؟"))return;
   const upd=arr=>arr.map(d=>d.key===dk?{...d,up:null}:d);
   p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
-  svP(p);rFile();
+  const _sy2=window.scrollY||0;svP(p);rFile();requestAnimationFrame(()=>window.scrollTo({top:_sy2,behavior:"instant"}));
   addNotif(`تم حذف ملف من مشروع ${p.ownerName}`,"warn",p.id,null);
   toast("تم حذف الملف","info");
 };
@@ -2932,7 +2932,7 @@ const removeLandOwner=(ownerId)=>{
   if(landStage)landStage.docs=landStage.docs.filter(d=>!d.key.startsWith(ownerId+"_"));
   svP(p);rFile();toast("تم حذف المالك","info");
 };
-const aCD=sk=>{const inp=$("cd-"+sk);const label=inp?.value?.trim();if(!label)return;const p=gP();if(!p)return;p.stages=p.stages.map(s=>s.key!==sk?s:{...s,cd:[...(s.cd||[]),{key:"c_"+Date.now(),label,req:false,up:null,note:""}]});inp.value="";svP(p);rFile();toast("تم إضافة المستند");};
+const aCD=sk=>{const inp=$("cd-"+sk);const label=inp?.value?.trim();if(!label)return;const p=gP();if(!p)return;p.stages=p.stages.map(s=>s.key!==sk?s:{...s,cd:[...(s.cd||[]),{key:"c_"+Date.now(),label,req:false,up:null,note:""}]});inp.value="";const _sy3=window.scrollY||0;svP(p);rFile();requestAnimationFrame(()=>window.scrollTo({top:_sy3,behavior:"instant"}));toast("تم إضافة المستند");};
 const renameCD=(sk,dk)=>{
   const p=gP();if(!p)return;
   const stage=p.stages.find(s=>s.key===sk);
@@ -2946,7 +2946,7 @@ const rCD=(sk,dk)=>{
   if(!confirm("⚠ حذف هذا المستند المخصص؟"))return;
   const p=gP();if(!p)return;
   p.stages=p.stages.map(s=>s.key!==sk?s:{...s,cd:(s.cd||[]).filter(d=>d.key!==dk)});
-  svP(p);rFile();
+  const _sy4=window.scrollY||0;svP(p);rFile();requestAnimationFrame(()=>window.scrollTo({top:_sy4,behavior:"instant"}));
 };
 // حذف مشروع — لازم تأكيد مزدوج
 const delCP=()=>{
