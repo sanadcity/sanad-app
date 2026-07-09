@@ -831,27 +831,27 @@ const STAGES=[
   {key:"utilities",label:"المرافق والخدمات",icon:"⚡",color:"#1A6B6B",docs:[
     {key:"u_e1",label:"الكهرباء — طلب الخدمة",req:false},
     {key:"u_e2",label:"الكهرباء — موافقة الجهة",req:false},
-    {key:"u_e3",label:"الكهرباء — عقد الخدمة",req:false},
+    {key:"u_e3",label:"الكهرباء — عقد الخدمة",req:true},
     {key:"u_e4",label:"الكهرباء — تركيب العداد",req:false},
     {key:"u_w1",label:"المياه — طلب الخدمة",req:false},
     {key:"u_w2",label:"المياه — موافقة الجهة",req:false},
-    {key:"u_w3",label:"المياه — عقد الخدمة",req:false},
+    {key:"u_w3",label:"المياه — عقد الخدمة",req:true},
     {key:"u_w4",label:"المياه — تركيب العداد",req:false},
     {key:"u_s1",label:"الصرف الصحي — طلب الخدمة",req:false},
     {key:"u_s2",label:"الصرف الصحي — موافقة الجهة",req:false},
-    {key:"u_s3",label:"الصرف الصحي — عقد الخدمة",req:false},
+    {key:"u_s3",label:"الصرف الصحي — عقد الخدمة",req:true},
     {key:"u_s4",label:"الصرف الصحي — توصيل الشبكة",req:false},
     {key:"u_g1",label:"الغاز — طلب الخدمة",req:false},
     {key:"u_g2",label:"الغاز — موافقة الجهة",req:false},
-    {key:"u_g3",label:"الغاز — عقد الخدمة",req:false},
+    {key:"u_g3",label:"الغاز — عقد الخدمة",req:true},
     {key:"u_g4",label:"الغاز — تركيب العداد",req:false},
     {key:"u_t1",label:"الاتصالات — طلب الخدمة",req:false},
     {key:"u_t2",label:"الاتصالات — موافقة الجهة",req:false},
-    {key:"u_t3",label:"الاتصالات — عقد الخدمة",req:false},
+    {key:"u_t3",label:"الاتصالات — عقد الخدمة",req:true},
     {key:"u_t4",label:"الاتصالات — التركيب",req:false},
     {key:"u_i1",label:"الإنترنت — طلب الخدمة",req:false},
     {key:"u_i2",label:"الإنترنت — موافقة الجهة",req:false},
-    {key:"u_i3",label:"الإنترنت — عقد الخدمة",req:false},
+    {key:"u_i3",label:"الإنترنت — عقد الخدمة",req:true},
     {key:"u_i4",label:"الإنترنت — التركيب",req:false}
   ]},
   {key:"delivery",label:"التسليم والمطابقة",icon:"✅",color:"#1B7A4A",docs:[
@@ -1704,6 +1704,38 @@ const rFile=()=>{
         html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">${engDocs.slice(2,4).map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`;
         if(engDocs.length>4)html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">${engDocs.slice(4).map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`;
       }
+      if(cdDocs.length)html+=`<div style="margin-top:8px;">${cdDocs.map(d=>mkDocCard(d,sk,true,false)).join("")}</div>`;
+      return html;
+    }
+
+    if(stage.key==="utilities"){
+      const sk=stage.key;
+      const groups=[
+        {label:"الكهرباء",  icon:"⚡", color:"#F59E0B", req:"u_e1", contract:"u_e3", install:"u_e4"},
+        {label:"المياه",    icon:"💧", color:"#0EA5E9", req:"u_w1", contract:"u_w3", install:"u_w4"},
+        {label:"الصرف الصحي",icon:"🚿",color:"#6B7280", req:"u_s1", contract:"u_s3", install:"u_s4"},
+        {label:"الغاز",    icon:"🔥", color:"#EF4444", req:"u_g1", contract:"u_g3", install:"u_g4"},
+        {label:"الاتصالات",icon:"📞", color:"#8B5CF6", req:"u_t1", contract:"u_t3", install:"u_t4"},
+        {label:"الإنترنت", icon:"🌐", color:"#10B981", req:"u_i1", contract:"u_i3", install:"u_i4"},
+      ];
+      let html="";
+      for(const g of groups){
+        const reqDoc=allDocs.find(d=>d.key===g.req);
+        const contractDoc=allDocs.find(d=>d.key===g.contract);
+        const installDoc=allDocs.find(d=>d.key===g.install);
+        html+=`<div style="background:var(--w);border:1.5px solid ${g.color}44;border-radius:12px;padding:12px 14px;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <span style="font-size:18px;">${g.icon}</span>
+            <span style="font-size:13px;font-weight:800;color:var(--t1);">${g.label}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            ${reqDoc?mkDocCard(reqDoc,sk,false,false):""}
+            ${contractDoc?`<div style="border-radius:9px;outline:2px solid ${g.color}66;outline-offset:1px;">${mkDocCard(contractDoc,sk,false,false)}</div>`:""}
+            ${installDoc?mkDocCard(installDoc,sk,false,false):""}
+          </div>
+        </div>`;
+      }
+      const cdDocs=(stage.cd||[]);
       if(cdDocs.length)html+=`<div style="margin-top:8px;">${cdDocs.map(d=>mkDocCard(d,sk,true,false)).join("")}</div>`;
       return html;
     }
