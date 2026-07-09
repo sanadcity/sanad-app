@@ -2662,8 +2662,13 @@ const hUp=(sk,dk,isC,inp)=>{
     const now=new Date();
     const needsReview=!["admin","staff"].includes(CU.role);
     const upFinal={...up,uploadedBy:CU.id,status:needsReview?"pending":"approved"};
-    const upd=arr=>arr.map(d=>d.key===dk?{...d,up:upFinal}:d);
-    p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
+    const upd=(arr,label)=>{
+      if(arr.some(d=>d.key===dk))return arr.map(d=>d.key===dk?{...d,up:upFinal}:d);
+      return[...arr,{key:dk,label:label||dk,req:false,up:upFinal}];
+    };
+    const stg=p.stages.find(s=>s.key===sk);
+    const docLabel=isC?(stg?.cd||[]).find(d=>d.key===dk)?.label:(stg?.docs||[]).find(d=>d.key===dk)?.label||dk;
+    p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[],docLabel)}:{...s,docs:upd(s.docs,docLabel)});
     const stageLbl=p.stages.find(s=>s.key===sk)?.label||sk;
     const docLbl=p.stages.find(s=>s.key===sk)?.docs?.find(d=>d.key===dk)?.label||file.name;
     if(!p.timeline)p.timeline=[];
