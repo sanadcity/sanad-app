@@ -1850,11 +1850,25 @@ const rFile=()=>{
       }
     }
 
-    // ── المالك الثاني / المشتري ──
-    html+=sectionHdr("المالك الثاني / المشتري","#3D5A8A","partner",partnerOwners);
-    if(partnerOwners.length){
-      partnerOwners.forEach(o=>{html+=ownerCard(o,"#3D5A8A",partnerOwners);});
+    // ── الملاك الشركاء (مرقمون) ──
+    const topPartners=partnerOwners.filter(o=>!o.parentId);
+    const nums2=["الثاني","الثالث","الرابع","الخامس","السادس","السابع","الثامن"];
+    if(topPartners.length){
+      topPartners.forEach((owner,idx)=>{
+        const ownerNum=nums2[idx]||`${idx+2}`;
+        const subParts=landOwners.filter(o=>o.parentId===owner.id);
+        html+=`<div style="margin:14px 0 4px;display:flex;align-items:center;gap:8px;">
+          <div style="flex:1;font-size:13px;font-weight:800;color:#3D5A8A;">المالك ${ownerNum} / المشتري</div>
+          ${can?`<button onclick="addLandOwner('partner','${owner.id}')" style="background:var(--n8);border:none;border-radius:6px;color:#fff;cursor:pointer;font-size:11px;padding:4px 10px;font-family:Cairo,sans-serif;white-space:nowrap;">+ شريك</button>`:""}
+        </div>`;
+        html+=ownerCard(owner,"#3D5A8A",topPartners);
+        subParts.forEach((sp,si)=>{
+          html+=`<div style="margin:8px 0 4px;padding-right:12px;font-size:11px;font-weight:700;color:#8B5CF6;">شريك ${si+1}</div>`;
+          html+=ownerCard(sp,"#8B5CF6",subParts);
+        });
+      });
     } else {
+      html+=sectionHdr("المالك الثاني / المشتري","#3D5A8A","partner",[]);
       const lg2=[get("l5a"),get("l5b"),get("l5c"),get("l5d")].filter(Boolean);
       if(lg2.length){
         html+=`<div style="background:var(--w);border:1.5px solid #3D5A8A33;border-radius:10px;padding:10px 12px;margin-bottom:8px;">
@@ -2834,11 +2848,11 @@ const toggleNPOwnerKind=()=>{
   if(indF)indF.style.display=isCo?"none":"";
   if(coF)coF.style.display=isCo?"":"none";
 };
-const addLandOwner=(type)=>{
+const addLandOwner=(type,parentId=null)=>{
   const p=gP();
-  const partnerCount=(p?.landOwners||[]).filter(o=>o.type==="partner").length;
-  const nums=["الثاني","الثالث","الرابع","الخامس","السادس"];
-  const typeLabel=type==="direct"?"المالك الأصلي":`المالك ${nums[partnerCount]||"الجديد"}`;
+  const partnerCount=(p?.landOwners||[]).filter(o=>o.type==="partner"&&!o.parentId).length;
+  const nums=["الثاني","الثالث","الرابع","الخامس","السادس","السابع","الثامن"];
+  const typeLabel=type==="direct"?"المالك الأصلي":parentId?"شريك":(`المالك ${nums[partnerCount]||"الجديد"}`);
   showModal(`إضافة ${typeLabel}`,`
     <div style="display:flex;gap:8px;margin-bottom:12px;">
       <label style="flex:1;display:flex;align-items:center;gap:6px;cursor:pointer;background:var(--w2);border:1.5px solid var(--bdl);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--t1);">
@@ -2862,6 +2876,7 @@ const addLandOwner=(type)=>{
     </div>
     <div class="fg"><label class="fl">النسبة % <span style="color:var(--t3);font-size:11px;">— اتركها فارغة للتوزيع بالتساوي</span></label><input class="fi" id="lo-share" type="number" min="1" max="100" placeholder="مثال: 50"/></div>
     <input type="hidden" id="lo-type" value="${type}"/>
+    <input type="hidden" id="lo-parent-id" value="${parentId||""}"/>
   `,`
     <button class="btn btn-gh" onclick="closeModal()">إلغاء</button>
     <button class="btn btn-p" onclick="confirmAddLandOwner()">+ إضافة</button>
@@ -2890,7 +2905,8 @@ const confirmAddLandOwner=()=>{
   const p=gP();if(!p)return;
   const id="lo_"+Date.now();
   if(!p.landOwners)p.landOwners=[];
-  p.landOwners.push({id,name,nid,type,share,ownerKind,...companyData});
+  const parentId=document.getElementById("lo-parent-id")?.value||null;
+  p.landOwners.push({id,name,nid,type,share,ownerKind,...companyData,...(parentId?{parentId}:{})});
   const landStage=p.stages.find(s=>s.key==="land");
   if(landStage){
     const docsKey=isComp?`company_${type}`:type;
