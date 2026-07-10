@@ -734,6 +734,8 @@ const initData=()=>{
   migrateProjects();
   // migrate: rename ملكية العقار → سجل الملكية
   (()=>{const projs=LS.g(K.p)||[];let dirty=false;const updated=projs.map(p=>{const stages=(p.stages||[]).map(s=>{if(s.label==="ملكية العقار"){dirty=true;return{...s,label:"سجل الملكية"};}return s;});return{...p,stages};});if(dirty)LS.s(K.p,updated);})();
+  // migrate: remove تقرير استشاري معتمد (key p2) from existing projects
+  (()=>{const projs=LS.g(K.p)||[];let dirty=false;const updated=projs.map(p=>{const stages=(p.stages||[]).map(s=>{const docs=(s.docs||[]).filter(d=>d.key!=="p2"&&d.label!=="تقرير استشاري معتمد");if(docs.length!==(s.docs||[]).length){dirty=true;return{...s,docs};}return s;});return{...p,stages};});if(dirty)LS.s(K.p,updated);})();
   // patch: add missing docs to existing stages
   const patchDocs=()=>{
     const projects=LS.g(K.p)||[];
