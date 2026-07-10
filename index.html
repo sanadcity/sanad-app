@@ -2925,13 +2925,13 @@ const confirmAddLandOwner=()=>{
     if(nid&&nid.length!==14){toast("الرقم القومي يجب أن يكون 14 رقماً","err");return;}
     ownerKind="individual";
   }
+  const parentId=document.getElementById("lo-parent-id")?.value||null;
+  const partnerType=document.getElementById("lo-partner-type")?.value||"";
+  const transferType=document.getElementById("lo-transfer-type")?.value||"";
   closeModal();
   const p=gP();if(!p)return;
   const id="lo_"+Date.now();
   if(!p.landOwners)p.landOwners=[];
-  const parentId=document.getElementById("lo-parent-id")?.value||null;
-  const partnerType=document.getElementById("lo-partner-type")?.value||"";
-  const transferType=document.getElementById("lo-transfer-type")?.value||"";
   p.landOwners.push({id,name,nid,type,share,ownerKind,...companyData,...(parentId?{parentId}:{}),...(partnerType?{partnerType}:{}),...(transferType?{transferType}:{})});
   const landStage=p.stages.find(s=>s.key==="land");
   if(landStage){
