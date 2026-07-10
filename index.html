@@ -978,7 +978,16 @@ const genUserCode=role=>{
 // returns false for docs that don't apply to this project
 const docOK=(d,p)=>{
   // orphan check: doc belongs to an owner that no longer exists
-  if(d._ownerId){const ownerIds=new Set((p.landOwners||[]).map(o=>o.id));if(!ownerIds.has(d._ownerId))return false;}
+  if(d._ownerId){
+    const ownerIds=new Set((p.landOwners||[]).map(o=>o.id));
+    if(!ownerIds.has(d._ownerId))return false;
+    // company owner contract (عقد الهيئة) only required for compound projects
+    const owner=(p.landOwners||[]).find(o=>o.id===d._ownerId);
+    if(owner?.ownerKind==="company"&&d.key===`${d._ownerId}_contract`){
+      const isComp=p.isCompound||p.type==="compound";
+      if(!isComp)return false;
+    }
+  }
   if(!d.cond)return true;
   const isRes=(p.activity||"سكني")==="سكني";
   if(d.cond==="comm"&&isRes)return false;
