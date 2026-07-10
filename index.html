@@ -2577,15 +2577,15 @@ const openEditProj=id=>{
       <div class="fg"><label class="fl">سعر المتر (ج.م)</label><input class="fi" id="ep-price" type="number" value="${proj.pricePerMeter||""}"/></div>
       <div class="fg"><label class="fl">نسبة المبنى (%)</label><input class="fi" id="ep-bldgratio" type="number" min="0" max="100" value="${proj.buildingRatio||""}" placeholder="مثال: 60"/></div>
     </div>
-    <div class="fg"><label class="fl">الأدوار المتكررة</label><input class="fi" id="ep-floors" type="number" value="${proj.floors||""}" placeholder="عدد الأدوار المتكررة"/></div>
-    <div style="display:flex;gap:16px;margin-top:4px;flex-wrap:wrap;">
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="ep-ground" ${proj.hasGround?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> دور أرضي</label>
+    <div style="display:flex;gap:16px;margin-top:4px;align-items:center;flex-wrap:wrap;">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:700;color:var(--n8);"><input type="checkbox" id="ep-ground" ${proj.hasGround!==false?"checked":""} style="accent-color:var(--n8);width:15px;height:15px;"/> دور أرضي</label>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t1);">بدروم <input class="fi" id="ep-basement-count" type="number" min="0" max="5" value="${proj.basementCount||0}" style="width:60px;padding:4px 8px;font-size:12px;"/></label>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="ep-elevator" ${proj.hasElevator?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> مصعد</label>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="ep-pergola" ${proj.hasPergola?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> برجولة</label>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="ep-pool" ${proj.hasPool?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> حمام سباحة</label>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="ep-wall" ${proj.hasWall?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> سور</label>
     </div>
+    <div class="fg" style="margin-top:8px;"><label class="fl">الأدوار المتكررة</label><input class="fi" id="ep-floors" type="number" value="${proj.floors||""}" placeholder="عدد الأدوار المتكررة"/></div>
     <div class="fg"><label class="fl">كود جهة الولاية</label><input class="fi" id="ep-auth" value="${proj.authorityCode||""}" placeholder="NUCA-2024-XXX"/></div>
     <div class="fg"><label class="fl">ملاحظات</label><textarea class="fi" id="ep-note" rows="3">${proj.note||""}</textarea></div>
     <div style="border-top:1px solid var(--bd);margin:14px 0 10px;padding-top:12px;">
@@ -3045,7 +3045,7 @@ const delCP=()=>{
 // ── NEW PROJECT WIZARD ──
 const openNP=()=>{
   PS=1;
-  PFrm={type:"normal",activity:"سكني",gov:"",city:"",district:"",neighborhood:"",propertyState:"أرض فضاء",requestType:"مشروع جديد",requiredWorks:[],marketStatus:"غير محدد",nextAction:"",hasElevator:false,hasBasement:false,hasPool:false,hasPergola:false,models:[{name:"نموذج A",count:"",area:""}],agents:[]};
+  PFrm={type:"normal",activity:"سكني",gov:"",city:"",district:"",neighborhood:"",propertyState:"أرض فضاء",requestType:"مشروع جديد",requiredWorks:[],marketStatus:"غير محدد",nextAction:"",hasElevator:false,hasBasement:false,hasGround:true,hasPool:false,hasPergola:false,hasWall:false,models:[{name:"نموذج A",count:"",area:""}],agents:[]};
   rPM();$("mnp").classList.remove("hid");
 };
 
@@ -3129,11 +3129,11 @@ const rPM=()=>{
       <div class="fg"><label class="fl">كود جهة الولاية</label><input class="fi" id="pau" value="${PFrm.authorityCode||""}" placeholder="NUCA-2024-XXX"/></div>
       <div class="fg"><label class="fl">نسبة المبنى (%)</label><input class="fi" id="p-bldgratio" type="number" min="0" max="100" value="${PFrm.buildingRatio||""}" placeholder="مثال: 60"/></div>
     </div>
-    <div class="fg"><label class="fl">الأدوار المتكررة</label><input class="fi" id="pfl" type="number" value="${PFrm.floors||""}" placeholder="عدد الأدوار المتكررة"/></div>
-    <div style="display:flex;gap:16px;margin-top:4px;">
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="p-ground" ${PFrm.hasGround?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> دور أرضي</label>
+    <div style="display:flex;gap:16px;margin-top:4px;align-items:center;flex-wrap:wrap;">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:700;color:var(--n8);"><input type="checkbox" id="p-ground" ${PFrm.hasGround!==false?"checked":""} style="accent-color:var(--n8);width:15px;height:15px;"/> دور أرضي</label>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t1);">بدروم <input class="fi" id="p-basement-count" type="number" min="0" max="5" value="${PFrm.basementCount||0}" style="width:60px;padding:4px 8px;font-size:12px;"/></label>
     </div>
+    <div class="fg" style="margin-top:8px;"><label class="fl">الأدوار المتكررة</label><input class="fi" id="pfl" type="number" value="${PFrm.floors||""}" placeholder="عدد الأدوار المتكررة"/></div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
       <div class="trow"><div><div class="ti">مصعد كهربائي</div></div><label class="tsw"><input type="checkbox" id="pel2" ${PFrm.hasElevator?"checked":""}/><span class="tsl"></span></label></div>
