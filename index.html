@@ -937,9 +937,13 @@ const genUserCode=role=>{
   const k="UC_"+pfx;sq[k]=(sq[k]||0)+1;LS.s(K.seq,sq);
   return`${pfx}-${String(sq[k]).padStart(3,"0")}`;
 };
-const calcC=p=>{const all=p.stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]);const req=all.filter(d=>d.req);return req.length?Math.round(req.filter(d=>d.up).length/req.length*100):0;};
-const calcSC=s=>{const all=[...(s.docs||[]),...(s.cd||[])];return all.length?Math.round(all.filter(d=>d.up).length/all.length*100):0;};
-const curI=p=>{for(let i=0;i<p.stages.length;i++){const all=[...(p.stages[i].docs||[]),...(p.stages[i].cd||[])];if(all.filter(d=>d.req).some(d=>!d.up))return i;}return p.stages.length-1;};
+// returns false for docs whose condition doesn't apply to this project
+const docOK=(d,p)=>{if(!d.cond)return true;const isRes=(p.activity||"سكني")==="سكني";if(d.cond==="comm"&&isRes)return false;if(d.cond==="elev"&&!p.hasElevator)return false;if(d.cond==="bsmt2"&&(p.basementCount||0)<2)return false;return true;};
+const stageDocs=(s,p)=>[...(s.docs||[]),...(s.cd||[])].filter(d=>docOK(d,p));
+const calcC=p=>{const req=p.stages.flatMap(s=>stageDocs(s,p).filter(d=>d.req));return req.length?Math.round(req.filter(d=>d.up).length/req.length*100):0;};
+const calcSC=(s,p)=>{const all=p?stageDocs(s,p):([...(s.docs||[]),...(s.cd||[])]);return all.length?Math.round(all.filter(d=>d.up).length/all.length*100):0;};
+const stageComplete=(s,p)=>{const req=stageDocs(s,p).filter(d=>d.req);return req.length>0&&req.every(d=>d.up);};
+const curI=p=>{for(let i=0;i<p.stages.length;i++){if(!stageComplete(p.stages[i],p))return i;}return p.stages.length-1;};
 const pill=(l,c,bg)=>`<span class="pill" style="background:${bg||c+"18"};color:${c};border:1px solid ${c}28;">${l}</span>`;
 const rp=r=>pill(RL[r]||r,RC[r]||"#8896A4");
 const $=id=>document.getElementById(id);
@@ -1567,14 +1571,14 @@ const rFile=()=>{
   const comp=calcC(proj),cc=CC(comp),ci=curI(proj);
   const can=["admin","staff","office","developer","client"].includes(CU.role);
   const canDel=CU.role==="admin";
-  const completedCount=proj.stages.filter((s)=>{const all=[...(s.docs||[]),...(s.cd||[])];const req=all.filter(d=>d.req);return req.length>0&&req.every(d=>d.up);}).length;
+  const completedCount=proj.stages.filter(s=>stageComplete(s,proj)).length;
   const addedBy=proj.byRole==="staff"?`موظف · ${proj.byName||""}`:proj.byRole==="office"?`مكتب هندسي · ${proj.byName||""}`:proj.byName||"—";
 
   // Stage tabs
   const stageTabs=proj.stages.map((s,i)=>{
-    const all=[...(s.docs||[]),...(s.cd||[])];
+    const all=stageDocs(s,proj);
     const req=all.filter(d=>d.req);
-    const done=req.length>0&&req.every(d=>d.up);
+    const done=stageComplete(s,proj);
     const isAct=i===CSV;
     const isCur=i===ci&&!done;
     const bg=done?"#1B7A4A":isCur?"var(--gold)":isAct?"var(--n7)":"transparent";
@@ -1587,14 +1591,7 @@ const rFile=()=>{
 
   // Active stage
   const stage=proj.stages[CSV];
-  const isResidential=!proj.activity||proj.activity==="سكني";
-  const hasElev=proj.hasElevator;
-  const allDocs=[...(stage.docs||[]),...(stage.cd||[])].filter(d=>{
-    if(d.cond==="comm"&&isResidential)return false;
-    if(d.cond==="elev"&&!hasElev)return false;
-    if(d.cond==="bsmt2"&&(proj.basementCount||0)<2)return false;
-    return true;
-  });
+  const allDocs=stageDocs(stage,proj);
   const req=allDocs.filter(d=>d.req);
   const isApproved=d=>d.up&&(d.up.status==="approved"||!d.up.status);
   const stDone=req.length>0&&req.every(d=>isApproved(d));
@@ -1970,13 +1967,13 @@ const rFile=()=>{
   }).join("");
 
   // ── header stats ──
-  const totalDocs2=proj.stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]).length;
-  const uploadedDocs2=proj.stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]).filter(d=>d.up).length;
-  const missingReqTotal=proj.stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]).filter(d=>d.req&&!d.up).length;
+  const totalDocs2=proj.stages.flatMap(s=>stageDocs(s,proj)).length;
+  const uploadedDocs2=proj.stages.flatMap(s=>stageDocs(s,proj)).filter(d=>d.up).length;
+  const missingReqTotal=proj.stages.flatMap(s=>stageDocs(s,proj)).filter(d=>d.req&&!d.up).length;
   const healthScore=totalDocs2>0?Math.round(uploadedDocs2/totalDocs2*100):0;
   const healthColor2=healthScore>=80?"#4ABA7A":healthScore>=50?"#C9A84C":"#E74C3C";
   const curSt=proj.stages[ci];
-  const missingCurDocs=curSt?[...(curSt.docs||[]),...(curSt.cd||[])].filter(d=>d.req&&!d.up):[];
+  const missingCurDocs=curSt?stageDocs(curSt,proj).filter(d=>d.req&&!d.up):[];
   const responsible=(proj.parties||[]).find(pt=>["office","staff"].includes(pt.role));
   const needsAttention=missingCurDocs.length>0||missingReqTotal>2;
   const locParts=[proj.plot?"قطعة "+proj.plot:"",proj.neighborhood,proj.district,proj.city,proj.governorate].filter(Boolean);
@@ -1985,9 +1982,7 @@ const rFile=()=>{
   const timelineHtml=(()=>{
     const parts=[];
     proj.stages.forEach((s,i)=>{
-      const all=[...(s.docs||[]),...(s.cd||[])];
-      const req=all.filter(d=>d.req);
-      const done=req.length>0&&req.every(d=>d.up);
+      const done=stageComplete(s,proj);
       const isCur=i===ci&&!done;
       const circleBg=done?"#1B7A4A":isCur?"#C9A84C":"#2D3748";
       const circleBdr=done?"#1B7A4A":isCur?"rgba(201,168,76,.7)":"#3D4F6A";
@@ -3408,12 +3403,12 @@ const openPassport=projId=>{
   if(!proj)return;
   const today=new Date().toLocaleDateString("ar-EG",{year:"numeric",month:"long",day:"numeric"});
   const stages=proj.stages||[];
-  const doneCount=stages.filter(s=>{const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);return req.length>0&&req.every(d=>d.up);}).length;
+  const doneCount=stages.filter(s=>stageComplete(s,proj)).length;
   const pct=stages.length?Math.round(doneCount/stages.length*100):0;
-  const currentStage=stages.find(s=>{const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);return!req.every(d=>d.up);})||stages[stages.length-1];
+  const currentStage=stages.find(s=>!stageComplete(s,proj))||stages[stages.length-1];
   const parties=proj.parties||[];
-  const totalDocs=stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]).filter(d=>d.req).length;
-  const uploadedDocs=stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]).filter(d=>d.req&&d.up).length;
+  const totalDocs=stages.flatMap(s=>stageDocs(s,proj)).filter(d=>d.req).length;
+  const uploadedDocs=stages.flatMap(s=>stageDocs(s,proj)).filter(d=>d.req&&d.up).length;
   const docPct=totalDocs?Math.round(uploadedDocs/totalDocs*100):0;
   const expiredPOA=(proj.poas||[]).filter(p=>p.expiryDate&&p.expiryDate<new Date().toISOString().slice(0,10));
   const timeline=(proj.timeline||[]).slice(-5).reverse();
@@ -3520,9 +3515,9 @@ const openPassport=projId=>{
           ${secTitle("تقدم المراحل","📊")}
           <div style="display:flex;align-items:flex-start;overflow-x:auto;padding-bottom:4px;">
             ${stages.map((s,i)=>{
-              const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);
+              const req=stageDocs(s,proj).filter(d=>d.req);
               const up=req.filter(d=>d.up).length;
-              const done=req.length>0&&up===req.length;
+              const done=stageComplete(s,proj);
               const isCur=s===currentStage;
               const bg=done?"#1B7A4A":isCur?"#1C2D4A":"#e8e8e8";
               const tc=done||isCur?"#fff":"#bbb";
@@ -3636,8 +3631,8 @@ const openPassport=projId=>{
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
             ${stages.map(s=>{
-              const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req).length;
-              const up=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req&&d.up).length;
+              const req=stageDocs(s,proj).filter(d=>d.req).length;
+              const up=stageDocs(s,proj).filter(d=>d.req&&d.up).length;
               if(!req)return"";
               const done=up===req;
               return`<div style="display:flex;align-items:center;gap:5px;background:${done?"#E3F5EC":"#F7F8FA"};border:1px solid ${done?"rgba(27,122,74,.2)":"#e8e8e8"};border-radius:8px;padding:5px 10px;">
