@@ -1161,15 +1161,19 @@ const migrateExistingOwners=()=>{
   const projs=LS.g(K.p)||[];
   let changed=false;
   projs.forEach(p=>{
+    const isCo=p.ownerKind==="company";
     if(!p.landOwners||p.landOwners.length===0){
       // No owners yet — create from project data
       if(p.isOriginalOwner!==false&&p.ownerName){
         const oid="lo_"+p.id;
-        p.landOwners=[{id:oid,name:p.ownerName,nid:p.nationalId||"",type:"direct",share:""}];
+        const ownerEntry={id:oid,name:p.ownerName,nid:p.nationalId||"",type:"direct",share:"",ownerKind:isCo?"company":"individual"};
+        if(isCo){ownerEntry.companyName=p.companyName||p.ownerName;ownerEntry.taxNum=p.taxNum||"";ownerEntry.comReg=p.comReg||"";ownerEntry.repName=p.repName||"";}
+        p.landOwners=[ownerEntry];
         const landStage=p.stages?.find(s=>s.key==="land");
         if(landStage){
           const existing=new Set((landStage.docs||[]).map(d=>d.key));
-          LAND_OWNER_DOCS["direct"].forEach(d=>{
+          const docsKey=isCo?"company_direct":"direct";
+          (LAND_OWNER_DOCS[docsKey]||LAND_OWNER_DOCS["direct"]).forEach(d=>{
             const dk=`${oid}_${d.key}`;
             if(!existing.has(dk))landStage.docs.push({key:dk,label:d.label,req:d.req,up:null,notes:[],_ownerId:oid});
           });
@@ -1177,14 +1181,47 @@ const migrateExistingOwners=()=>{
         changed=true;
       }
     } else {
-      // Fix existing owners: if name or nationalId matches project owner → must be "direct"
+      // Fix existing owners: remove duplicate phantom "direct" owners for company projects
+      // A phantom owner has id="lo_"+p.id and no ownerKind (created by old migration)
+      const phantomId="lo_"+p.id;
+      const phantom=p.landOwners.find(o=>o.id===phantomId&&!o.ownerKind);
+      const hasRealOwner=p.landOwners.some(o=>o.id!==phantomId&&o.type==="direct");
+      if(phantom&&hasRealOwner){
+        // Remove phantom owner and its docs
+        p.landOwners=p.landOwners.filter(o=>o.id!==phantomId);
+        const landStage=p.stages?.find(s=>s.key==="land");
+        if(landStage)landStage.docs=landStage.docs.filter(d=>d._ownerId!==phantomId);
+        changed=true;
+      } else if(phantom&&isCo){
+        // No real owner yet but phantom has wrong type — fix its ownerKind and replace individual docs with company docs
+        phantom.ownerKind="company";
+        const landStage=p.stages?.find(s=>s.key==="land");
+        if(landStage){
+          // Remove individual-only docs (idFront, idBack)
+          const individualOnly=new Set(["idFront","idBack"]);
+          const before=landStage.docs.length;
+          landStage.docs=landStage.docs.filter(d=>{
+            if(d._ownerId!==phantomId)return true;
+            const suffix=d.key.replace(phantomId+"_","");
+            return!individualOnly.has(suffix);
+          });
+          // Add missing company docs
+          const existing=new Set(landStage.docs.map(d=>d.key));
+          LAND_OWNER_DOCS["company_direct"].forEach(d=>{
+            const dk=`${phantomId}_${d.key}`;
+            if(!existing.has(dk))landStage.docs.push({key:dk,label:d.label,req:d.req,up:null,notes:[],_ownerId:phantomId});
+          });
+          if(landStage.docs.length!==before)changed=true;
+        }
+        changed=true;
+      }
+      // Fix existing owners: ensure type is correct
       p.landOwners.forEach(o=>{
         if(o.type!=="direct"){
           const sameName=p.ownerName&&o.name&&o.name.trim()===p.ownerName.trim();
           const sameNid=p.nationalId&&o.nid&&o.nid===p.nationalId;
           if(sameName||sameNid){o.type="direct";changed=true;}
         }
-        // Ensure nid is set from project if missing
         if(!o.nid&&o.type==="direct"&&p.nationalId){o.nid=p.nationalId;changed=true;}
       });
     }
