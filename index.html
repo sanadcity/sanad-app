@@ -732,6 +732,8 @@ const initData=()=>{
     if(dirty)LS.s(K.p,migrated);
   };
   migrateProjects();
+  // migrate: rename ملكية العقار → سجل الملكية
+  (()=>{const projs=LS.g(K.p)||[];let dirty=false;const updated=projs.map(p=>{const stages=(p.stages||[]).map(s=>{if(s.label==="ملكية العقار"){dirty=true;return{...s,label:"سجل الملكية"};}return s;});return{...p,stages};});if(dirty)LS.s(K.p,updated);})();
   // patch: add missing docs to existing stages
   const patchDocs=()=>{
     const projects=LS.g(K.p)||[];
@@ -783,7 +785,7 @@ const STAGES=[
     {key:"d4",label:"موافقة الجهاز المحلي",req:true},
     {key:"d5",label:"قرار التخصيص",req:true}
   ]},
-  {key:"land",label:"ملكية العقار",icon:"🏠",color:"#1A3F6B",docs:[
+  {key:"land",label:"سجل الملكية",icon:"🏠",color:"#1A3F6B",docs:[
     {key:"l0",label:"إخطار التخصيص",req:true},
     {key:"l1",label:"محضر استلام الأرض",req:true},
     {key:"l2",label:"كروكي الأرض",req:true},
@@ -3513,25 +3515,38 @@ const openPassport=projId=>{
           </div>
         </div>
 
-        <!-- ④ OWNERSHIP (chain style) -->
-        <div style="background:#fff;border-radius:14px;border:1px solid #eee;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
-          ${secTitle("ملكية العقار","🏠")}
-          <div style="display:flex;align-items:flex-start;overflow-x:auto;gap:0;padding-bottom:4px;">
-            ${landOwners.length?landOwners.filter(o=>!o.parentId).map((o,i,arr)=>{
-              const isLast=i===arr.length-1;
-              const tl=transferLabels[o.transferType]||o.transferType||"";
-              const subs=landOwners.filter(x=>x.parentId===o.id);
-              return`<div style="display:flex;align-items:center;flex-shrink:0;">
-                <div style="text-align:center;padding:0 14px;">
-                  <div style="width:38px;height:38px;border-radius:50%;background:${isLast?"#1C2D4A":"#f0f0f0"};color:${isLast?"#C9A84C":"#888"};font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;border:2px solid ${isLast?"#C9A84C":"#e0e0e0"};">${i+1}</div>
-                  <div style="font-size:10px;font-weight:800;color:${isLast?"#1C2D4A":"#444"};white-space:nowrap;max-width:100px;overflow:hidden;text-overflow:ellipsis;">${o.name}</div>
-                  ${tl?`<div style="font-size:8px;color:#C9A84C;font-weight:700;margin-top:2px;">${tl}</div>`:""}
-                  ${o.nid?`<div style="font-size:8px;color:#ccc;font-family:monospace;margin-top:2px;">${o.nid}</div>`:""}
-                  ${subs.map(sp=>`<div style="margin-top:5px;text-align:center;"><div style="font-size:8px;color:#8B5CF6;font-weight:700;">${sp.partnerType||"شريك"}</div><div style="font-size:9px;color:#555;">${sp.name}</div></div>`).join("")}
-                </div>
-                ${!isLast?`<div style="display:flex;align-items:center;padding-bottom:28px;"><div style="width:28px;height:2px;background:linear-gradient(90deg,#1C2D4A,#e0e0e0);"></div><span style="font-size:8px;color:#C9A84C;">◄</span></div>`:""}
-              </div>`;
-            }).join(""):`<div style="font-size:12px;font-weight:700;color:#1C2D4A;">${proj.ownerName}</div>`}
+        <!-- ④ OWNERSHIP REGISTRY -->
+        <div style="background:#fff;border-radius:14px;border:1px solid #eee;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+          <div style="padding:12px 20px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;gap:6px;">
+            <span style="font-size:10px;font-weight:800;color:#1C2D4A;letter-spacing:.06em;">سجل الملكية</span>
+            <div style="flex:1;height:1px;background:#f0f0f0;"></div>
+            ${landOwners.filter(o=>!o.parentId).length?`<span style="font-size:9px;background:#EEF1F7;color:#1C2D4A;font-weight:700;padding:2px 8px;border-radius:10px;">${landOwners.filter(o=>!o.parentId).length} ملاك</span>`:""}
+          </div>
+          <div style="padding:14px 20px;display:flex;gap:0;align-items:stretch;overflow-x:auto;">
+            ${(()=>{
+              const owners=landOwners.filter(o=>!o.parentId);
+              if(!owners.length)return`<div style="font-size:12px;font-weight:700;color:#1C2D4A;padding:8px 0;">${proj.ownerName}</div>`;
+              return owners.map((o,i,arr)=>{
+                const isLast=i===arr.length-1;
+                const tl=transferLabels[o.transferType]||o.transferType||"";
+                const subs=landOwners.filter(x=>x.parentId===o.id);
+                const card=`<div style="flex:1;min-width:140px;padding:14px;background:${isLast?"#1C2D4A":i===0?"#FDFAF3":"#F5F7FB"};border:1px solid ${isLast?"#1C2D4A":i===0?"#E8D5A0":"#DDE3EE"};border-radius:${i===0?"12px 0 0 12px":isLast?"0 12px 12px 0":"0"};${i>0&&!isLast?"border-left:none;border-right:none;":""}${i===0&&arr.length>1?"border-left:none;":""}">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <div style="width:28px;height:28px;border-radius:50%;background:${isLast?"#C9A84C":i===0?"#C9A84C":"#1C2D4A"};color:${isLast?"#1C2D4A":"#fff"};font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</div>
+                    <span style="font-size:8px;font-weight:700;color:${isLast?"#C9A84C":i===0?"#8B5E1A":"#1C2D4A"};">${isLast?"المالك الحالي"+(tl?" · "+tl:""):i===0?"المالك الأصلي":tl||"مالك"}</span>
+                  </div>
+                  <div style="font-size:12px;font-weight:800;color:${isLast?"#fff":"#1C2D4A"};margin-bottom:3px;">${o.name}</div>
+                  ${o.nid?`<div style="font-size:8px;color:${isLast?"rgba(255,255,255,.35)":"#bbb"};font-family:monospace;">${o.nid}</div>`:""}
+                  ${o.date?`<div style="font-size:8px;color:${isLast?"rgba(255,255,255,.3)":"#ccc"};margin-top:2px;">${o.date}</div>`:""}
+                  ${subs.map(sp=>`<div style="margin-top:6px;padding-top:6px;border-top:1px solid ${isLast?"rgba(255,255,255,.1)":"#eee"};"><div style="font-size:8px;color:#8B5CF6;font-weight:700;">${sp.partnerType||"شريك"}</div><div style="font-size:9px;color:${isLast?"rgba(255,255,255,.7)":"#555"};">${sp.name}</div></div>`).join("")}
+                </div>`;
+                const arrow=i<arr.length-1?`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 2px;background:#f5f6f8;gap:1px;flex-shrink:0;">
+                  <div style="font-size:7px;color:#C9A84C;font-weight:700;writing-mode:vertical-rl;transform:rotate(180deg);line-height:1;">${transferLabels[arr[i+1]?.transferType]||arr[i+1]?.transferType||""}</div>
+                  <div style="font-size:11px;color:#C9A84C;line-height:1;">◄</div>
+                </div>`:"";
+                return card+arrow;
+              }).join("");
+            })()}
           </div>
         </div>
 
