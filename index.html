@@ -2188,8 +2188,7 @@ const rFile=()=>{
           ["حالة العقار",proj.propertyState||"—"],
           ["نوع الطلب",proj.requestType||"—"],
           ["النشاط",proj.activity||"—"],
-          ["الأدوار",(()=>{const pts=[];if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكرر");return pts.join(" + ")||"—";})()],
-          ["مصعد",proj.hasElevator?"نعم ✓":"لا"],
+          ["بيان الأعمال",(()=>{const pts=[];if(proj.basementCount>=2)pts.push(proj.basementCount+" بدروم");else if(proj.basementCount===1||proj.hasBasement)pts.push("بدروم");if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكرر");if(proj.hasElevator)pts.push("مصعد");if(proj.hasPergola)pts.push("برجولة");if(proj.hasPool)pts.push("حمام سباحة");return pts.join(" + ")||"—";})()],
           ["حالة السوق",proj.marketStatus||"—"],
           ["كود الجهاز",proj.authorityCode||"—"],
         ].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bdl);"><span style="font-size:11px;color:var(--t3);">${l}</span><span style="font-size:12px;font-weight:600;color:var(--t1);">${v}</span></div>`).join("")}
@@ -3407,6 +3406,7 @@ const openPassport=projId=>{
   const hcolor=pct>=85?"#1B7A4A":pct>=65?"#2563EB":pct>=40?"#B7770D":"#C0392B";
 
   const chip=(t,c="#1C2D4A",bg="rgba(28,45,74,.08)")=>`<span style="display:inline-flex;align-items:center;background:${bg};color:${c};border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;white-space:nowrap;">${t}</span>`;
+  const byanAlAmal=p=>{const pts=[];if(p.basementCount>=2)pts.push(p.basementCount+" بدروم");else if(p.basementCount===1||p.hasBasement)pts.push("بدروم");if(p.hasGround)pts.push("أرضي");if(p.floors)pts.push(p.floors+" متكرر");if(p.hasElevator)pts.push("مصعد");if(p.hasPergola)pts.push("برجولة");if(p.hasPool)pts.push("حمام سباحة");return pts.join(" + ")||"—";};
 
   const infoCell=(l,v)=>v?`<div style="padding:8px 0;border-bottom:1px solid #f4f4f4;display:flex;justify-content:space-between;align-items:center;gap:8px;">
     <span style="font-size:10px;color:#aaa;white-space:nowrap;">${l}</span>
@@ -3463,8 +3463,7 @@ const openPassport=projId=>{
                   ${proj.requestType?`<span style="display:inline-flex;align-items:center;background:#FBF5E6;color:#8B5E1A;border:1px solid #E8D5A0;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;">${proj.requestType}</span>`:""}
                   ${proj.activity?`<span style="display:inline-flex;align-items:center;background:#f5f6f8;color:#1C2D4A;border:1px solid #e8e8e8;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;">${proj.activity}</span>`:""}
                   ${proj.area?`<span style="display:inline-flex;align-items:center;background:#f5f6f8;color:#1C2D4A;border:1px solid #e8e8e8;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;">${Number(proj.area).toLocaleString()} م²</span>`:""}
-                  ${(()=>{const pts=[];if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكرر");const v=pts.join(" + ");return v?`<span style="display:inline-flex;align-items:center;background:#f5f6f8;color:#1C2D4A;border:1px solid #e8e8e8;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;">${v}</span>`:""})()}
-                  ${proj.hasElevator?`<span style="display:inline-flex;align-items:center;background:#f5f6f8;color:#1C2D4A;border:1px solid #e8e8e8;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;">مصعد</span>`:""}
+                  ${(()=>{const v=byanAlAmal(proj);return v&&v!=="—"?`<span style="display:inline-flex;align-items:center;background:#f5f6f8;color:#1C2D4A;border:1px solid #e8e8e8;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;">${v}</span>`:""})()}
                 </div>
               </div>
               <div style="text-align:center;background:#f5f6f8;border-radius:12px;padding:14px 18px;flex-shrink:0;min-width:88px;align-self:center;">
@@ -3581,7 +3580,7 @@ const openPassport=projId=>{
               ${infoCell("المجاورة",proj.neighborhood)}
               ${infoCell("المساحة",proj.area?Number(proj.area).toLocaleString()+" م²":"")}
               ${infoCell("النشاط",proj.activity)}
-              ${infoCell("الأدوار",(()=>{const pts=[];if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكرر");return pts.join(" + ");})())}
+              ${infoCell("بيان الأعمال",byanAlAmal(proj))}
               ${infoCell("كود الجهاز",proj.authorityCode)}
               ${infoCell("القطعة",proj.plot)}
               ${infoCell("حالة العقار",proj.propertyState)}
