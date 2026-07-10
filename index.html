@@ -818,6 +818,7 @@ const STAGES=[
     {key:"p10",label:"عقد المقاولة",req:true},
     {key:"p11",label:"شهادة الإشراف الهندسي",req:true},
     {key:"p12",label:"تصريح الحفر",req:true},
+    {key:"p_bsmt2",label:"تقرير سند جوانب حفر",req:true,cond:"bsmt2"},
     {key:"eng1",label:"المهندس — صورة البطاقة (وجه)",req:true},
     {key:"eng2",label:"المهندس — صورة البطاقة (ظهر)",req:true},
     {key:"eng3",label:"المهندس — كارنيه النقابة",req:true},
@@ -1588,6 +1589,7 @@ const rFile=()=>{
   const allDocs=[...(stage.docs||[]),...(stage.cd||[])].filter(d=>{
     if(d.cond==="comm"&&isResidential)return false;
     if(d.cond==="elev"&&!hasElev)return false;
+    if(d.cond==="bsmt2"&&(proj.basementCount||0)<2)return false;
     return true;
   });
   const req=allDocs.filter(d=>d.req);
@@ -2572,6 +2574,7 @@ const openEditProj=id=>{
     </div>
     <div style="display:flex;gap:16px;margin-top:4px;">
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="ep-ground" ${proj.hasGround?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> دور أرضي</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t1);">بدروم <input class="fi" id="ep-basement-count" type="number" min="0" max="5" value="${proj.basementCount||0}" style="width:60px;padding:4px 8px;font-size:12px;"/></label>
     </div>
     <div class="fg"><label class="fl">كود جهة الولاية</label><input class="fi" id="ep-auth" value="${proj.authorityCode||""}" placeholder="NUCA-2024-XXX"/></div>
     <div class="fg"><label class="fl">ملاحظات</label><textarea class="fi" id="ep-note" rows="3">${proj.note||""}</textarea></div>
@@ -2632,7 +2635,8 @@ const saveEditProj=id=>{
   proj.area=Number(document.getElementById("ep-area")?.value)||proj.area;
   proj.pricePerMeter=Number(document.getElementById("ep-price")?.value)||proj.pricePerMeter;
   proj.floors=Number(document.getElementById("ep-floors")?.value)||0;
-  proj.hasBasement=document.getElementById("ep-basement")?.checked||false;
+  proj.basementCount=Number(document.getElementById("ep-basement-count")?.value)||0;
+  proj.hasBasement=proj.basementCount>0;
   proj.hasGround=document.getElementById("ep-ground")?.checked||false;
   proj.authorityCode=document.getElementById("ep-auth")?.value?.trim()||"";
   proj.note=document.getElementById("ep-note")?.value||"";
@@ -3110,6 +3114,7 @@ const rPM=()=>{
     </div>
     <div style="display:flex;gap:16px;margin-top:4px;">
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="p-ground" ${PFrm.hasGround?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> دور أرضي</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t1);">بدروم <input class="fi" id="p-basement-count" type="number" min="0" max="5" value="${PFrm.basementCount||0}" style="width:60px;padding:4px 8px;font-size:12px;"/></label>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
@@ -3206,7 +3211,8 @@ const nxPS=()=>{
     PFrm.city=city2;PFrm.gov=$("pgov")?.value||PFrm.gov||"";
     PFrm.district=d;PFrm.neighborhood=$("pnb")?.value||"";PFrm.plot=pl;PFrm.area=ar;
     PFrm.authorityCode=$("pau")?.value||"";PFrm.floors=$("pfl")?.value||"";
-    PFrm.hasBasement=$("p-basement")?.checked||$("pbas")?.checked||false;
+    PFrm.basementCount=Number($("p-basement-count")?.value)||0;
+    PFrm.hasBasement=PFrm.basementCount>0;
     PFrm.hasGround=$("p-ground")?.checked||false;
     PFrm.hasElevator=$("pel2")?.checked||false;
     PFrm.hasPool=$("ppoo")?.checked||false;
@@ -3240,6 +3246,7 @@ const svPF=()=>{
     .map(s=>({...s,docs:s.docs.filter(d=>{
       if(d.cond==="elev"&&!PFrm.hasElevator)return false;
       if(d.cond==="comm"&&PFrm.activity!=="تجاري")return false;
+      if(d.cond==="bsmt2"&&(PFrm.basementCount||0)<2)return false;
       return true;
     }).map(d=>({...d,up:null,note:""})),cd:[]}));
 
@@ -3270,7 +3277,7 @@ const svPF=()=>{
     gov:PFrm.gov||"",city:PFrm.city,district:PFrm.district,neighborhood:PFrm.neighborhood||"",plot:PFrm.plot,
     area:Number(PFrm.area)||0,
     authorityCode:PFrm.authorityCode||"",floors:Number(PFrm.floors)||0,
-    hasElevator:PFrm.hasElevator||false,hasBasement:PFrm.hasBasement||false,hasGround:PFrm.hasGround||false,
+    hasElevator:PFrm.hasElevator||false,hasBasement:PFrm.hasBasement||false,basementCount:PFrm.basementCount||0,hasGround:PFrm.hasGround||false,
     hasPool:PFrm.hasPool||false,hasPergola:PFrm.hasPergola||false,
     propertyState:PFrm.propertyState||"أرض فضاء",requestType:PFrm.requestType||"مشروع جديد",
     requiredWorks:PFrm.requiredWorks||[],marketStatus:PFrm.marketStatus||"غير محدد",
