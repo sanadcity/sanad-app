@@ -3529,15 +3529,29 @@ const openPassport=projId=>{
                 const isLast=i===arr.length-1;
                 const tl=transferLabels[o.transferType]||o.transferType||"";
                 const subs=landOwners.filter(x=>x.parentId===o.id);
-                const card=`<div style="flex:1;min-width:140px;padding:14px;background:${isLast?"#1C2D4A":i===0?"#FDFAF3":"#F5F7FB"};border:1px solid ${isLast?"#1C2D4A":i===0?"#E8D5A0":"#DDE3EE"};border-radius:${i===0?"12px 0 0 12px":isLast?"0 12px 12px 0":"0"};${i>0&&!isLast?"border-left:none;border-right:none;":""}${i===0&&arr.length>1?"border-left:none;":""}">
-                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                const isCompany=o.ownerKind==="company";
+                const bg=isLast?"#1C2D4A":i===0?"#FDFAF3":"#F5F7FB";
+                const bdr=isLast?"#1C2D4A":i===0?"#E8D5A0":"#DDE3EE";
+                const tc=isLast?"#fff":"#1C2D4A";
+                const sub=isLast?"rgba(255,255,255,.45)":"#888";
+                const faint=isLast?"rgba(255,255,255,.25)":"#bbb";
+                const sep=`border-top:1px solid ${isLast?"rgba(255,255,255,.1)":"#eee"};margin-top:7px;padding-top:7px;`;
+                const card=`<div style="flex:1;min-width:160px;padding:14px;background:${bg};border:1px solid ${bdr};border-radius:${i===0?"12px 0 0 12px":isLast?"0 12px 12px 0":"0"};${i>0&&!isLast?"border-left:none;border-right:none;":""}${i===0&&arr.length>1?"border-left:none;":""}">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
                     <div style="width:28px;height:28px;border-radius:50%;background:${isLast?"#C9A84C":i===0?"#C9A84C":"#1C2D4A"};color:${isLast?"#1C2D4A":"#fff"};font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</div>
                     <span style="font-size:8px;font-weight:700;color:${isLast?"#C9A84C":i===0?"#8B5E1A":"#1C2D4A"};">${isLast?"المالك الحالي"+(tl?" · "+tl:""):i===0?"المالك الأصلي":tl||"مالك"}</span>
                   </div>
-                  <div style="font-size:12px;font-weight:800;color:${isLast?"#fff":"#1C2D4A"};margin-bottom:3px;">${o.name}</div>
-                  ${o.nid?`<div style="font-size:8px;color:${isLast?"rgba(255,255,255,.35)":"#bbb"};font-family:monospace;">${o.nid}</div>`:""}
-                  ${o.date?`<div style="font-size:8px;color:${isLast?"rgba(255,255,255,.3)":"#ccc"};margin-top:2px;">${o.date}</div>`:""}
-                  ${subs.map(sp=>`<div style="margin-top:6px;padding-top:6px;border-top:1px solid ${isLast?"rgba(255,255,255,.1)":"#eee"};"><div style="font-size:8px;color:#8B5CF6;font-weight:700;">${sp.partnerType||"شريك"}</div><div style="font-size:9px;color:${isLast?"rgba(255,255,255,.7)":"#555"};">${sp.name}</div></div>`).join("")}
+                  <div style="font-size:13px;font-weight:800;color:${tc};margin-bottom:8px;">${o.name}</div>
+                  ${isCompany?`
+                    ${o.repName?`<div style="${sep}"><div style="font-size:8px;color:${sub};margin-bottom:2px;">الممثل القانوني</div><div style="font-size:11px;font-weight:700;color:${tc};">${o.repName}</div></div>`:""}
+                    ${o.nid?`<div style="${sep}"><div style="font-size:8px;color:${sub};margin-bottom:2px;">الرقم القومي للممثل</div><div style="font-size:10px;font-weight:700;color:${tc};font-family:monospace;">${o.nid}</div></div>`:""}
+                    ${o.comReg?`<div style="${sep}"><div style="font-size:8px;color:${sub};margin-bottom:2px;">السجل التجاري</div><div style="font-size:10px;font-weight:700;color:${tc};font-family:monospace;">${o.comReg}</div></div>`:""}
+                    ${o.taxNum?`<div style="${sep}"><div style="font-size:8px;color:${sub};margin-bottom:2px;">البطاقة الضريبية</div><div style="font-size:10px;font-weight:700;color:${tc};font-family:monospace;">${o.taxNum}</div></div>`:""}
+                  `:`
+                    ${o.nid?`<div style="${sep}"><div style="font-size:8px;color:${sub};margin-bottom:2px;">الرقم القومي</div><div style="font-size:10px;font-weight:700;color:${tc};font-family:monospace;">${o.nid}</div></div>`:""}
+                    ${o.date?`<div style="${sep}"><div style="font-size:8px;color:${faint};margin-bottom:1px;">تاريخ الانتقال</div><div style="font-size:9px;color:${faint};">${o.date}</div></div>`:""}
+                  `}
+                  ${subs.map(sp=>`<div style="${sep}"><div style="font-size:8px;color:#8B5CF6;font-weight:700;">${sp.partnerType||"شريك"}</div><div style="font-size:10px;font-weight:700;color:${isLast?"rgba(255,255,255,.8)":"#333"};">${sp.name}</div></div>`).join("")}
                 </div>`;
                 const arrow=i<arr.length-1?`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 2px;background:#f5f6f8;gap:1px;flex-shrink:0;">
                   <div style="font-size:7px;color:#C9A84C;font-weight:700;writing-mode:vertical-rl;transform:rotate(180deg);line-height:1;">${transferLabels[arr[i+1]?.transferType]||arr[i+1]?.transferType||""}</div>
