@@ -3377,236 +3377,326 @@ const openPassport=projId=>{
   const projs=LS.g(K.p)||[];
   const proj=projs.find(p=>p.id===projId);
   if(!proj)return;
-  const users=LS.g(K.u)||[];
   const today=new Date().toLocaleDateString("ar-EG",{year:"numeric",month:"long",day:"numeric"});
   const stages=proj.stages||[];
   const doneCount=stages.filter(s=>{const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);return req.length>0&&req.every(d=>d.up);}).length;
   const pct=stages.length?Math.round(doneCount/stages.length*100):0;
   const currentStage=stages.find(s=>{const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);return!req.every(d=>d.up);})||stages[stages.length-1];
   const parties=proj.parties||[];
-  const totalDocs=stages.flatMap(s=>s.docs||[]).filter(d=>d.req).length;
-  const uploadedDocs=stages.flatMap(s=>s.docs||[]).filter(d=>d.req&&d.up).length;
+  const totalDocs=stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]).filter(d=>d.req).length;
+  const uploadedDocs=stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]).filter(d=>d.req&&d.up).length;
   const docPct=totalDocs?Math.round(uploadedDocs/totalDocs*100):0;
   const expiredPOA=(proj.poas||[]).filter(p=>p.expiryDate&&p.expiryDate<new Date().toISOString().slice(0,10));
-  const timeline=(proj.timeline||[]).slice(-4).reverse();
-  const uploadedFiles=stages.flatMap(s=>(s.docs||[]).filter(d=>d.up).map(d=>({...d,stage:s.label||s.name})));
+  const timeline=(proj.timeline||[]).slice(-5).reverse();
+  const landOwners=proj.landOwners||[];
   const projUrl=`https://sanad.curveapp.net/#${proj.id}`;
-  const qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(projUrl)}&color=C9A84C&bgcolor=1C2D4A&qzone=1`;
+  const qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(projUrl)}&color=1C2D4A&bgcolor=ffffff&qzone=1`;
+  const hlabel=pct>=85?"ممتاز ✦":pct>=65?"جيد":pct>=40?"يحتاج مراجعة":"يحتاج اهتمام";
+  const hcolor=pct>=85?"#1B7A4A":pct>=65?"#2563EB":pct>=40?"#B7770D":"#C0392B";
 
-  const statCard=(label,val,sub,color="#1C2D4A")=>`
-    <div style="background:#fff;border-radius:10px;padding:14px 16px;border:1px solid #eee;">
-      <div style="font-size:9px;color:#999;margin-bottom:4px;">${label}</div>
-      <div style="font-size:18px;font-weight:900;color:${color};line-height:1;">${val}</div>
-      ${sub?`<div style="font-size:9px;color:#aaa;margin-top:4px;">${sub}</div>`:""}
-    </div>`;
+  const chip=(t,c="#1C2D4A",bg="rgba(28,45,74,.08)")=>`<span style="display:inline-flex;align-items:center;background:${bg};color:${c};border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;white-space:nowrap;">${t}</span>`;
 
-  const infoRow=(l,v)=>v&&v!=="—"?`<tr>
-    <td style="padding:6px 0;font-size:10px;color:#888;width:45%;">${l}</td>
-    <td style="padding:6px 0;font-size:11px;font-weight:700;color:#1a1a1a;">${v}</td>
-  </tr>`:"";
+  const infoCell=(l,v)=>v?`<div style="padding:8px 0;border-bottom:1px solid #f4f4f4;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+    <span style="font-size:10px;color:#aaa;white-space:nowrap;">${l}</span>
+    <span style="font-size:11px;font-weight:700;color:#1a1a1a;text-align:left;">${v}</span>
+  </div>`:"";
 
-  const h=`<div id="m-passport" style="position:fixed;inset:0;background:rgba(5,12,24,.75);z-index:500;display:flex;align-items:center;justify-content:center;padding:12px;" onclick="if(event.target===this)closePassport()">
-    <div style="background:#f0f2f5;border-radius:18px;width:100%;max-width:760px;max-height:94vh;overflow-y:auto;box-shadow:0 32px 100px rgba(0,0,0,.4);position:relative;">
+  const secTitle=(t,icon="")=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">
+    ${icon?`<span style="font-size:14px;">${icon}</span>`:""}
+    <span style="font-size:10px;font-weight:800;color:#1C2D4A;letter-spacing:.06em;text-transform:uppercase;">${t}</span>
+    <div style="flex:1;height:1px;background:linear-gradient(90deg,#e0e0e0,transparent);margin-right:4px;"></div>
+  </div>`;
 
-      <!-- TOOLBAR -->
-      <div id="passport-toolbar" style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px;background:#fff;border-radius:18px 18px 0 0;border-bottom:1px solid #eee;position:sticky;top:0;z-index:10;">
-        <div style="font-size:13px;font-weight:800;color:#1C2D4A;">جواز المشروع الرقمي</div>
-        <div style="display:flex;gap:8px;">
-          <button onclick="copyPassportLink('${proj.id}')" style="padding:6px 14px;border-radius:8px;border:1.5px solid #d8d8d8;background:#fff;font-family:Cairo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:#555;">نسخ ملخص</button>
-          <button onclick="printPassport()" style="padding:6px 16px;border-radius:8px;border:none;background:#1C2D4A;color:#fff;font-family:Cairo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">طباعة / PDF</button>
-          <button onclick="closePassport()" style="width:30px;height:30px;border-radius:8px;border:1.5px solid #e0e0e0;background:#fff;cursor:pointer;font-size:15px;line-height:1;">×</button>
+  const ownerNums=["الأول","الثاني","الثالث","الرابع","الخامس","السادس","السابع","الثامن"];
+  const transferLabels={شراء:"مشتري",ورثة:"وارث",هبة:"موهوب له",قرار:"مستفيد",مزاد:"مشتري مزاد",تنازل:"متنازل إليه"};
+
+  const h=`<div id="m-passport" style="position:fixed;inset:0;background:rgba(5,12,24,.8);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;" onclick="if(event.target===this)closePassport()">
+    <div style="background:#f5f6f8;border-radius:20px;width:100%;max-width:800px;max-height:95vh;overflow-y:auto;box-shadow:0 40px 120px rgba(0,0,0,.5);position:relative;font-family:Cairo,sans-serif;direction:rtl;">
+
+      <!-- STICKY TOP (toolbar + banner) -->
+      <div id="passport-toolbar" style="position:sticky;top:0;z-index:10;border-radius:20px 20px 0 0;">
+        <!-- NAV BAR -->
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#1C2D4A;">
+          <button onclick="closePassport()" style="width:30px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);cursor:pointer;font-size:16px;color:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;font-family:Cairo,sans-serif;">×</button>
+          <div style="position:relative;">
+            <button id="pp-dots-btn" onclick="(function(){var d=document.getElementById('pp-dots-drop');d.style.display=d.style.display==='block'?'none':'block';})()" style="width:34px;height:34px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);cursor:pointer;color:#C9A84C;font-size:20px;display:flex;align-items:center;justify-content:center;font-family:Cairo,sans-serif;line-height:1;">⋯</button>
+            <div id="pp-dots-drop" style="display:none;position:absolute;left:0;top:40px;background:#fff;border:1px solid #e8e8e8;border-radius:10px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,.14);z-index:99;overflow:hidden;">
+              <div onclick="printPassport();document.getElementById('pp-dots-drop').style.display='none'" style="padding:11px 14px;font-size:11px;font-weight:700;color:#1C2D4A;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid #f5f5f5;">🖨 طباعة / PDF</div>
+              <div onclick="copyPassportLink('${proj.id}');document.getElementById('pp-dots-drop').style.display='none'" style="padding:11px 14px;font-size:11px;font-weight:700;color:#1C2D4A;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid #f5f5f5;">📋 نسخ ملخص</div>
+              <div onclick="navigator.clipboard&&navigator.clipboard.writeText('https://sanad.curveapp.net/#${proj.id}');document.getElementById('pp-dots-drop').style.display='none'" style="padding:11px 14px;font-size:11px;font-weight:700;color:#1C2D4A;cursor:pointer;display:flex;align-items:center;gap:8px;">🔗 نسخ رابط</div>
+            </div>
+          </div>
+        </div>
+        <!-- HEADER BANNER -->
+        <div style="background:#1C2D4A;padding:12px 22px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,.06);">
+          <div style="font-size:15px;font-weight:800;color:#C9A84C;letter-spacing:.04em;">وثيقة المشروع الرقمية</div>
+          <div style="font-family:Montserrat,sans-serif;font-size:15px;font-weight:700;color:rgba(255,255,255,.9);letter-spacing:.12em;">SANAD</div>
         </div>
       </div>
 
-      <!-- PASSPORT BODY -->
-      <div id="passport-body" style="display:grid;grid-template-columns:1fr 220px;gap:0;font-family:Cairo,sans-serif;direction:rtl;">
+      <div id="passport-body" style="padding:18px;display:flex;flex-direction:column;gap:14px;">
 
-        <!-- LEFT: MAIN CONTENT -->
-        <div style="padding:20px;display:flex;flex-direction:column;gap:14px;">
-
-          <!-- HEADER -->
-          <div style="background:linear-gradient(135deg,#0D1B2E,#243D5E);border-radius:14px;padding:20px 22px;color:#fff;position:relative;overflow:hidden;">
-            <div style="position:absolute;left:-20px;bottom:-20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.04);"></div>
-            <div style="font-size:10px;color:rgba(255,255,255,.35);letter-spacing:.12em;margin-bottom:5px;">سند · وثيقة المشروع الرقمية</div>
-            <div style="font-size:20px;font-weight:900;line-height:1.2;">${proj.ownerName}</div>
-            <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:5px;">&#128205; ${[proj.gov,proj.city,proj.district,proj.neighborhood].filter(Boolean).join(" · ")}</div>
-            <div style="margin-top:12px;display:flex;gap:7px;flex-wrap:wrap;">
-              <span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-size:9px;font-weight:700;">${proj.id}</span>
-              ${proj.area?`<span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-size:9px;">${Number(proj.area).toLocaleString()} م²</span>`:""}
-              ${proj.activity?`<span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-size:9px;">${proj.activity}</span>`:""}
-              ${(()=>{const pts=[];if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكرر");const lbl=pts.join(" + ");return lbl?`<span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-size:9px;">${lbl}</span>`:"";})()}
-            </div>
-          </div>
-
-          <!-- STATS ROW -->
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
-            ${statCard("اكتمال المراحل",pct+"%",doneCount+" من "+stages.length+" مرحلة","#C9A84C")}
-            ${statCard("المستندات المرفوعة",uploadedDocs+" / "+totalDocs,docPct+"% مكتملة",docPct===100?"#1B7A4A":"#1C2D4A")}
-            ${statCard("المرحلة الحالية",currentStage?.label||currentStage?.name||"—",proj.nextAction?"الإجراء: "+proj.nextAction:"",  "#1A3F6B")}
-          </div>
-
-          <!-- STAGE PROGRESS -->
-          <div style="background:#fff;border-radius:12px;padding:16px 18px;border:1px solid #eee;">
-            <div style="font-size:10px;font-weight:700;color:#999;margin-bottom:14px;letter-spacing:.08em;">تقدم المراحل</div>
-            <div style="display:flex;align-items:flex-start;gap:0;">
-              ${stages.map((s,i)=>`
-                <div style="display:flex;align-items:center;flex:1;">
-                  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
-                    <div style="width:24px;height:24px;border-radius:50%;background:${(()=>{const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);const done=req.length>0&&req.every(d=>d.up);return done?"#1B7A4A":s===currentStage?"#1C2D4A":"#e8e8e8";})()};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                      <span style="color:${(()=>{const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);const done=req.length>0&&req.every(d=>d.up);return done||s===currentStage?"#fff":"#bbb";})()};font-size:10px;font-weight:700;">${(()=>{const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);return req.length>0&&req.every(d=>d.up)?"✓":i+1;})()}</span>
-                    </div>
-                    <div style="font-size:7.5px;text-align:center;color:${(()=>{const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);const done=req.length>0&&req.every(d=>d.up);return done?"#1B7A4A":s===currentStage?"#1C2D4A":"#bbb";})()};font-weight:${s===currentStage?"700":"400"};max-width:48px;line-height:1.3;">${s.label||s.name||""}</div>
-                  </div>
-                  ${i<stages.length-1?`<div style="height:2px;flex:1;background:${s.done?"#1B7A4A":"#e8e8e8"};margin-bottom:20px;"></div>`:""}
-                </div>`).join("")}
-            </div>
-          </div>
-
-          <!-- TWO COL: SPECS + PARTIES -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div style="background:#fff;border-radius:12px;border:1px solid #eee;overflow:hidden;">
-              <div style="padding:10px 14px;border-bottom:1px solid #f0f0f0;font-size:9px;font-weight:700;color:#aaa;letter-spacing:.1em;">المواصفات الفنية</div>
-              <div style="padding:10px 14px;">
-                <table style="width:100%;border-collapse:collapse;">
-                  ${infoRow("المحافظة",proj.gov)}
-                  ${infoRow("المدينة",proj.city)}
-                  ${infoRow("الحي",proj.district)}
-                  ${infoRow("المجاورة",proj.neighborhood)}
-                  ${infoRow("المساحة",proj.area?Number(proj.area).toLocaleString()+" م²":"")}
-                  ${infoRow("النشاط",proj.activity)}
-                  ${infoRow("الأدوار",(()=>{const pts=[];if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكرر");return pts.join(" + ");})())}
-                  ${infoRow("مصعد",proj.hasElevator?"نعم":proj.hasElevator===false?"لا":"")}
-                  ${infoRow("كود الجهاز",proj.authorityCode)}
-                  ${infoRow("سبب التسجيل",proj.serviceReason)}
-                </table>
-              </div>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:10px;">
-              <div style="background:#fff;border-radius:12px;border:1px solid #eee;overflow:hidden;flex:1;">
-                <div style="padding:10px 14px;border-bottom:1px solid #f0f0f0;font-size:9px;font-weight:700;color:#aaa;letter-spacing:.1em;">أطراف المشروع</div>
-                <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px;">
-                  ${parties.length?parties.map(pt=>{
-                    const rc=PARTY_ROLES.find(r=>r.k===pt.role)||{l:pt.role,c:"#8896A4"};
-                    return`<div style="display:flex;align-items:center;gap:8px;">
-                      <div style="width:28px;height:28px;border-radius:50%;background:${rc.c}18;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:${rc.c};flex-shrink:0;">${pt.name.charAt(0)}</div>
-                      <div>
-                        <div style="font-size:11px;font-weight:700;color:#1a1a1a;">${pt.name}</div>
-                        <div style="font-size:9px;color:#aaa;">${rc.l}</div>
-                      </div>
-                    </div>`;}).join(""):`<div style="font-size:11px;font-weight:700;color:#1a1a1a;">${proj.ownerName}</div>`}
+        <!-- ① HERO CARD (white) -->
+        <div style="background:#fff;border-radius:16px;border:1px solid #e8e8e8;display:flex;align-items:stretch;overflow:hidden;">
+          <div style="width:6px;background:#1C2D4A;flex-shrink:0;"></div>
+          <div style="flex:1;padding:20px 24px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+              <div style="flex:1;">
+                <div style="font-size:23px;font-weight:900;color:#1C2D4A;line-height:1.2;margin-bottom:6px;">${proj.ownerName}</div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+                  ${proj.projectName?`<span style="font-size:11px;font-weight:700;color:#888;">${proj.projectName}</span><div style="width:1px;height:12px;background:#ddd;"></div>`:""}
+                  <span style="font-size:11px;font-weight:800;color:#1C2D4A;font-family:monospace;background:#f0f2f5;padding:2px 8px;border-radius:6px;direction:ltr;display:inline-block;">${proj.id}</span>
+                </div>
+                <div style="font-size:11px;color:#888;margin-bottom:12px;">📍 ${[proj.gov,proj.city,proj.district,proj.neighborhood].filter(Boolean).join(" · ")||"—"}</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  ${proj.requestType?`<span style="display:inline-flex;align-items:center;background:#FBF5E6;color:#8B5E1A;border:1px solid #E8D5A0;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;">${proj.requestType}</span>`:""}
+                  ${proj.activity?`<span style="display:inline-flex;align-items:center;background:#f5f6f8;color:#1C2D4A;border:1px solid #e8e8e8;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;">${proj.activity}</span>`:""}
+                  ${proj.area?`<span style="display:inline-flex;align-items:center;background:#f5f6f8;color:#1C2D4A;border:1px solid #e8e8e8;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;">${Number(proj.area).toLocaleString()} م²</span>`:""}
+                  ${(()=>{const pts=[];if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكرر");const v=pts.join(" + ");return v?`<span style="display:inline-flex;align-items:center;background:#f5f6f8;color:#1C2D4A;border:1px solid #e8e8e8;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;">${v}</span>`:""})()}
+                  ${proj.hasElevator?`<span style="display:inline-flex;align-items:center;background:#f5f6f8;color:#1C2D4A;border:1px solid #e8e8e8;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;">مصعد</span>`:""}
                 </div>
               </div>
-              ${proj.pricePerMeter&&proj.area?`<div style="background:linear-gradient(135deg,#F0E6C8,#fdf7e8);border-radius:12px;border:1px solid rgba(201,168,76,.3);padding:12px 14px;">
-                <div style="font-size:9px;color:#B7770D;font-weight:700;margin-bottom:4px;">التقدير المالي</div>
-                <div style="font-size:16px;font-weight:900;color:#8B5E1A;">${Number(proj.area*proj.pricePerMeter).toLocaleString()} ج.م</div>
+              <div style="text-align:center;background:#f5f6f8;border-radius:12px;padding:14px 18px;flex-shrink:0;min-width:88px;align-self:center;">
+                <div style="font-size:28px;font-weight:900;color:#1C2D4A;line-height:1;">${docPct}%</div>
+                <div style="font-size:8px;color:#888;margin-top:3px;">${hlabel}</div>
+                <div style="width:56px;height:4px;background:#e0e0e0;border-radius:4px;margin:8px auto 0;">
+                  <div style="height:100%;width:${docPct}%;background:#C9A84C;border-radius:4px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ② KPI ROW -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+          <div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #eee;">
+            <div style="font-size:9px;color:#aaa;margin-bottom:6px;">المراحل المكتملة</div>
+            <div style="font-size:18px;font-weight:900;color:#C9A84C;line-height:1;">${doneCount} <span style="font-size:12px;font-weight:600;color:#ccc;">/ ${stages.length}</span></div>
+          </div>
+          <div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #eee;">
+            <div style="font-size:9px;color:#aaa;margin-bottom:6px;">المستندات</div>
+            <div style="font-size:18px;font-weight:900;color:${docPct===100?"#1B7A4A":"#1C2D4A"};line-height:1;">${uploadedDocs} <span style="font-size:12px;font-weight:600;color:#ccc;">/ ${totalDocs}</span></div>
+          </div>
+          <div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #eee;">
+            <div style="font-size:9px;color:#aaa;margin-bottom:6px;">المرحلة الحالية</div>
+            <div style="font-size:11px;font-weight:800;color:#1C2D4A;line-height:1.3;">${currentStage?.label||currentStage?.name||"—"}</div>
+          </div>
+          <div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #eee;">
+            <div style="font-size:9px;color:#aaa;margin-bottom:6px;">الإجراء التالي</div>
+            <div style="font-size:10px;font-weight:700;color:#1C2D4A;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${proj.nextAction||"—"}</div>
+          </div>
+        </div>
+
+        <!-- ③ STAGE TIMELINE -->
+        <div style="background:#fff;border-radius:14px;padding:18px 20px;border:1px solid #eee;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+          ${secTitle("تقدم المراحل","📊")}
+          <div style="display:flex;align-items:flex-start;overflow-x:auto;padding-bottom:4px;">
+            ${stages.map((s,i)=>{
+              const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);
+              const up=req.filter(d=>d.up).length;
+              const done=req.length>0&&up===req.length;
+              const isCur=s===currentStage;
+              const bg=done?"#1B7A4A":isCur?"#1C2D4A":"#e8e8e8";
+              const tc=done||isCur?"#fff":"#bbb";
+              const lc=done?"#1B7A4A":isCur?"#1C2D4A":"#bbb";
+              return`<div style="display:flex;align-items:center;flex:1;min-width:0;">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;min-width:0;">
+                  <div style="width:28px;height:28px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;flex-shrink:0;${isCur?"box-shadow:0 0 0 4px rgba(28,45,74,.15);":""}">
+                    <span style="color:${tc};font-size:11px;font-weight:800;">${done?"✓":i+1}</span>
+                  </div>
+                  <div style="font-size:7.5px;text-align:center;color:${lc};font-weight:${isCur?"800":"500"};max-width:52px;line-height:1.3;overflow:hidden;">${s.label||s.name||""}</div>
+                  ${req.length?`<div style="font-size:7px;color:#ccc;">${up}/${req.length}</div>`:""}
+                </div>
+                ${i<stages.length-1?`<div style="height:2px;flex:1;min-width:8px;background:${done?"#1B7A4A":"#e8e8e8"};margin-bottom:24px;border-radius:2px;"></div>`:""}
+              </div>`;
+            }).join("")}
+          </div>
+        </div>
+
+        <!-- ④ OWNERSHIP (chain style) -->
+        <div style="background:#fff;border-radius:14px;border:1px solid #eee;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+          ${secTitle("ملكية العقار","🏠")}
+          <div style="display:flex;align-items:flex-start;overflow-x:auto;gap:0;padding-bottom:4px;">
+            ${landOwners.length?landOwners.filter(o=>!o.parentId).map((o,i,arr)=>{
+              const isLast=i===arr.length-1;
+              const tl=transferLabels[o.transferType]||o.transferType||"";
+              const subs=landOwners.filter(x=>x.parentId===o.id);
+              return`<div style="display:flex;align-items:center;flex-shrink:0;">
+                <div style="text-align:center;padding:0 14px;">
+                  <div style="width:38px;height:38px;border-radius:50%;background:${isLast?"#1C2D4A":"#f0f0f0"};color:${isLast?"#C9A84C":"#888"};font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;border:2px solid ${isLast?"#C9A84C":"#e0e0e0"};">${i+1}</div>
+                  <div style="font-size:10px;font-weight:800;color:${isLast?"#1C2D4A":"#444"};white-space:nowrap;max-width:100px;overflow:hidden;text-overflow:ellipsis;">${o.name}</div>
+                  ${tl?`<div style="font-size:8px;color:#C9A84C;font-weight:700;margin-top:2px;">${tl}</div>`:""}
+                  ${o.nid?`<div style="font-size:8px;color:#ccc;font-family:monospace;margin-top:2px;">${o.nid}</div>`:""}
+                  ${subs.map(sp=>`<div style="margin-top:5px;text-align:center;"><div style="font-size:8px;color:#8B5CF6;font-weight:700;">${sp.partnerType||"شريك"}</div><div style="font-size:9px;color:#555;">${sp.name}</div></div>`).join("")}
+                </div>
+                ${!isLast?`<div style="display:flex;align-items:center;padding-bottom:28px;"><div style="width:28px;height:2px;background:linear-gradient(90deg,#1C2D4A,#e0e0e0);"></div><span style="font-size:8px;color:#C9A84C;">◄</span></div>`:""}
+              </div>`;
+            }).join(""):`<div style="font-size:12px;font-weight:700;color:#1C2D4A;">${proj.ownerName}</div>`}
+          </div>
+        </div>
+
+        <!-- ⑤ TWO COL: SPECS + PARTIES -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+
+          <!-- SPECS -->
+          <div style="background:#fff;border-radius:14px;border:1px solid #eee;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+            <div style="padding:14px 18px;border-bottom:1px solid #f0f0f0;">${secTitle("المواصفات الفنية","🏗")}</div>
+            <div style="padding:10px 18px 14px;">
+              ${infoCell("المحافظة",proj.gov)}
+              ${infoCell("المدينة",proj.city)}
+              ${infoCell("الحي",proj.district)}
+              ${infoCell("المجاورة",proj.neighborhood)}
+              ${infoCell("المساحة",proj.area?Number(proj.area).toLocaleString()+" م²":"")}
+              ${infoCell("النشاط",proj.activity)}
+              ${infoCell("الأدوار",(()=>{const pts=[];if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكرر");return pts.join(" + ");})())}
+              ${infoCell("كود الجهاز",proj.authorityCode)}
+              ${infoCell("القطعة",proj.plot)}
+              ${infoCell("حالة العقار",proj.propertyState)}
+            </div>
+          </div>
+
+          <!-- PARTIES -->
+          <div style="background:#fff;border-radius:14px;border:1px solid #eee;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+            <div style="padding:14px 18px;border-bottom:1px solid #f0f0f0;">${secTitle("أطراف المشروع","👥")}</div>
+            <div style="padding:10px 14px 14px;display:flex;flex-direction:column;gap:8px;">
+              ${parties.length?parties.map(pt=>{const rc=PARTY_ROLES.find(r=>r.k===pt.role)||{l:pt.role,c:"#8896A4"};return`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#f9f9f9;border-radius:10px;border:1px solid #f0f0f0;">
+                <div style="width:32px;height:32px;border-radius:50%;background:${rc.c}20;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:${rc.c};flex-shrink:0;">${pt.name.charAt(0)}</div>
+                <div><div style="font-size:11px;font-weight:700;color:#1a1a1a;">${pt.name}</div><div style="font-size:9px;color:#aaa;">${rc.l}</div></div>
+              </div>`;}).join(""):`<div style="font-size:11px;color:#bbb;padding:8px;">لا يوجد أطراف مسجلة</div>`}
+              ${proj.pricePerMeter&&proj.area?`<div style="background:#FDFAF3;border:1px solid rgba(201,168,76,.25);border-radius:10px;padding:12px 14px;margin-top:4px;">
+                <div style="font-size:9px;color:#B7770D;font-weight:800;margin-bottom:4px;">💰 التقدير المالي</div>
+                <div style="font-size:18px;font-weight:900;color:#8B5E1A;">${Number(proj.area*proj.pricePerMeter).toLocaleString()} ج.م</div>
                 <div style="font-size:9px;color:#B7770D;margin-top:2px;">${Number(proj.pricePerMeter).toLocaleString()} ج.م / م²</div>
               </div>`:""}
             </div>
           </div>
+        </div>
 
-          <!-- DOCUMENTS STATUS -->
-          <div style="background:#fff;border-radius:12px;border:1px solid #eee;padding:14px 16px;">
-            <div style="font-size:9px;font-weight:700;color:#aaa;letter-spacing:.1em;margin-bottom:10px;">حالة المستندات</div>
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-              <div style="flex:1;height:7px;background:#f0f0f0;border-radius:10px;overflow:hidden;">
-                <div style="height:100%;width:${docPct}%;background:linear-gradient(90deg,#1B7A4A,#2ecc71);border-radius:10px;"></div>
-              </div>
-              <span style="font-size:12px;font-weight:800;color:${docPct===100?"#1B7A4A":"#1C2D4A"};white-space:nowrap;">${uploadedDocs} / ${totalDocs}</span>
+        <!-- ⑥ DOCUMENTS STATUS -->
+        <div style="background:#fff;border-radius:14px;border:1px solid #eee;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+          ${secTitle("حالة المستندات","📂")}
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+            <div style="flex:1;height:8px;background:#f0f0f0;border-radius:10px;overflow:hidden;">
+              <div style="height:100%;width:${docPct}%;background:linear-gradient(90deg,${docPct===100?"#1B7A4A,#2ecc71":"#1C2D4A,#3B6FD4"});border-radius:10px;transition:width .4s;"></div>
             </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              ${stages.map(s=>{
-                const req=(s.docs||[]).filter(d=>d.req).length;
-                const up=(s.docs||[]).filter(d=>d.req&&d.up).length;
-                if(!req)return"";
-                const done=up===req;
-                return`<div style="display:flex;align-items:center;gap:4px;background:${done?"#E3F5EC":"#F4F5F7"};border:1px solid ${done?"rgba(27,122,74,.2)":"#e8e8e8"};border-radius:6px;padding:3px 8px;">
-                  <span style="font-size:8px;color:${done?"#1B7A4A":"#888"};">${done?"✓":"○"}</span>
-                  <span style="font-size:9px;font-weight:600;color:${done?"#1B7A4A":"#666"};">${s.label||s.name||"—"}</span>
-                  <span style="font-size:8px;color:#aaa;">${up}/${req}</span>
-                </div>`;
-              }).join("")}
-            </div>
-            ${expiredPOA.length?`<div style="margin-top:8px;padding:7px 10px;background:#FDEAEA;border-radius:7px;font-size:9px;color:#C0392B;font-weight:700;">تحذير: ${expiredPOA.length} توكيل منتهي الصلاحية</div>`:""}
+            <span style="font-size:13px;font-weight:900;color:${docPct===100?"#1B7A4A":"#1C2D4A"};white-space:nowrap;">${uploadedDocs} / ${totalDocs}</span>
+            <span style="font-size:10px;font-weight:700;color:${hcolor};background:${hcolor}18;padding:2px 8px;border-radius:10px;">${docPct}%</span>
           </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${stages.map(s=>{
+              const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req).length;
+              const up=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req&&d.up).length;
+              if(!req)return"";
+              const done=up===req;
+              return`<div style="display:flex;align-items:center;gap:5px;background:${done?"#E3F5EC":"#F7F8FA"};border:1px solid ${done?"rgba(27,122,74,.2)":"#e8e8e8"};border-radius:8px;padding:5px 10px;">
+                <span style="font-size:10px;">${done?"✅":"🔲"}</span>
+                <span style="font-size:9px;font-weight:700;color:${done?"#1B7A4A":"#555"};">${s.label||s.name||"—"}</span>
+                <span style="font-size:8px;color:#bbb;font-family:monospace;">${up}/${req}</span>
+              </div>`;
+            }).join("")}
+          </div>
+          ${expiredPOA.length?`<div style="margin-top:10px;padding:9px 12px;background:#FEF0F0;border-right:3px solid #C0392B;border-radius:0 8px 8px 0;font-size:9px;color:#C0392B;font-weight:700;">⚠️ تحذير: ${expiredPOA.length} توكيل منتهي الصلاحية</div>`:""}
+        </div>
 
-          ${proj.ownerChain?.length?`<!-- OWNERSHIP CHAIN -->
-          <div style="background:#fff;border-radius:12px;border:1px solid #eee;padding:14px 16px;">
-            <div style="font-size:9px;font-weight:700;color:#aaa;letter-spacing:.1em;margin-bottom:12px;">سلسلة الملكية</div>
-            <div style="display:flex;align-items:center;overflow-x:auto;gap:0;">
-              ${proj.ownerChain.map((o,i)=>`
-                <div style="display:flex;align-items:center;flex-shrink:0;">
-                  <div style="text-align:center;padding:0 6px;">
-                    <div style="width:30px;height:30px;border-radius:50%;background:${i===proj.ownerChain.length-1?"#1C2D4A":"#e8e8e8"};color:${i===proj.ownerChain.length-1?"#fff":"#888"};font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 3px;">${i+1}</div>
-                    <div style="font-size:8px;font-weight:700;color:#333;white-space:nowrap;">${o.name}</div>
-                    <div style="font-size:7px;color:#aaa;">${o.transferType||""}</div>
+        <!-- ⑦ CURRENT STAGE + NEXT STAGE + TIMELINE -->
+        ${(()=>{
+          const nextStageIdx=stages.indexOf(currentStage)+1;
+          const nextStage=stages[nextStageIdx]||null;
+          const nextReq=nextStage?[...(nextStage.docs||[]),...(nextStage.cd||[])].filter(d=>d.req):[];
+          const nextUp=nextReq.filter(d=>d.up).length;
+          const curReq=[...(currentStage?.docs||[]),...(currentStage?.cd||[])].filter(d=>d.req);
+          const curUp=curReq.filter(d=>d.up).length;
+          const lastComment=(proj.comments||[]).slice(-1)[0];
+          const responsible=(proj.parties||[]).find(p=>p.stage===currentStage?.name||p.stage===currentStage?.label);
+          const responsibleName=responsible?.name||proj.supervisorName||"";
+          return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <!-- المرحلة الحالية -->
+            <div style="background:#fff;border-radius:14px;border:2px solid #1C2D4A;overflow:hidden;">
+              <div style="background:#1C2D4A;padding:12px 16px;display:flex;align-items:center;gap:8px;">
+                <span style="font-size:11px;font-weight:800;color:#fff;">المرحلة الحالية</span>
+                <span style="background:#C9A84C;color:#1C2D4A;font-size:9px;font-weight:900;padding:2px 8px;border-radius:10px;margin-right:auto;">جارية</span>
+              </div>
+              <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;align-items:flex-start;gap:10px;">
+                  <div style="width:30px;height:30px;border-radius:8px;background:#EEF1F7;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">📋</div>
+                  <div><div style="font-size:9px;color:#888;margin-bottom:3px;">المرحلة</div><div style="font-size:13px;font-weight:800;color:#1C2D4A;">${currentStage?.label||currentStage?.name||"—"}</div></div>
+                </div>
+                ${responsibleName?`<div style="display:flex;align-items:flex-start;gap:10px;">
+                  <div style="width:30px;height:30px;border-radius:8px;background:#EEF1F7;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">👤</div>
+                  <div><div style="font-size:9px;color:#888;margin-bottom:3px;">المسؤول</div><div style="font-size:12px;font-weight:800;color:#1C2D4A;">${responsibleName}</div></div>
+                </div>`:""}
+                ${lastComment?`<div style="background:#FDFAF3;border:1px solid #E8D5A0;border-radius:10px;padding:12px 14px;">
+                  <div style="font-size:9px;color:#8B5E1A;font-weight:800;margin-bottom:6px;">💬 آخر تعليق</div>
+                  <div style="font-size:10px;color:#5A4010;line-height:1.6;">${lastComment.text||lastComment}</div>
+                </div>`:""}
+              </div>
+            </div>
+            <!-- المرحلة القادمة + آخر الأحداث -->
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              ${nextStage?`<div style="background:#fff;border-radius:14px;border:1px solid #e8e8e8;overflow:hidden;">
+                <div style="background:#f5f6f8;padding:10px 16px;display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:13px;">⏭</span>
+                  <span style="font-size:11px;font-weight:800;color:#555;">المرحلة القادمة</span>
+                </div>
+                <div style="padding:14px 16px;">
+                  <div style="font-size:13px;font-weight:900;color:#1C2D4A;margin-bottom:6px;">${nextStage.label||nextStage.name}</div>
+                  <div style="display:flex;gap:6px;margin-top:8px;">
+                    <span style="background:#FBF5E6;color:#8B5E1A;border:1px solid #E8D5A0;border-radius:6px;padding:3px 8px;font-size:9px;font-weight:700;">${nextReq.length} مستند مطلوب</span>
+                    <span style="background:#f5f6f8;color:#555;border:1px solid #e8e8e8;border-radius:6px;padding:3px 8px;font-size:9px;font-weight:700;">${nextUp} مرفوع</span>
                   </div>
-                  ${i<proj.ownerChain.length-1?`<div style="width:20px;height:1px;background:#ddd;flex-shrink:0;"></div>`:""}
-                </div>`).join("")}
+                </div>
+              </div>`:""}
+              ${timeline.length?`<div style="background:#fff;border-radius:14px;border:1px solid #e8e8e8;padding:14px 16px;flex:1;">
+                ${secTitle("آخر الأحداث","⏱")}
+                <div style="display:flex;flex-direction:column;">
+                  ${timeline.map((t,i)=>`<div style="display:flex;gap:10px;padding:8px 0;${i<timeline.length-1?"border-bottom:1px solid #f5f5f5;":""}">
+                    <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
+                      <div style="width:28px;height:28px;border-radius:50%;background:#f5f6f8;display:flex;align-items:center;justify-content:center;font-size:12px;border:1px solid #ebebeb;">${t.icon||"📌"}</div>
+                      ${i<timeline.length-1?`<div style="width:1px;flex:1;background:#ebebeb;margin:4px 0;min-height:8px;"></div>`:""}
+                    </div>
+                    <div style="flex:1;padding-top:3px;">
+                      <div style="font-size:10px;font-weight:700;color:#1a1a1a;">${t.event}</div>
+                      <div style="font-size:8px;color:#bbb;margin-top:2px;">${t.date||""} ${t.by?"· "+t.by:""}</div>
+                    </div>
+                  </div>`).join("")}
+                </div>
+              </div>`:""}
             </div>
-          </div>`:""}
+          </div>`;
+        })()}
 
-          ${timeline.length?`<!-- TIMELINE -->
-          <div style="background:#fff;border-radius:12px;border:1px solid #eee;padding:14px 16px;">
-            <div style="font-size:9px;font-weight:700;color:#aaa;letter-spacing:.1em;margin-bottom:10px;">آخر التحديثات</div>
-            ${timeline.map(t=>`<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid #f5f5f5;">
-              <div style="font-size:14px;flex-shrink:0;">${t.icon||"●"}</div>
-              <div style="flex:1;">
-                <div style="font-size:10px;font-weight:600;color:#333;">${t.event}</div>
-                <div style="font-size:9px;color:#bbb;margin-top:1px;">${t.date||""} ${t.by?"· "+t.by:""}</div>
-              </div>
-            </div>`).join("")}
-          </div>`:""}
-
-          <!-- FOOTER -->
-          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid #e8e8e8;">
+        <!-- ⑨ FOOTER (navy) -->
+        <div style="background:#1C2D4A;border-radius:16px;overflow:hidden;">
+          <div style="padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;">
             <div>
-              <div style="font-size:10px;font-weight:800;color:#1C2D4A;">سند · منصة إدارة المشاريع العقارية</div>
-              <div style="font-size:8px;color:#bbb;margin-top:2px;">صادرة بتاريخ ${today} · للتحقق تواصل مع المكتب المصدر</div>
+              <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">
+                <span style="font-size:20px;font-weight:900;color:#C9A84C;letter-spacing:.04em;">سند</span>
+                <span style="font-family:Montserrat,sans-serif;font-size:13px;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:.1em;">· SANAD</span>
+              </div>
+              <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,.4);letter-spacing:.03em;margin-bottom:6px;">منصة إدارة المشاريع العقارية الرقمية</div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:8px;color:rgba(255,255,255,.25);font-family:monospace;direction:ltr;">${proj.id}</span>
+                <span style="width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.15);display:inline-block;"></span>
+                <span style="font-size:8px;color:rgba(255,255,255,.25);">${today}</span>
+              </div>
             </div>
-            <div style="font-size:8px;color:#ccc;font-family:monospace;">${proj.id}</div>
-          </div>
-
-        </div>
-
-        <!-- RIGHT: DARK SIDEBAR -->
-        <div style="background:linear-gradient(180deg,#0D1B2E,#1C2D4A);border-radius:0 0 18px 0;padding:20px 16px;display:flex;flex-direction:column;gap:16px;align-items:center;">
-
-          <!-- LOGO / BRAND -->
-          <div style="text-align:center;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.08);width:100%;">
-            <div style="font-size:18px;font-weight:900;color:#fff;letter-spacing:.05em;">سند</div>
-            <div style="font-size:8px;color:rgba(255,255,255,.3);margin-top:2px;">جواز المشروع الرقمي</div>
-          </div>
-
-          <!-- QR CODE -->
-          <div style="background:rgba(255,255,255,.06);border-radius:12px;padding:12px;text-align:center;width:100%;">
-            <img src="${qrUrl}" width="110" height="110" style="border-radius:6px;display:block;margin:0 auto;" alt="QR"/>
-            <div style="font-size:8px;color:rgba(255,255,255,.3);margin-top:6px;font-family:monospace;">${proj.id}</div>
-          </div>
-
-          <!-- DOCS SUMMARY -->
-          <div style="width:100%;padding:12px 0;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);">
-            <div style="font-size:8px;color:rgba(255,255,255,.3);margin-bottom:8px;text-align:center;">المستندات</div>
-            <div style="display:flex;justify-content:space-around;">
-              <div style="text-align:center;"><div style="font-size:18px;font-weight:900;color:#4ade80;">${uploadedDocs}</div><div style="font-size:8px;color:rgba(255,255,255,.3);">مرفوع</div></div>
-              <div style="text-align:center;"><div style="font-size:18px;font-weight:900;color:#C9A84C;">${totalDocs-uploadedDocs}</div><div style="font-size:8px;color:rgba(255,255,255,.3);">ناقص</div></div>
-              <div style="text-align:center;"><div style="font-size:18px;font-weight:900;color:#fff;">${totalDocs}</div><div style="font-size:8px;color:rgba(255,255,255,.3);">إجمالي</div></div>
+            <div style="text-align:center;flex-shrink:0;">
+              <div style="background:#fff;border-radius:8px;padding:6px;display:inline-block;">
+                <img src="${qrUrl}" width="60" height="60" style="display:block;border-radius:3px;" alt="QR"/>
+              </div>
+              <div style="font-size:7px;color:rgba(255,255,255,.25);margin-top:4px;">امسح للتحقق</div>
             </div>
           </div>
-
-          <!-- issued by -->
-          <div style="width:100%;text-align:center;padding-top:12px;border-top:1px solid rgba(255,255,255,.06);">
-            <div style="font-size:8px;color:rgba(255,255,255,.25);">صادر من نظام سند</div>
-            <div style="font-size:8px;color:rgba(255,255,255,.25);margin-top:2px;">${today}</div>
+          <!-- Bottom strip -->
+          <div style="background:rgba(0,0,0,.2);padding:10px 24px;display:flex;justify-content:space-between;align-items:center;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="color:#C9A84C;font-size:12px;">✓</span>
+              <span style="font-size:9px;font-weight:700;color:rgba(255,255,255,.6);">بيانات موثقة — محفوظة على منصة سند</span>
+            </div>
+            <span style="font-size:8px;color:rgba(255,255,255,.25);font-family:monospace;direction:ltr;">${proj.id} · ${today}</span>
           </div>
-
-          <!-- VERIFIED BADGE -->
-          <div style="margin-top:auto;background:rgba(27,122,74,.2);border:1px solid rgba(27,122,74,.3);border-radius:10px;padding:10px 12px;width:100%;text-align:center;">
-            <div style="font-size:16px;margin-bottom:4px;">&#10003;</div>
-            <div style="font-size:9px;font-weight:700;color:#4ade80;">بيانات موثقة</div>
-            <div style="font-size:7px;color:rgba(255,255,255,.3);margin-top:2px;line-height:1.4;">محفوظة على منصة سند المركزية للتحقق التلقائي</div>
-          </div>
-
         </div>
+
       </div><!-- /passport-body -->
     </div>
   </div>`;
