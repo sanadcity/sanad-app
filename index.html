@@ -1880,7 +1880,7 @@ const rFile=()=>{
         </div>`;
         html+=ownerCard(owner,"#3D5A8A",topPartners);
         subParts.forEach((sp,si)=>{
-          const spLabel=subParts.length>1?`المالك ${ownerNum} / شريك ${si+1}`:`المالك ${ownerNum} / شريك`;
+          const spLabel=`المالك ${ownerNum} / شريك ${si+1}`;
           html+=`<div style="margin:8px 0 4px;padding-right:12px;font-size:11px;font-weight:700;color:#8B5CF6;">${spLabel}</div>`;
           html+=ownerCard(sp,"#8B5CF6",subParts);
         });
