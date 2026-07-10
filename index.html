@@ -1876,8 +1876,9 @@ const rFile=()=>{
       topPartners.forEach((owner,idx)=>{
         const ownerNum=nums2[idx]||`${idx+2}`;
         const subParts=landOwners.filter(o=>o.parentId===owner.id);
+        const transferLabel={شراء:"المشتري",ورثة:"الوارث",هبة:"الموهوب له",قرار:"المستفيد",مزاد:"المشتري بالمزاد",تنازل:"المتنازل إليه"}[owner.transferType]||owner.transferType||"المشتري";
         html+=`<div style="margin:14px 0 4px;display:flex;align-items:center;gap:8px;">
-          <div style="flex:1;font-size:13px;font-weight:800;color:#3D5A8A;">المالك ${ownerNum} / المشتري</div>
+          <div style="flex:1;font-size:13px;font-weight:800;color:#3D5A8A;">المالك ${ownerNum} / ${transferLabel}</div>
           ${can?`<button onclick="addLandOwner('partner','${owner.id}')" style="background:var(--n8);border:none;border-radius:6px;color:#fff;cursor:pointer;font-size:11px;padding:4px 10px;font-family:Cairo,sans-serif;white-space:nowrap;">+ شريك</button>`:""}
         </div>`;
         const groupMembers=[owner,...subParts];
