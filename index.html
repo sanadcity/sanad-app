@@ -942,7 +942,7 @@ const docOK=(d,p)=>{if(!d.cond)return true;const isRes=(p.activity||"سكني")=
 const stageDocs=(s,p)=>[...(s.docs||[]),...(s.cd||[])].filter(d=>docOK(d,p));
 const calcC=p=>{const req=p.stages.flatMap(s=>stageDocs(s,p).filter(d=>d.req));return req.length?Math.round(req.filter(d=>d.up).length/req.length*100):0;};
 const calcSC=(s,p)=>{const all=p?stageDocs(s,p):([...(s.docs||[]),...(s.cd||[])]);return all.length?Math.round(all.filter(d=>d.up).length/all.length*100):0;};
-const stageComplete=(s,p)=>{const req=stageDocs(s,p).filter(d=>d.req);return req.length>0&&req.every(d=>d.up);};
+const stageComplete=(s,p)=>{if(s.done)return true;const req=stageDocs(s,p).filter(d=>d.req);return req.length>0&&req.every(d=>d.up);};
 const curI=p=>{for(let i=0;i<p.stages.length;i++){if(!stageComplete(p.stages[i],p))return i;}return p.stages.length-1;};
 const pill=(l,c,bg)=>`<span class="pill" style="background:${bg||c+"18"};color:${c};border:1px solid ${c}28;">${l}</span>`;
 const rp=r=>pill(RL[r]||r,RC[r]||"#8896A4");
@@ -2331,6 +2331,8 @@ const rFile=()=>{
 
 
 
+      <!-- Stage done toggle -->
+      ${(()=>{const s=proj.stages[CSV];const done=stageComplete(s,proj);if(done&&!s.done){return"";}if(s.done){return`<div style="display:flex;align-items:center;gap:8px;margin-top:12px;background:rgba(27,122,74,.08);border:1px solid rgba(27,122,74,.25);border-radius:10px;padding:9px 14px;"><span style="font-size:14px;">✅</span><span style="font-size:12px;font-weight:700;color:#1B7A4A;flex:1;">تم تأكيد اكتمال هذه المرحلة</span><button onclick="markStageDone(${CSV},false)" style="background:none;border:1px solid #aaa;color:#888;border-radius:7px;padding:4px 10px;font-size:10px;cursor:pointer;font-family:Cairo,sans-serif;">إلغاء التأكيد</button></div>`;}return`<button onclick="markStageDone(${CSV},true)" style="width:100%;margin-top:12px;background:linear-gradient(135deg,#1B7A4A,#27ae60);border:none;color:#fff;border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:Cairo,sans-serif;letter-spacing:.03em;">✓ تأكيد اكتمال هذه المرحلة</button>`;})()}
       <!-- Stage navigation -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
         <button class="btn btn-gh" onclick="switchStage(${CSV-1})" ${CSV===0?"disabled style='opacity:.4;pointer-events:none;'":""}>‹ السابقة</button>
@@ -2707,6 +2709,17 @@ const switchStage=i=>{
   const proj=(LS.g(K.p)||[]).find(p=>p.id===CPJ);
   if(!proj||i<0||i>=proj.stages.length)return;
   CSV=i;rFile();
+};
+
+const markStageDone=(idx,done)=>{
+  const projs=LS.g(K.p)||[];
+  const proj=projs.find(p=>p.id===CPJ);
+  if(!proj||!proj.stages[idx])return;
+  proj.stages[idx].done=done;
+  if(done&&!proj.stages[idx].doneAt)proj.stages[idx].doneAt=new Date().toISOString().slice(0,10);
+  LS.s(K.p,projs);
+  toast(done?"✓ تم تأكيد اكتمال المرحلة":"تم إلغاء تأكيد المرحلة","ok");
+  rFile();
 };
 
 const tgS=k=>{const b=$("sb-"+k),a=$("sa-"+k);const h=b.classList.contains("hid");b.classList.toggle("hid");if(a)a.classList.toggle("open",h);};
