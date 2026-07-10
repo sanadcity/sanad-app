@@ -766,6 +766,8 @@ const initData=()=>{
     if(dirty)LS.s(K.p,projects);
   };
   patchDocs();
+  // patch: add تقرير سند جوانب حفر to projects with basementCount >= 2
+  (()=>{const projs=LS.g(K.p)||[];let dirty=false;projs.forEach(p=>{if((p.basementCount||0)<2)return;const permitStage=p.stages?.find(s=>s.key==="permits");if(!permitStage)return;if(permitStage.docs?.find(d=>d.key==="p_bsmt2"))return;permitStage.docs=permitStage.docs||[];permitStage.docs.push({key:"p_bsmt2",label:"تقرير سند جوانب حفر",req:true,cond:"bsmt2",up:null,notes:[]});dirty=true;});if(dirty)LS.s(K.p,projs);})();
   // strip "مكتمل — " prefix from devStatus
   const allProjs2=LS.g(K.p)||[];
   let statusFixed=false;
