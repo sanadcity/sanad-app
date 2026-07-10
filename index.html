@@ -2188,7 +2188,9 @@ const rFile=()=>{
           ["حالة العقار",proj.propertyState||"—"],
           ["نوع الطلب",proj.requestType||"—"],
           ["النشاط",proj.activity||"—"],
+          ...(proj.projectName?[["اسم المشروع",proj.projectName]]:[]),
           ["بيان الأعمال",(()=>{const pts=[];if(proj.basementCount>=2)pts.push(proj.basementCount+" بدروم");else if(proj.basementCount===1||proj.hasBasement)pts.push("بدروم");if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكرر");if(proj.hasElevator)pts.push("مصعد");if(proj.hasPergola)pts.push("برجولة");if(proj.hasPool)pts.push("حمام سباحة");return pts.join(" + ")||"—";})()],
+          ...(proj.buildingRatio?[["نسبة المبنى",proj.buildingRatio+"%"]]:[]),
           ["حالة السوق",proj.marketStatus||"—"],
           ["كود الجهاز",proj.authorityCode||"—"],
         ].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bdl);"><span style="font-size:11px;color:var(--t3);">${l}</span><span style="font-size:12px;font-weight:600;color:var(--t1);">${v}</span></div>`).join("")}
@@ -2571,10 +2573,12 @@ const openEditProj=id=>{
       <div class="fg"><label class="fl">الحي / المنطقة</label><input class="fi" id="ep-dist" value="${proj.district||""}"/></div>
       <div class="fg"><label class="fl">المساحة (م²)</label><input class="fi" id="ep-area" type="number" value="${proj.area||""}"/></div>
     </div>
+    <div class="fg"><label class="fl">اسم المشروع <span style="font-size:10px;color:var(--t3);">(اختياري — مول، مبنى، ...)</span></label><input class="fi" id="ep-projname" value="${proj.projectName||""}" placeholder="مثال: برج النيل، مول الرياض"/></div>
     <div class="fw">
       <div class="fg"><label class="fl">سعر المتر (ج.م)</label><input class="fi" id="ep-price" type="number" value="${proj.pricePerMeter||""}"/></div>
-      <div class="fg"><label class="fl">الأدوار المتكررة</label><input class="fi" id="ep-floors" type="number" value="${proj.floors||""}" placeholder="عدد الأدوار المتكررة"/></div>
+      <div class="fg"><label class="fl">نسبة المبنى (%)</label><input class="fi" id="ep-bldgratio" type="number" min="0" max="100" value="${proj.buildingRatio||""}" placeholder="مثال: 60"/></div>
     </div>
+    <div class="fg"><label class="fl">الأدوار المتكررة</label><input class="fi" id="ep-floors" type="number" value="${proj.floors||""}" placeholder="عدد الأدوار المتكررة"/></div>
     <div style="display:flex;gap:16px;margin-top:4px;">
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="ep-ground" ${proj.hasGround?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> دور أرضي</label>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t1);">بدروم <input class="fi" id="ep-basement-count" type="number" min="0" max="5" value="${proj.basementCount||0}" style="width:60px;padding:4px 8px;font-size:12px;"/></label>
@@ -2636,7 +2640,9 @@ const saveEditProj=id=>{
   proj.marketStatus=document.getElementById("ep-mkt")?.value||proj.marketStatus;
   proj.district=document.getElementById("ep-dist")?.value?.trim()||proj.district;
   proj.area=Number(document.getElementById("ep-area")?.value)||proj.area;
+  proj.projectName=document.getElementById("ep-projname")?.value?.trim()||"";
   proj.pricePerMeter=Number(document.getElementById("ep-price")?.value)||proj.pricePerMeter;
+  proj.buildingRatio=Number(document.getElementById("ep-bldgratio")?.value)||0;
   proj.floors=Number(document.getElementById("ep-floors")?.value)||0;
   proj.basementCount=Number(document.getElementById("ep-basement-count")?.value)||0;
   proj.hasBasement=proj.basementCount>0;
@@ -3111,10 +3117,12 @@ const rPM=()=>{
       <div class="fg"><label class="fl">المساحة الإجمالية (م²) <span class="rq">*</span></label><input class="fi" id="par" type="number" value="${PFrm.area||""}" placeholder="0.00"/></div>
     </div>
 
+    <div class="fg"><label class="fl">اسم المشروع <span style="font-size:10px;color:var(--t3);">(اختياري — مول، مبنى، ...)</span></label><input class="fi" id="p-projname" value="${PFrm.projectName||""}" placeholder="مثال: برج النيل، مول الرياض"/></div>
     <div class="fw">
       <div class="fg"><label class="fl">كود جهة الولاية</label><input class="fi" id="pau" value="${PFrm.authorityCode||""}" placeholder="NUCA-2024-XXX"/></div>
-      <div class="fg"><label class="fl">الأدوار المتكررة</label><input class="fi" id="pfl" type="number" value="${PFrm.floors||""}" placeholder="عدد الأدوار المتكررة"/></div>
+      <div class="fg"><label class="fl">نسبة المبنى (%)</label><input class="fi" id="p-bldgratio" type="number" min="0" max="100" value="${PFrm.buildingRatio||""}" placeholder="مثال: 60"/></div>
     </div>
+    <div class="fg"><label class="fl">الأدوار المتكررة</label><input class="fi" id="pfl" type="number" value="${PFrm.floors||""}" placeholder="عدد الأدوار المتكررة"/></div>
     <div style="display:flex;gap:16px;margin-top:4px;">
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="p-ground" ${PFrm.hasGround?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> دور أرضي</label>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t1);">بدروم <input class="fi" id="p-basement-count" type="number" min="0" max="5" value="${PFrm.basementCount||0}" style="width:60px;padding:4px 8px;font-size:12px;"/></label>
@@ -3213,6 +3221,8 @@ const nxPS=()=>{
     PFrm.type=$("pt")?.value||"normal";PFrm.activity=$("pa")?.value||"سكني";
     PFrm.city=city2;PFrm.gov=$("pgov")?.value||PFrm.gov||"";
     PFrm.district=d;PFrm.neighborhood=$("pnb")?.value||"";PFrm.plot=pl;PFrm.area=ar;
+    PFrm.projectName=$("p-projname")?.value?.trim()||"";
+    PFrm.buildingRatio=Number($("p-bldgratio")?.value)||0;
     PFrm.authorityCode=$("pau")?.value||"";PFrm.floors=$("pfl")?.value||"";
     PFrm.basementCount=Number($("p-basement-count")?.value)||0;
     PFrm.hasBasement=PFrm.basementCount>0;
@@ -3281,7 +3291,7 @@ const svPF=()=>{
     area:Number(PFrm.area)||0,
     authorityCode:PFrm.authorityCode||"",floors:Number(PFrm.floors)||0,
     hasElevator:PFrm.hasElevator||false,hasBasement:PFrm.hasBasement||false,basementCount:PFrm.basementCount||0,hasGround:PFrm.hasGround||false,
-    hasPool:PFrm.hasPool||false,hasPergola:PFrm.hasPergola||false,
+    hasPool:PFrm.hasPool||false,hasPergola:PFrm.hasPergola||false,projectName:PFrm.projectName||"",buildingRatio:PFrm.buildingRatio||0,
     propertyState:PFrm.propertyState||"أرض فضاء",requestType:PFrm.requestType||"مشروع جديد",
     requiredWorks:PFrm.requiredWorks||[],marketStatus:PFrm.marketStatus||"غير محدد",
     pricePerMeter:Number(PFrm.pricePerMeter)||0,note:PFrm.note||"",nextAction:PFrm.nextAction||"",
@@ -3580,7 +3590,9 @@ const openPassport=projId=>{
               ${infoCell("المجاورة",proj.neighborhood)}
               ${infoCell("المساحة",proj.area?Number(proj.area).toLocaleString()+" م²":"")}
               ${infoCell("النشاط",proj.activity)}
+              ${infoCell("اسم المشروع",proj.projectName)}
               ${infoCell("بيان الأعمال",byanAlAmal(proj))}
+              ${infoCell("نسبة المبنى",proj.buildingRatio?proj.buildingRatio+"%":"")}
               ${infoCell("كود الجهاز",proj.authorityCode)}
               ${infoCell("القطعة",proj.plot)}
               ${infoCell("حالة العقار",proj.propertyState)}
