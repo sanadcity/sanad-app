@@ -1826,7 +1826,9 @@ const rFile=()=>{
           });
       }
       const cols=Math.min(ownerDocs.length,3);
-      const autoShare=owners.length?Math.round(100/owners.length):0;
+      const explicitTotal=owners.filter(o=>o.share).reduce((s,o)=>s+Number(o.share),0);
+      const withoutShare=owners.filter(o=>!o.share).length;
+      const autoShare=withoutShare>0?Math.round((100-explicitTotal)/withoutShare):0;
       const shareLabel=owner.share?owner.share+"%":autoShare+"%";
       const subInfo=isCo
         ?[owner.comReg?"س.ت: "+owner.comReg:"",owner.taxNum?"ضريبي: "+owner.taxNum:"",owner.repName?"ممثل: "+owner.repName:""].filter(Boolean).join(" · ")
@@ -1878,11 +1880,12 @@ const rFile=()=>{
           <div style="flex:1;font-size:13px;font-weight:800;color:#3D5A8A;">المالك ${ownerNum} / المشتري</div>
           ${can?`<button onclick="addLandOwner('partner','${owner.id}')" style="background:var(--n8);border:none;border-radius:6px;color:#fff;cursor:pointer;font-size:11px;padding:4px 10px;font-family:Cairo,sans-serif;white-space:nowrap;">+ شريك</button>`:""}
         </div>`;
-        html+=ownerCard(owner,"#3D5A8A",topPartners);
+        const groupMembers=[owner,...subParts];
+        html+=ownerCard(owner,"#3D5A8A",groupMembers);
         subParts.forEach((sp,si)=>{
           const spLabel=`المالك ${ownerNum} / شريك ${si+1}`;
           html+=`<div style="margin:8px 0 4px;padding-right:12px;font-size:11px;font-weight:700;color:#8B5CF6;">${spLabel}</div>`;
-          html+=ownerCard(sp,"#8B5CF6",subParts);
+          html+=ownerCard(sp,"#8B5CF6",groupMembers);
         });
       });
     } else {
