@@ -3910,7 +3910,7 @@ const rContacts=()=>{
   el.innerHTML=`<div class="card" style="overflow:hidden;"><table class="tbl"><thead><tr><th>المالك</th><th>الرقم القومي</th><th>الموقع</th><th>القطعة</th><th>الحالة</th><th>الإنجاز</th><th></th></tr></thead><tbody>
   ${projs.map(p=>{const comp=calcC(p),cc=CC(comp);return`<tr>
     <td><div style="font-weight:700;color:var(--t1);">${p.ownerName}</div>${p.ownerEmail?`<div style="font-size:10px;color:var(--t3);">${p.ownerEmail}</div>`:""}</td>
-    <td style="font-size:11px;font-family:monospace;color:var(--t2);">${p.nationalId||"—"}</td>
+    <td style="font-size:13px;font-family:monospace;font-weight:700;color:var(--gold);letter-spacing:.04em;">${p.nationalId||"—"}</td>
     <td style="font-size:12px;color:var(--t2);">${[p.city,p.district].filter(Boolean).join(" · ")||"—"}</td>
     <td style="font-size:12px;color:var(--t2);">${p.plot||"—"}</td>
     <td>${pill(p.devStatus||"—",DSC[p.devStatus]||"#8896A4")}</td>
