@@ -3434,7 +3434,7 @@ const openPassport=projId=>{
             <button id="pp-dots-btn" onclick="(function(){var d=document.getElementById('pp-dots-drop');d.style.display=d.style.display==='block'?'none':'block';})()" style="width:34px;height:34px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);cursor:pointer;color:#C9A84C;font-size:20px;display:flex;align-items:center;justify-content:center;font-family:Cairo,sans-serif;line-height:1;">⋯</button>
             <div id="pp-dots-drop" style="display:none;position:absolute;left:0;top:40px;background:#fff;border:1px solid #e8e8e8;border-radius:10px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,.14);z-index:99;overflow:hidden;">
               <div onclick="printPassport();document.getElementById('pp-dots-drop').style.display='none'" style="padding:11px 14px;font-size:11px;font-weight:700;color:#1C2D4A;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid #f5f5f5;">🖨 طباعة</div>
-              <div onclick="printPassport();document.getElementById('pp-dots-drop').style.display='none'" style="padding:11px 14px;font-size:11px;font-weight:700;color:#1C2D4A;cursor:pointer;display:flex;align-items:center;gap:8px;">⬇️ تحميل PDF</div>
+              <div onclick="navigator.clipboard&&navigator.clipboard.writeText('https://sanad.curveapp.net/#${proj.id}');document.getElementById('pp-dots-drop').style.display='none'" style="padding:11px 14px;font-size:11px;font-weight:700;color:#1C2D4A;cursor:pointer;display:flex;align-items:center;gap:8px;">🔗 نسخ الرابط</div>
             </div>
           </div>
         </div>
