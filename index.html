@@ -3542,15 +3542,10 @@ const openPassport=projId=>{
                     <span style="font-size:8px;font-weight:700;color:${isLast?"#C9A84C":i===0?"#8B5E1A":"#1C2D4A"};">${isLast?"المالك الحالي"+(tl?" · "+tl:""):i===0?"المالك الأصلي":tl||"مالك"}</span>
                   </div>
                   <div style="font-size:13px;font-weight:800;color:${tc};margin-bottom:8px;">${o.name}</div>
-                  ${isCompany?`
-                    ${o.repName?`<div style="${sep}"><div style="font-size:8px;color:${sub};margin-bottom:2px;">الممثل القانوني</div><div style="font-size:11px;font-weight:700;color:${tc};">${o.repName}</div></div>`:""}
-                    ${o.nid?`<div style="${sep}"><div style="font-size:8px;color:${sub};margin-bottom:2px;">الرقم القومي للممثل</div><div style="font-size:10px;font-weight:700;color:${tc};font-family:monospace;">${o.nid}</div></div>`:""}
-                    ${o.comReg?`<div style="${sep}"><div style="font-size:8px;color:${sub};margin-bottom:2px;">السجل التجاري</div><div style="font-size:10px;font-weight:700;color:${tc};font-family:monospace;">${o.comReg}</div></div>`:""}
-                    ${o.taxNum?`<div style="${sep}"><div style="font-size:8px;color:${sub};margin-bottom:2px;">البطاقة الضريبية</div><div style="font-size:10px;font-weight:700;color:${tc};font-family:monospace;">${o.taxNum}</div></div>`:""}
-                  `:`
-                    ${o.nid?`<div style="${sep}"><div style="font-size:8px;color:${sub};margin-bottom:2px;">الرقم القومي</div><div style="font-size:10px;font-weight:700;color:${tc};font-family:monospace;">${o.nid}</div></div>`:""}
-                    ${o.date?`<div style="${sep}"><div style="font-size:8px;color:${faint};margin-bottom:1px;">تاريخ الانتقال</div><div style="font-size:9px;color:${faint};">${o.date}</div></div>`:""}
-                  `}
+                  <div style="font-size:9px;color:${sub};line-height:1.7;">
+                    ${isCompany?[o.repName?"ممثل: "+o.repName:"",o.nid?o.nid:"",o.comReg?"ش.ت "+o.comReg:"",o.taxNum?"ض "+o.taxNum:""].filter(Boolean).join(" · "):o.nid||""}
+                  </div>
+                  ${o.date?`<div style="font-size:8px;color:${faint};margin-top:3px;">${o.date}</div>`:""}
                   ${subs.map(sp=>`<div style="${sep}"><div style="font-size:8px;color:#8B5CF6;font-weight:700;">${sp.partnerType||"شريك"}</div><div style="font-size:10px;font-weight:700;color:${isLast?"rgba(255,255,255,.8)":"#333"};">${sp.name}</div></div>`).join("")}
                 </div>`;
                 const arrow=i<arr.length-1?`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 2px;background:#f5f6f8;gap:1px;flex-shrink:0;">
