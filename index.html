@@ -1285,7 +1285,9 @@ const buildSB=()=>{
       {s:"المكتب"},{k:"office-staff",i:"👷",l:"الموظفون"},{k:"settings",i:"⚙",l:"الإعدادات"}
     ],
     developer:[
-      {k:"dash",i:"⊞",l:"لوحة التحكم"},{k:"projs",i:"◆",l:"مشاريعي"},{k:"svcs",i:"⚡",l:"طلباتي"},{k:"settings",i:"⚙",l:"الإعدادات"}
+      {k:"dash",i:"⊞",l:"لوحة التحكم"},{k:"projs",i:"◆",l:"مشاريعي"},{k:"svcs",i:"⚡",l:"طلباتي"},
+      {s:"الفريق"},{k:"office-staff",i:"👷",l:"الموظفون"},{k:"tasks",i:"☑",l:"المهام",b:true},
+      {k:"settings",i:"⚙",l:"الإعدادات"}
     ],
     client:[
       {k:"projs",i:"🏠",l:"ملفاتي"},{k:"svcs",i:"⚡",l:"طلب خدمة"},{k:"settings",i:"⚙",l:"الإعدادات"}
@@ -4357,7 +4359,14 @@ const rTasks=()=>{
   const users=LS.g(K.u)||[];
   const projs=LS.g(K.p)||[];
   const isAdmin=["admin","staff"].includes(CU.role);
-  const myTasks=isAdmin?tasks:tasks.filter(t=>t.assignedTo===CU.id||t.createdBy===CU.id);
+  let myTasks;
+  if(isAdmin){myTasks=tasks;}
+  else if(CU.role==="developer"){
+    const myStaffIds=(LS.g(K.u)||[]).filter(u=>u.developerId===CU.id).map(u=>u.id);
+    myTasks=tasks.filter(t=>t.createdBy===CU.id||myStaffIds.includes(t.assignedTo));
+  } else {
+    myTasks=tasks.filter(t=>t.assignedTo===CU.id||t.createdBy===CU.id);
+  }
 
   // KPIs
   const kpis=[
@@ -4472,7 +4481,13 @@ const openTaskDetail=id=>{
 };
 
 const openAddTask=(presetProjId)=>{
-  const users=(LS.g(K.u)||[]).filter(u=>["admin","staff","office"].includes(u.role)&&u.status==="active");
+  const allUsers=LS.g(K.u)||[];
+  let users;
+  if(CU.role==="developer"){
+    users=allUsers.filter(u=>u.developerId===CU.id&&u.status==="active");
+  } else {
+    users=allUsers.filter(u=>["admin","staff","office"].includes(u.role)&&u.status==="active");
+  }
   const projs=LS.g(K.p)||[];
   const today=new Date().toISOString().slice(0,10);
   const h=`<div class="ov" id="m-add-task" style="position:fixed;inset:0;background:rgba(13,27,46,.55);z-index:300;display:flex;align-items:center;justify-content:center;">
@@ -4689,8 +4704,9 @@ const deleteStaff=id=>{
 
 // ── OFFICE STAFF ──
 const rOfficeStaff=()=>{
-  if(CU.role!=="office"){$("office-staff-list").innerHTML="";return;}
-  const staffList=(LS.g(K.u)||[]).filter(u=>u.officeId===CU.officeId&&u.id!==CU.id);
+  if(!["office","developer"].includes(CU.role)){$("office-staff-list").innerHTML="";return;}
+  const orgId=CU.officeId||CU.id;
+  const staffList=(LS.g(K.u)||[]).filter(u=>(u.officeId===orgId||u.developerId===orgId)&&u.id!==CU.id);
   const el=$("office-staff-list");
   if(!staffList.length){
     el.innerHTML=`<div class="card"><div class="empty"><div class="ei">👷</div><div class="et">لا يوجد موظفون</div><div class="es">أضف موظفي مكتبك وامنحهم صلاحية إدارة المشاريع</div><button class="btn btn-p" onclick="openAddStaff()" style="margin-top:8px;">+ إضافة موظف</button></div></div>`;
@@ -4718,12 +4734,10 @@ const addOfficeStaff=()=>{
   if(pass.length<8){toast("كلمة المرور 8 أحرف على الأقل","err");return;}
   const users=LS.g(K.u)||[];
   if(users.find(u=>u.email===email)){toast("هذا الإيميل مسجل بالفعل","err");return;}
-  users.push({
-    id:"u"+Date.now(),name,jobTitle:title,email,pass,phone,
-    role:"staff",status:"active",
-    officeId:CU.officeId,
-    created:new Date().toISOString().slice(0,10)
-  });
+  const newUser={id:"u"+Date.now(),name,jobTitle:title,email,pass,phone,role:"staff",status:"active",created:new Date().toISOString().slice(0,10)};
+  if(CU.role==="developer") newUser.developerId=CU.id;
+  else newUser.officeId=CU.officeId;
+  users.push(newUser);
   LS.s(K.u,users);
   cm("m-staff");rOfficeStaff();
   toast(`✓ تمت إضافة ${name} للمكتب`);
