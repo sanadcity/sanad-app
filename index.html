@@ -2144,12 +2144,12 @@ const rFile=()=>{
       <!-- COL 1: حالة المشروع + الإجراء الحالي -->
       <div style="padding:18px 20px;border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:12px;">
         <div>
-          <div style="font-size:9px;color:#8896A4;font-weight:700;letter-spacing:.09em;margin-bottom:8px;">📊 حالة المشروع</div>
+          <div style="font-size:11px;color:#8896A4;font-weight:700;letter-spacing:.09em;margin-bottom:8px;">📊 حالة المشروع</div>
           <div style="display:inline-block;background:${needsAttention?"rgba(201,168,76,.12)":"rgba(27,122,74,.12)"};border:1px solid ${needsAttention?"rgba(201,168,76,.4)":"rgba(27,122,74,.4)"};color:${needsAttention?"#E8C96A":"#4ABA7A"};border-radius:8px;padding:5px 14px;font-size:13px;font-weight:800;margin-bottom:6px;">${needsAttention?"⚠ يحتاج متابعة":"✓ على المسار"}</div>
           <div style="font-size:11px;color:#8896A4;line-height:1.6;">${missingCurDocs.length>0?`ينقص <b style="color:#E8C96A;">${missingCurDocs.length}</b> في <b style="color:#C9A84C;">${curSt?.label||""}</b>`:`<span style="color:#4ABA7A;">كل المستندات المطلوبة مكتملة</span>`}</div>
         </div>
         <div>
-          <div style="font-size:9px;color:#8896A4;font-weight:700;letter-spacing:.09em;margin-bottom:7px;">📌 الإجراء الحالي</div>
+          <div style="font-size:11px;color:#8896A4;font-weight:700;letter-spacing:.09em;margin-bottom:7px;">📌 الإجراء الحالي</div>
           <div id="na-display-${proj.id}">
             <div style="font-size:12px;color:${proj.nextAction?"#E0CCAA":"#4A5A6A"};font-weight:${proj.nextAction?600:400};line-height:1.6;border-right:2px solid ${proj.nextAction?"#C9A84C":"#2D3F5A"};padding-right:10px;margin-bottom:${can?"10px":"0"};">${proj.nextAction||"لم يُحدد إجراء بعد"}</div>
             ${can?`<div style="display:flex;gap:6px;">
@@ -2168,9 +2168,9 @@ const rFile=()=>{
       </div>
 
       <!-- COL 2: المرحلة الحالية + المسؤول — محور الصفحة -->
-      <div style="padding:18px 20px;border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
-        <div style="font-size:9px;color:#8896A4;font-weight:700;letter-spacing:.09em;margin-bottom:10px;">📋 المرحلة الحالية</div>
-        <div style="font-size:22px;font-weight:900;color:#fff;line-height:1.25;margin-bottom:14px;text-wrap:balance;">${curSt?.label||"—"}</div>
+      <div style="padding:18px 20px;border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;align-items:center;text-align:center;">
+        <div style="font-size:11px;color:#8896A4;font-weight:700;letter-spacing:.09em;margin-bottom:10px;">📋 المرحلة الحالية</div>
+        <div style="font-size:22px;font-weight:900;color:#fff;line-height:1.25;margin-bottom:20px;text-wrap:balance;">${curSt?.label||"—"}</div>
         ${responsible?`<div style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid rgba(201,168,76,.5);border-radius:22px;padding:5px 16px;font-size:11px;font-weight:700;color:#E8D5A0;background:rgba(201,168,76,.06);">
           <span style="font-size:13px;">👤</span> ${responsible.name}
         </div>`:`<div style="font-size:11px;color:#4A5A6A;">لم يُحدد مسؤول</div>`}
@@ -2178,7 +2178,7 @@ const rFile=()=>{
 
       <!-- COL 3: الإجراء القادم (المستندات الناقصة) -->
       <div style="padding:18px 20px;display:flex;flex-direction:column;gap:8px;">
-        <div style="font-size:9px;color:#8896A4;font-weight:700;letter-spacing:.09em;margin-bottom:2px;">📝 المستندات المطلوبة</div>
+        <div style="font-size:11px;color:#8896A4;font-weight:700;letter-spacing:.09em;margin-bottom:2px;">📝 المستندات المطلوبة</div>
         ${missingCurDocs.length>0
           ?`<ul style="margin:0;padding-right:14px;font-size:11px;color:#C8D5E0;line-height:2.1;list-style:none;">${missingCurDocs.slice(0,3).map(d=>`<li style="display:flex;align-items:center;gap:6px;"><span style="width:5px;height:5px;border-radius:50%;background:#C9A84C;display:inline-block;flex-shrink:0;"></span>${d.label}</li>`).join("")}${missingCurDocs.length>3?`<li style="color:#5A6A7A;font-size:10px;">+ ${missingCurDocs.length-3} أخرى</li>`:""}</ul>`
           :`<div style="display:flex;align-items:center;gap:7px;font-size:11px;color:#4ABA7A;"><span>✓</span> لا توجد مستندات معلقة</div>`}
