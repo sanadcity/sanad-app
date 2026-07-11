@@ -607,7 +607,6 @@ body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--t1);-webkit
     <div class="mb">
       <div style="font-size:12px;color:var(--t3);margin-bottom:14px;">اختر الخدمة المطلوبة وسيتولى فريق سند التنسيق مع المهندسين المختصين</div>
       <div id="so"></div>
-      <div id="tasaluh-docs-box" style="display:none;"></div>
       <div id="wa-contacts-svc" style="margin-top:12px;"></div>
       <div id="svc-guest-fields"></div>
       <div style="height:1px;background:var(--bdl);margin:14px 0;"></div>
@@ -917,19 +916,12 @@ const STAGES=[
 ];
 
 const SVCS=[
-  {k:"tasaluh",l:"تصالح",p:"حسب الطلب",t:"حسب الطلب",i:"⚖️"},
   {k:"soil",l:"تقرير تربة معتمد",p:"800–1,500 ج",t:"3–5 أيام",i:"🔬"},
   {k:"consult",l:"تقرير استشاري",p:"1,500–3,000 ج",t:"2–3 أيام",i:"📋"},
   {k:"arch",l:"رسومات معمارية",p:"3,000–8,000 ج",t:"5–10 أيام",i:"✏"},
   {k:"struct",l:"رسومات إنشائية",p:"2,500–6,000 ج",t:"5–7 أيام",i:"🏗"},
   {k:"sup",l:"شهادة إشراف هندسي",p:"400–800 ج",t:"يوم واحد",i:"👷"},
   {k:"other",l:"خدمة أخرى",p:"حسب الطلب",t:"حسب الطلب",i:"⚡"}
-];
-const TASALUH_DOCS=[
-  {k:"ts1",l:"تحليل كربوني / تصوير جوي",i:"🛰️"},
-  {k:"ts2",l:"شهادة مؤمنة",i:"📄"},
-  {k:"ts3",l:"تقرير سلامة إنشائية",i:"🏛️"},
-  {k:"ts4",l:"نموذج فني",i:"📐"},
 ];
 
 // ── ALL CITIES OF EGYPT NEW URBAN COMMUNITIES AUTHORITY ──
@@ -3652,41 +3644,7 @@ const openSvc=()=>{
   $("so").innerHTML=SVCS.map(s=>`<div class="so" id="so-${s.k}" onclick="sSvc('${s.k}')"><div style="display:flex;align-items:center;gap:12px;"><div style="width:40px;height:40px;background:var(--gl);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">${s.i}</div><div><div style="font-size:13px;font-weight:700;color:var(--t1);">${s.l}</div><div style="font-size:10px;color:var(--t3);margin-top:2px;">${s.p} · ${s.t}</div></div></div></div>`).join("");
   $("msv").classList.remove("hid");
 };
-const sSvc=k=>{
-  SS=k;
-  document.querySelectorAll(".so").forEach(el=>el.classList.remove("on"));
-  $("so-"+k)?.classList.add("on");
-  const box=$("tasaluh-docs-box");
-  if(!box)return;
-  if(k==="tasaluh"){
-    box.innerHTML=`
-      <div style="margin-top:14px;background:rgba(184,134,11,.06);border:1.5px solid rgba(184,134,11,.3);border-radius:12px;padding:14px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="#B8860B"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
-          <span style="font-size:13px;font-weight:800;color:#7A5800;">مستندات التصالح المطلوبة</span>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          ${TASALUH_DOCS.map(d=>`
-          <div style="background:#fff;border:1px solid rgba(184,134,11,.25);border-radius:10px;padding:10px 12px;">
-            <div style="font-size:11px;font-weight:700;color:#5A3E00;margin-bottom:8px;">${d.i} ${d.l}</div>
-            <label style="display:flex;align-items:center;justify-content:center;gap:6px;border:1.5px dashed rgba(184,134,11,.4);border-radius:8px;padding:10px 6px;cursor:pointer;font-size:11px;color:#9A7000;background:rgba(184,134,11,.04);">
-              📎 رفع الملف
-              <input type="file" id="ts-file-${d.k}" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="markTsFile('${d.k}',this)"/>
-            </label>
-            <div id="ts-name-${d.k}" style="font-size:10px;color:#1B7A4A;margin-top:5px;display:none;font-weight:700;"></div>
-          </div>`).join("")}
-        </div>
-      </div>`;
-    box.style.display="block";
-  } else {
-    box.style.display="none";
-  }
-};
-const markTsFile=(k,inp)=>{
-  const name=inp.files[0]?.name||"";
-  const el=$("ts-name-"+k);
-  if(el){el.textContent="✓ "+name;el.style.display=name?"block":"none";}
-};
+const sSvc=k=>{SS=k;document.querySelectorAll(".so").forEach(el=>el.classList.remove("on"));$("so-"+k)?.classList.add("on");};
 const subSvc=()=>{
   if(!SS){toast("اختر خدمة أولاً","warn");return;}
   let name,phone;
