@@ -2148,14 +2148,16 @@ const rFile=()=>{
           <div style="display:inline-block;background:${needsAttention?"rgba(201,168,76,.12)":"rgba(27,122,74,.12)"};border:1px solid ${needsAttention?"rgba(201,168,76,.4)":"rgba(27,122,74,.4)"};color:${needsAttention?"#E8C96A":"#4ABA7A"};border-radius:8px;padding:5px 14px;font-size:13px;font-weight:800;margin-bottom:6px;">${needsAttention?"⚠ يحتاج متابعة":"✓ على المسار"}</div>
           <div style="font-size:11px;color:#8896A4;line-height:1.6;">${missingCurDocs.length>0?`ينقص <b style="color:#E8C96A;">${missingCurDocs.length}</b> في <b style="color:#C9A84C;">${curSt?.label||""}</b>`:`<span style="color:#4ABA7A;">كل المستندات المطلوبة مكتملة</span>`}</div>
         </div>
-        <div>
-          <div style="font-size:11px;color:#8896A4;font-weight:700;letter-spacing:.09em;margin-bottom:7px;">📌 الإجراء الحالي</div>
-          <div id="na-display-${proj.id}">
-            <div style="font-size:12px;color:${proj.nextAction?"#E0CCAA":"#4A5A6A"};font-weight:${proj.nextAction?600:400};line-height:1.6;border-right:2px solid ${proj.nextAction?"#C9A84C":"#2D3F5A"};padding-right:10px;margin-bottom:${can?"10px":"0"};">${proj.nextAction||"لم يُحدد إجراء بعد"}</div>
-            ${can?`<div style="display:flex;gap:6px;">
-              ${proj.nextAction?`<button onclick="doneNextAction('${proj.id}')" style="flex:1;background:rgba(27,122,74,.18);border:1px solid rgba(27,122,74,.4);color:#4ABA7A;border-radius:7px;padding:6px 0;font-size:10px;font-weight:800;cursor:pointer;font-family:Cairo,sans-serif;">✓ تم</button>`:""}
-              <button onclick="openNewAction('${proj.id}')" style="flex:1;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.35);color:#C9A84C;border-radius:7px;padding:6px 0;font-size:10px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;">+ إجراء جديد</button>
+        <div style="margin-top:auto;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-size:11px;color:#8896A4;font-weight:700;letter-spacing:.09em;">📌 الإجراء الحالي</div>
+            ${can?`<div style="display:flex;gap:5px;">
+              ${proj.nextAction?`<button onclick="doneNextAction('${proj.id}')" title="تم" style="width:26px;height:26px;background:rgba(27,122,74,.18);border:1px solid rgba(27,122,74,.4);color:#4ABA7A;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;font-family:Cairo,sans-serif;padding:0;display:flex;align-items:center;justify-content:center;">✓</button>`:""}
+              <button onclick="openNewAction('${proj.id}')" title="إجراء جديد" style="width:26px;height:26px;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.35);color:#C9A84C;border-radius:6px;font-size:16px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;padding:0;display:flex;align-items:center;justify-content:center;">+</button>
             </div>`:""}
+          </div>
+          <div id="na-display-${proj.id}">
+            <div style="background:transparent;border:1.5px solid rgba(201,168,76,.45);border-radius:8px;padding:8px 14px;font-size:13px;color:${proj.nextAction?"#fff":"#4A5A6A"};font-weight:${proj.nextAction?600:400};line-height:1.5;width:100%;box-sizing:border-box;">${proj.nextAction||"لم يُحدد إجراء بعد"}</div>
           </div>
           <div id="na-input-${proj.id}" style="display:none;">
             <input id="na-val-${proj.id}" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(201,168,76,.4);border-radius:7px;padding:7px 11px;font-size:11px;color:#fff;font-family:Cairo,sans-serif;outline:none;margin-bottom:7px;" placeholder="اكتب الإجراء الجديد..." onkeydown="if(event.key==='Enter')saveNewAction('${proj.id}');if(event.key==='Escape')closeNewAction('${proj.id}');"/>
