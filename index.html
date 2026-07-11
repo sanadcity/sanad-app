@@ -2229,7 +2229,8 @@ const rFile=()=>{
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
           <div style="width:36px;height:36px;border-radius:9px;background:${stDone?"#1B7A4A":stage.color};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;color:#fff;">${stDone?"✓":stage.icon}</div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:800;color:var(--t1);">مرحلة ${CSV+1}: ${stage.label}</div>
+            <div style="font-size:9px;color:var(--t3);font-weight:600;margin-bottom:2px;">مرحلة ${CSV+1}</div>
+            <div style="font-size:13px;font-weight:800;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${stage.label}</div>
             <div style="font-size:10px;color:var(--t3);margin-top:1px;">${upCount}/${allDocs.length} مرفوع · ${(()=>{const miss=req.filter(d=>!d.up).length;return miss===0?`<span style="color:#1B7A4A;font-weight:700;">✓ مكتمل</span>`:`<span style="color:#C0392B;font-weight:700;">${miss} ناقص</span>`;})()}</div>
           </div>
           ${stDone?pill("مكتملة","#1B7A4A"):stCur?pill("الحالية",stage.color):""}
