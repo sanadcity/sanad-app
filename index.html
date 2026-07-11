@@ -2067,7 +2067,7 @@ const rFile=()=>{
   const healthColor2=healthScore>=80?"#4ABA7A":healthScore>=50?"#C9A84C":"#E74C3C";
   const curSt=proj.stages[ci];
   const missingCurDocs=curSt?stageDocs(curSt,proj).filter(d=>d.req&&!d.up):[];
-  const responsible=(proj.parties||[]).find(pt=>["office","staff"].includes(pt.role));
+  const responsible=(proj.parties||[]).find(pt=>pt.role==="office")||(proj.byRole==="office"?{name:proj.byName}:null)||(proj.byRole==="staff"?{name:proj.byName}:null);
   const needsAttention=missingCurDocs.length>0||missingReqTotal>2;
   const locParts=[proj.plot?"قطعة "+proj.plot:"",proj.neighborhood,proj.district,proj.city,proj.governorate].filter(Boolean);
 
@@ -3737,10 +3737,11 @@ const openPassport=projId=>{
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
             ${stages.map(s=>{
-              const req=stageDocs(s,proj).filter(d=>d.req).length;
-              const up=stageDocs(s,proj).filter(d=>d.req&&d.up).length;
+              const all=stageDocs(s,proj);
+              const req=all.length;
+              const up=all.filter(d=>d.up).length;
               if(!req)return"";
-              const done=up===req;
+              const done=stageComplete(s,proj);
               return`<div style="display:flex;align-items:center;gap:5px;background:${done?"#E3F5EC":"#F7F8FA"};border:1px solid ${done?"rgba(27,122,74,.2)":"#e8e8e8"};border-radius:8px;padding:5px 10px;">
                 <span style="font-size:10px;">${done?"✅":"🔲"}</span>
                 <span style="font-size:9px;font-weight:700;color:${done?"#1B7A4A":"#555"};">${s.label||s.name||"—"}</span>
@@ -3761,7 +3762,7 @@ const openPassport=projId=>{
           const curUp=curReq.filter(d=>d.up).length;
           const lastComment=(proj.comments||[]).slice(-1)[0];
           const responsible=(proj.parties||[]).find(p=>p.stage===currentStage?.name||p.stage===currentStage?.label);
-          const responsibleName=responsible?.name||proj.supervisorName||"";
+          const responsibleName=responsible?.name||(proj.byRole==="office"?proj.byName:"")||(proj.byRole==="staff"?proj.byName:"")||"";
           return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
             <!-- المرحلة الحالية -->
             <div style="background:#fff;border-radius:14px;border:2px solid #1C2D4A;overflow:hidden;">
