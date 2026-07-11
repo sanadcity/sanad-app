@@ -1687,10 +1687,10 @@ const rFile=()=>{
   const allDocs=stageDocs(stage,proj);
   const req=allDocs.filter(d=>d.req);
   const isApproved=d=>d.up&&(d.up.status==="approved"||!d.up.status);
-  const stDone=req.length>0&&req.every(d=>isApproved(d));
+  const stDone=stageComplete(stage,proj);
   const stCur=CSV===ci&&!stDone;
-  const sc=calcSC(stage);
-  const upCount=allDocs.filter(d=>isApproved(d)).length;
+  const sc=stDone?100:calcSC(stage,proj);
+  const upCount=allDocs.filter(d=>d.up).length;
 
   const mkDocCard=(doc,sk,isC,compact=false,plain=false)=>{
     const dk=doc.key;
