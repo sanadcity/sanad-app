@@ -2149,9 +2149,17 @@ const rFile=()=>{
         <div style="font-size:10px;color:#8896A4;font-weight:700;margin-bottom:8px;">📋 المرحلة الحالية</div>
         <div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:10px;">${curSt?.label||"—"}</div>
         ${responsible?`<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);border-radius:20px;padding:4px 12px;font-size:11px;color:#60A5FA;margin-bottom:6px;">المسؤول: ${responsible.name}</div>`:""}
-        <div style="font-size:11px;color:#8896A4;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <div id="na-display-${proj.id}" style="font-size:11px;color:#8896A4;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
           <span>📌 ${proj.nextAction||"لم يُحدد إجراء بعد"}</span>
-          ${can?`<button onclick="quickEditNextAction('${proj.id}')" style="background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.3);color:#C9A84C;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;">✎ تعديل</button>`:""}
+          ${can&&proj.nextAction?`<button onclick="doneNextAction('${proj.id}')" style="background:rgba(27,122,74,.18);border:1px solid rgba(27,122,74,.4);color:#4ABA7A;border-radius:5px;padding:1px 9px;font-size:10px;font-weight:800;cursor:pointer;font-family:Cairo,sans-serif;">✓ تم</button>`:""}
+          ${can?`<button onclick="openNewAction('${proj.id}')" style="background:rgba(201,168,76,.13);border:1px solid rgba(201,168,76,.3);color:#C9A84C;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;">+ إجراء جديد</button>`:""}
+        </div>
+        <div id="na-input-${proj.id}" style="display:none;margin-top:6px;">
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input id="na-val-${proj.id}" style="flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(201,168,76,.4);border-radius:6px;padding:5px 10px;font-size:11px;color:#fff;font-family:Cairo,sans-serif;outline:none;" placeholder="اكتب الإجراء الجديد..." onkeydown="if(event.key==='Enter')saveNewAction('${proj.id}');if(event.key==='Escape')closeNewAction('${proj.id}');"/>
+            <button onclick="saveNewAction('${proj.id}')" style="background:#C9A84C;border:none;color:#0D1B2E;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:800;cursor:pointer;font-family:Cairo,sans-serif;">حفظ</button>
+            <button onclick="closeNewAction('${proj.id}')" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#8896A4;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:Cairo,sans-serif;">✕</button>
+          </div>
         </div>
       </div>
       <div style="padding:16px 20px;">
@@ -2831,16 +2839,44 @@ const switchStage=i=>{
   CSV=i;rFile();
 };
 
-const quickEditNextAction=(projId)=>{
+const doneNextAction=(projId)=>{
+  const projs=LS.g(K.p)||[];
+  const proj=projs.find(p=>p.id===projId);
+  if(!proj||!proj.nextAction)return;
+  if(!proj.timeline)proj.timeline=[];
+  proj.timeline.push({date:new Date().toISOString().slice(0,10),event:`✅ اكتمل: ${proj.nextAction}`,by:CU.name,icon:"✅"});
+  proj.nextAction="";
+  proj.lastUpdated=new Date().toISOString().slice(0,10);
+  LS.s(K.p,projs);
+  toast("✓ تم تسجيل الإنجاز","ok");
+  rFile();
+  // open new action input after re-render
+  setTimeout(()=>openNewAction(projId),80);
+};
+const openNewAction=(projId)=>{
+  const disp=document.getElementById("na-display-"+projId);
+  const inp=document.getElementById("na-input-"+projId);
+  if(disp)disp.style.display="none";
+  if(inp){inp.style.display="";document.getElementById("na-val-"+projId)?.focus();}
+};
+const closeNewAction=(projId)=>{
+  const disp=document.getElementById("na-display-"+projId);
+  const inp=document.getElementById("na-input-"+projId);
+  if(disp)disp.style.display="";
+  if(inp)inp.style.display="none";
+};
+const saveNewAction=(projId)=>{
+  const val=(document.getElementById("na-val-"+projId)?.value||"").trim();
+  if(!val){toast("اكتب الإجراء أولاً","warn");return;}
   const projs=LS.g(K.p)||[];
   const proj=projs.find(p=>p.id===projId);
   if(!proj)return;
-  const val=prompt("الإجراء المنتظر الجديد:",proj.nextAction||"");
-  if(val===null)return;
-  proj.nextAction=val.trim();
+  proj.nextAction=val;
   proj.lastUpdated=new Date().toISOString().slice(0,10);
+  if(!proj.timeline)proj.timeline=[];
+  proj.timeline.push({date:new Date().toISOString().slice(0,10),event:`📌 إجراء جديد: ${val}`,by:CU.name,icon:"📌"});
   LS.s(K.p,projs);
-  toast("✓ تم تحديث الإجراء المنتظر","ok");
+  toast("✓ تم تحديث الإجراء","ok");
   rFile();
 };
 
