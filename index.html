@@ -2145,20 +2145,28 @@ const rFile=()=>{
         <div style="display:inline-block;background:${needsAttention?"rgba(201,168,76,.15)":"rgba(27,122,74,.15)"};border:1px solid ${needsAttention?"rgba(201,168,76,.35)":"rgba(27,122,74,.35)"};color:${needsAttention?"#C9A84C":"#4ABA7A"};border-radius:8px;padding:5px 14px;font-size:13px;font-weight:800;margin-bottom:8px;">${needsAttention?"يحتاج متابعة":"على المسار"}</div>
         <div style="font-size:11px;color:#8896A4;line-height:1.6;">${missingCurDocs.length>0?`ينقص ${missingCurDocs.length} مستندات في مرحلة <b style="color:#C9A84C;">${curSt?.label||""}</b>`:`<span style="color:#4ABA7A;">✓ كل المستندات المطلوبة مكتملة</span>`}</div>
       </div>
-      <div style="padding:16px 20px;border-left:1px solid rgba(255,255,255,.06);text-align:center;">
-        <div style="font-size:10px;color:#8896A4;font-weight:700;margin-bottom:8px;">📋 المرحلة الحالية</div>
-        <div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:10px;">${curSt?.label||"—"}</div>
-        ${responsible?`<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);border-radius:20px;padding:4px 12px;font-size:11px;color:#60A5FA;margin-bottom:6px;">المسؤول: ${responsible.name}</div>`:""}
-        <div id="na-display-${proj.id}" style="font-size:11px;color:#8896A4;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-          <span>📌 ${proj.nextAction||"لم يُحدد إجراء بعد"}</span>
-          ${can&&proj.nextAction?`<button onclick="doneNextAction('${proj.id}')" style="background:rgba(27,122,74,.18);border:1px solid rgba(27,122,74,.4);color:#4ABA7A;border-radius:5px;padding:1px 9px;font-size:10px;font-weight:800;cursor:pointer;font-family:Cairo,sans-serif;">✓ تم</button>`:""}
-          ${can?`<button onclick="openNewAction('${proj.id}')" style="background:rgba(201,168,76,.13);border:1px solid rgba(201,168,76,.3);color:#C9A84C;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;">+ إجراء جديد</button>`:""}
+      <div style="padding:16px 20px;border-left:1px solid rgba(255,255,255,.06);">
+        <div style="font-size:9px;color:#8896A4;font-weight:700;letter-spacing:.08em;margin-bottom:8px;">📋 المرحلة الحالية</div>
+        <div style="font-size:17px;font-weight:900;color:#fff;margin-bottom:8px;line-height:1.3;">${curSt?.label||"—"}</div>
+        ${responsible?`<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);border-radius:20px;padding:3px 11px;font-size:10px;color:#60A5FA;margin-bottom:10px;">👤 ${responsible.name}</div>`:""}
+        <div id="na-display-${proj.id}">
+          <div style="background:rgba(201,168,76,.07);border:1px solid rgba(201,168,76,.22);border-radius:9px;padding:10px 13px;">
+            <div style="font-size:9px;color:#C9A84C;font-weight:700;letter-spacing:.07em;margin-bottom:5px;text-transform:uppercase;">📌 الإجراء الحالي</div>
+            <div style="font-size:12px;color:${proj.nextAction?"#E8D5A0":"#5A6A7A"};font-weight:${proj.nextAction?600:400};line-height:1.55;margin-bottom:${can?"8px":"0"};">${proj.nextAction||"لم يُحدد إجراء بعد"}</div>
+            ${can?`<div style="display:flex;gap:6px;">
+              ${proj.nextAction?`<button onclick="doneNextAction('${proj.id}')" style="flex:1;background:rgba(27,122,74,.2);border:1px solid rgba(27,122,74,.45);color:#4ABA7A;border-radius:7px;padding:5px 0;font-size:10px;font-weight:800;cursor:pointer;font-family:Cairo,sans-serif;">✓ تم</button>`:""}
+              <button onclick="openNewAction('${proj.id}')" style="flex:1;background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.35);color:#C9A84C;border-radius:7px;padding:5px 0;font-size:10px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;">+ إجراء جديد</button>
+            </div>`:""}
+          </div>
         </div>
-        <div id="na-input-${proj.id}" style="display:none;margin-top:6px;">
-          <div style="display:flex;gap:6px;align-items:center;">
-            <input id="na-val-${proj.id}" style="flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(201,168,76,.4);border-radius:6px;padding:5px 10px;font-size:11px;color:#fff;font-family:Cairo,sans-serif;outline:none;" placeholder="اكتب الإجراء الجديد..." onkeydown="if(event.key==='Enter')saveNewAction('${proj.id}');if(event.key==='Escape')closeNewAction('${proj.id}');"/>
-            <button onclick="saveNewAction('${proj.id}')" style="background:#C9A84C;border:none;color:#0D1B2E;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:800;cursor:pointer;font-family:Cairo,sans-serif;">حفظ</button>
-            <button onclick="closeNewAction('${proj.id}')" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#8896A4;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:Cairo,sans-serif;">✕</button>
+        <div id="na-input-${proj.id}" style="display:none;">
+          <div style="background:rgba(201,168,76,.07);border:1px solid rgba(201,168,76,.35);border-radius:9px;padding:10px 13px;">
+            <div style="font-size:9px;color:#C9A84C;font-weight:700;letter-spacing:.07em;margin-bottom:7px;text-transform:uppercase;">📌 الإجراء الجديد</div>
+            <input id="na-val-${proj.id}" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(201,168,76,.3);border-radius:7px;padding:7px 11px;font-size:12px;color:#fff;font-family:Cairo,sans-serif;outline:none;margin-bottom:8px;" placeholder="اكتب الإجراء الجديد..." onkeydown="if(event.key==='Enter')saveNewAction('${proj.id}');if(event.key==='Escape')closeNewAction('${proj.id}');"/>
+            <div style="display:flex;gap:6px;">
+              <button onclick="saveNewAction('${proj.id}')" style="flex:1;background:#C9A84C;border:none;color:#0D1B2E;border-radius:7px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Cairo,sans-serif;">✓ حفظ</button>
+              <button onclick="closeNewAction('${proj.id}')" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#8896A4;border-radius:7px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:Cairo,sans-serif;">✕</button>
+            </div>
           </div>
         </div>
       </div>
