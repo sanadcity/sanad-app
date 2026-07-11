@@ -2143,7 +2143,7 @@ const rFile=()=>{
       <div style="padding:16px 20px;border-left:1px solid rgba(255,255,255,.06);">
         <div style="font-size:10px;color:#8896A4;font-weight:700;margin-bottom:10px;">📊 حالة المشروع</div>
         <div style="display:inline-block;background:${needsAttention?"rgba(201,168,76,.15)":"rgba(27,122,74,.15)"};border:1px solid ${needsAttention?"rgba(201,168,76,.35)":"rgba(27,122,74,.35)"};color:${needsAttention?"#C9A84C":"#4ABA7A"};border-radius:8px;padding:5px 14px;font-size:13px;font-weight:800;margin-bottom:8px;">${needsAttention?"يحتاج متابعة":"على المسار"}</div>
-        <div style="font-size:11px;color:#8896A4;line-height:1.6;">${missingCurDocs.length>0?`ينقص ${missingCurDocs.length} مستندات في هذه المرحلة`:missingReqTotal>0?`${missingReqTotal} مستند مطلوب`:"المستندات الحالية مكتملة"}${missingReqTotal>0?`<br><span style="color:${needsAttention?"#C9A84C":"#8896A4"};">يوجد مستندات متأخرة</span>`:""}</div>
+        <div style="font-size:11px;color:#8896A4;line-height:1.6;">${missingCurDocs.length>0?`ينقص ${missingCurDocs.length} مستندات في مرحلة <b style="color:#C9A84C;">${curSt?.label||""}</b>`:`<span style="color:#4ABA7A;">✓ كل المستندات المطلوبة مكتملة</span>`}</div>
       </div>
       <div style="padding:16px 20px;border-left:1px solid rgba(255,255,255,.06);text-align:center;">
         <div style="font-size:10px;color:#8896A4;font-weight:700;margin-bottom:8px;">📋 المرحلة الحالية</div>
