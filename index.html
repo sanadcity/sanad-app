@@ -2149,7 +2149,10 @@ const rFile=()=>{
         <div style="font-size:10px;color:#8896A4;font-weight:700;margin-bottom:8px;">📋 المرحلة الحالية</div>
         <div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:10px;">${curSt?.label||"—"}</div>
         ${responsible?`<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);border-radius:20px;padding:4px 12px;font-size:11px;color:#60A5FA;margin-bottom:6px;">المسؤول: ${responsible.name}</div>`:""}
-        <div style="font-size:11px;color:#8896A4;">📌 الإجراء المنتظر حالياً: ${proj.nextAction||"—"}</div>
+        <div style="font-size:11px;color:#8896A4;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <span>📌 ${proj.nextAction||"لم يُحدد إجراء بعد"}</span>
+          ${can?`<button onclick="quickEditNextAction('${proj.id}')" style="background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.3);color:#C9A84C;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;">✎ تعديل</button>`:""}
+        </div>
       </div>
       <div style="padding:16px 20px;">
         <div style="font-size:10px;color:#8896A4;font-weight:700;margin-bottom:10px;">📝 الإجراء القادم</div>
@@ -2699,6 +2702,9 @@ const openEditProj=id=>{
       })()}
     </div>
     <div style="border-top:1px solid var(--bd);margin:14px 0 10px;padding-top:12px;">
+      <div class="fg"><label class="fl">📌 الإجراء المنتظر حالياً</label><input class="fi" id="ep-next-action" value="${(proj.nextAction||"").replace(/"/g,"&quot;")}" placeholder="مثال: انتظار موافقة الهيئة، سداد رسوم، رفع الرسومات..."/></div>
+    </div>
+    <div style="border-top:1px solid var(--bd);margin:14px 0 10px;padding-top:12px;">
       <div class="fl" style="font-weight:700;margin-bottom:8px;font-size:13px;">تفويض المشروع لمكتب هندسي</div>
       ${(()=>{
         const offices=(LS.g(K.u)||[]).filter(u=>u.role==="office"&&u.status==="active");
@@ -2766,6 +2772,7 @@ const saveEditProj=id=>{
   if(autoSt)proj.devStatus=autoSt;
   proj.delegatedTo=document.getElementById("ep-delegate")?.value||"";
   proj.assignedStaff=[...document.querySelectorAll(".ep-staff-cb:checked")].map(cb=>cb.value);
+  proj.nextAction=document.getElementById("ep-next-action")?.value?.trim()||"";
   proj.lastUpdated=new Date().toISOString().slice(0,10);
   // patch conditional docs that may have been stripped at creation time
   const _pStage=proj.stages?.find(s=>s.key==="permits");
@@ -2822,6 +2829,19 @@ const switchStage=i=>{
   const proj=(LS.g(K.p)||[]).find(p=>p.id===CPJ);
   if(!proj||i<0||i>=proj.stages.length)return;
   CSV=i;rFile();
+};
+
+const quickEditNextAction=(projId)=>{
+  const projs=LS.g(K.p)||[];
+  const proj=projs.find(p=>p.id===projId);
+  if(!proj)return;
+  const val=prompt("الإجراء المنتظر الجديد:",proj.nextAction||"");
+  if(val===null)return;
+  proj.nextAction=val.trim();
+  proj.lastUpdated=new Date().toISOString().slice(0,10);
+  LS.s(K.p,projs);
+  toast("✓ تم تحديث الإجراء المنتظر","ok");
+  rFile();
 };
 
 const markStageDone=(idx,done)=>{
