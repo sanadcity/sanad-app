@@ -833,7 +833,7 @@ const STAGES=[
     {key:"d4",label:"موافقة الجهاز المحلي",req:true},
     {key:"d5",label:"قرار التخصيص",req:true}
   ]},
-  {key:"land",label:"سجل الملكية",icon:"🏠",color:"#1A3F6B",docs:[
+  {key:"land",label:"سجل الملكية",icon:"📜",color:"#1A3F6B",docs:[
     {key:"l0",label:"إخطار التخصيص",req:true},
     {key:"l1",label:"محضر استلام الأرض",req:true},
     {key:"l2",label:"كروكي الأرض",req:true},
@@ -2424,7 +2424,7 @@ const rFile=()=>{
     <div>
       <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;">
         <div style="padding:14px 16px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;background:var(--w);">
-          <div style="font-size:14px;font-weight:800;color:var(--t1);">${stage.icon} ${stage.label}</div>
+          <div style="font-size:14px;font-weight:800;color:var(--t1);">${stage.key==="land"?"📜":stage.icon} ${stage.label}</div>
           <span style="font-size:11px;color:var(--t3);">${upCount} من ${allDocs.length} مرفوع</span>
         </div>
         ${(()=>{
@@ -2462,7 +2462,7 @@ const rFile=()=>{
             });
           return`<div style="padding:10px 14px;border-bottom:1px solid var(--bdl);background:linear-gradient(135deg,rgba(26,63,107,.04),rgba(26,63,107,.01));">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
-              <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.08em;">الملاك</div>
+              <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.08em;">تسلسل الملكية</div>
               ${can?`<button onclick="addLandOwner('partner')" style="background:none;border:1px solid var(--bd);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--t2);font-family:Cairo,sans-serif;">+ إضافة مالك</button>`:""}
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:6px;">${cards.join("")}</div>
@@ -3826,7 +3826,7 @@ const openPassport=projId=>{
         <!-- ④ OWNERSHIP REGISTRY -->
         <div style="background:#fff;border-radius:14px;border:1px solid #eee;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);">
           <div style="padding:12px 20px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;gap:6px;">
-            <span style="font-size:10px;font-weight:800;color:#1C2D4A;letter-spacing:.06em;">سجل الملكية</span>
+            <span style="font-size:10px;font-weight:800;color:#1C2D4A;letter-spacing:.06em;">📜 سجل الملكية</span>
             <div style="flex:1;height:1px;background:#f0f0f0;"></div>
             ${landOwners.filter(o=>!o.parentId).length?`<span style="font-size:9px;background:#EEF1F7;color:#1C2D4A;font-weight:700;padding:2px 8px;border-radius:10px;">${landOwners.filter(o=>!o.parentId).length} ملاك</span>`:""}
           </div>
