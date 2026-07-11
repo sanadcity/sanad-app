@@ -2077,19 +2077,31 @@ const rFile=()=>{
     proj.stages.forEach((s,i)=>{
       const done=stageComplete(s,proj);
       const isCur=i===ci&&!done;
-      const circleBg=done?"#1B7A4A":isCur?"#C9A84C":"#2D3748";
-      const circleBdr=done?"#1B7A4A":isCur?"rgba(201,168,76,.7)":"#3D4F6A";
+      const allDocs=stageDocs(s,proj);
+      const upDocs=allDocs.filter(d=>d.up).length;
+      const totalDocs=allDocs.length;
+      const stageComp=totalDocs>0?Math.round(upDocs/totalDocs*100):0;
+      const r=20; const circ=2*Math.PI*r;
+      const dash=Math.round(circ*stageComp/100);
+      const ringColor=done?"#1B7A4A":isCur?"#C9A84C":stageComp>0?"#4A7FA8":"transparent";
+      const circleBg=done?"#1B7A4A":isCur?"rgba(201,168,76,.15)":"#2D3748";
       const labelColor=isCur?"#C9A84C":done?"#fff":"#8896A4";
-      const inner=done?`<span style="font-size:18px;color:#fff;">✓</span>`:isCur?`<span style="font-size:18px;">${s.icon||"📋"}</span>`:`<span style="font-size:12px;font-weight:700;color:#8896A4;">${i+1}</span>`;
-      parts.push(`<div onclick="switchStage(${i})" style="display:flex;flex-direction:column;align-items:center;min-width:64px;max-width:84px;cursor:pointer;flex-shrink:0;">
-        <div style="width:44px;height:44px;border-radius:50%;background:${circleBg};border:2px solid ${circleBdr};display:flex;align-items:center;justify-content:center;${isCur?"box-shadow:0 0 0 8px rgba(201,168,76,.12);":""}">${inner}</div>
-        <div style="font-size:10px;color:${labelColor};font-weight:${isCur?700:done?500:400};text-align:center;margin-top:8px;line-height:1.35;">${s.label}</div>
-        ${done?`<div style="font-size:12px;color:#1B7A4A;margin-top:3px;font-weight:700;">✓</div>`:""}
+      const inner=done?`<span style="font-size:16px;color:#fff;">✓</span>`:isCur?`<span style="font-size:16px;">${s.icon||"📋"}</span>`:`<span style="font-size:11px;font-weight:700;color:#8896A4;">${i+1}</span>`;
+      parts.push(`<div onclick="switchStage(${i})" style="display:flex;flex-direction:column;align-items:center;min-width:64px;max-width:84px;cursor:pointer;flex-shrink:0;padding-top:6px;">
+        <div style="position:relative;width:50px;height:50px;">
+          <svg viewBox="0 0 50 50" style="width:50px;height:50px;transform:rotate(-90deg);position:absolute;inset:0;">
+            <circle cx="25" cy="25" r="${r}" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="4"/>
+            ${totalDocs>0&&stageComp>0?`<circle cx="25" cy="25" r="${r}" fill="none" stroke="${ringColor}" stroke-width="4" stroke-dasharray="${dash} ${Math.round(circ)}" stroke-linecap="round"/>`:""}
+          </svg>
+          <div style="position:absolute;inset:4px;border-radius:50%;background:${circleBg};display:flex;align-items:center;justify-content:center;">${inner}</div>
+        </div>
+        <div style="font-size:10px;color:${labelColor};font-weight:${isCur?700:done?500:400};text-align:center;margin-top:7px;line-height:1.35;">${s.label}</div>
+        ${totalDocs>0&&!done?`<div style="font-size:9px;color:${isCur?"#C9A84C":"#4A5A6A"};margin-top:2px;">${upDocs}/${totalDocs}</div>`:""}
       </div>`);
       if(i<proj.stages.length-1){
         const lineColor=done?"#1B7A4A":isCur?"#C9A84C":"transparent";
         const dashed=!done&&!isCur;
-        parts.push(`<div style="flex:1;align-self:flex-start;margin-top:21px;height:2px;min-width:8px;${dashed?"border-top:2px dashed #3D4F6A;":`background:${lineColor};`}"></div>`);
+        parts.push(`<div style="flex:1;align-self:flex-start;margin-top:24px;height:2px;min-width:8px;${dashed?"border-top:2px dashed #3D4F6A;":`background:${lineColor};`}"></div>`);
       }
     });
     return parts.join("");
@@ -2108,14 +2120,16 @@ const rFile=()=>{
   </div>
 
   <!-- DARK HEADER -->
-  <div style="background:#0D1B2E;border-radius:16px;overflow:hidden;margin-bottom:14px;">
+  <div style="background:#0D1B2E;border-radius:16px;margin-bottom:14px;overflow:visible;">
 
     <!-- TOP BAR -->
     <div style="padding:20px 24px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
       <div>
-        <div style="font-size:24px;font-weight:900;color:#fff;margin-bottom:4px;">${proj.ownerName}</div>
-        <div style="font-size:12px;color:#8896A4;margin-bottom:2px;">📍 ${locParts.join(" · ")}</div>
-        <span style="font-size:14px;color:#C9A84C;font-family:monospace;font-weight:700;">#${proj.id}</span>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
+          <div style="font-size:24px;font-weight:900;color:#fff;line-height:1;">${proj.ownerName}</div>
+          <span style="font-size:12px;color:#C9A84C;font-family:monospace;font-weight:700;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);border-radius:6px;padding:2px 8px;white-space:nowrap;">#${proj.id}</span>
+        </div>
+        <div style="font-size:12px;color:#8896A4;">📍 ${locParts.join(" · ")}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;">
         <button onclick="showProjAnalytics('${proj.id}')" style="background:rgba(201,168,76,.12);border:1.5px solid rgba(201,168,76,.4);color:#C9A84C;border-radius:8px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;display:flex;align-items:center;gap:6px;">📊 عرض التحليلات</button>
