@@ -2224,7 +2224,7 @@ const rFile=()=>{
       <!-- Parties card -->
       ${(()=>{
         const parties=proj.parties||[];
-        const PROLES={owner:{l:"مالك",c:"#1A3F6B",bg:"#E6EEF8"},developer:{l:"مطور",c:"#4A1A6B",bg:"#EEE6F8"},office:{l:"مكتب هندسي",c:"#1B7A4A",bg:"#E3F5EC"},broker:{l:"وسيط",c:"#B7770D",bg:"#FEF3DC"},representative:{l:"وكيل",c:"#8896A4",bg:"#F4F5F7"}};
+        const PROLES={owner:{l:"مالك",c:"#1A3F6B",bg:"#E6EEF8"},developer:{l:"مطور",c:"#4A1A6B",bg:"#EEE6F8"},office:{l:"مكتب هندسي",c:"#1B7A4A",bg:"#E3F5EC"},engineer:{l:"مهندس",c:"#1A5A8A",bg:"#E0EAF5"},contractor:{l:"مقاول",c:"#5A3A1C",bg:"#F5EFE8"},broker:{l:"وسيط",c:"#B7770D",bg:"#FEF3DC"},representative:{l:"وكيل",c:"#8896A4",bg:"#F4F5F7"}};
         return`<div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
             <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;">أطراف المشروع</div>
@@ -2248,7 +2248,7 @@ const rFile=()=>{
                 ${pt.phone?`<a href="tel:${pt.phone}" style="color:var(--t3);text-decoration:none;font-size:14px;" title="${pt.phone}">📞</a>`:""}
                 ${can?`<button onclick="removeParty('${proj.id}','${pt.partyId||pt.name}')" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:15px;padding:2px;">×</button>`:""}
               </div>
-              <div style="margin-top:5px;margin-right:43px;">
+              ${pt.role!=="owner"?`<div style="margin-top:5px;margin-right:43px;">
                 ${hasPoa?`<div style="display:flex;align-items:center;gap:5px;background:rgba(27,122,74,.07);border:1px solid rgba(27,122,74,.2);border-radius:6px;padding:4px 8px;">
                   <span style="font-size:10px;color:#1B7A4A;font-weight:700;">📄 توكيل إدارة</span>
                   <button onclick="previewFile('${pt.poa.url}','${(pt.poa.name||"").replace(/'/g,"\\'")}','${pt.poa.type||""}')" class="btn btn-gh btn-xs">👁</button>
@@ -2259,7 +2259,8 @@ const rFile=()=>{
                   📄 رفع توكيل إدارة
                   <input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadPartyPOA('${proj.id}',${pti},this)" style="display:none;"/>
                 </label>`:""}
-              </div>
+              </div>`:""}
+
             </div>`;
           }).join("")}
         </div>`;
@@ -2287,8 +2288,8 @@ const rFile=()=>{
 
       <!-- HEALTH SCORE -->
       ${(()=>{
-        const totalD=proj.stages.flatMap(s=>s.docs||[]).filter(d=>d.req).length;
-        const upD=proj.stages.flatMap(s=>s.docs||[]).filter(d=>d.req&&d.up).length;
+        const totalD=proj.stages.flatMap(s=>stageDocs(s,proj)).filter(d=>d.req).length;
+        const upD=proj.stages.flatMap(s=>stageDocs(s,proj)).filter(d=>d.req&&d.up).length;
         const docScore=totalD?Math.round(upD/totalD*100):0;
         const stageScore=proj.stages.length?Math.round(completedCount/proj.stages.length*100):0;
         const poaOk=(proj.poas||[]).length===0||(proj.poas||[]).every(p=>!p.expiryDate||p.expiryDate>=new Date().toISOString().slice(0,10));
@@ -2322,7 +2323,7 @@ const rFile=()=>{
 
       <!-- MISSING DOCS -->
       ${(()=>{
-        const missing=proj.stages.flatMap(s=>(s.docs||[]).filter(d=>d.req&&!d.up).map(d=>({label:d.label,stage:s.label})));
+        const missing=proj.stages.flatMap(s=>stageDocs(s,proj).filter(d=>d.req&&!d.up).map(d=>({label:d.label,stage:s.label})));
         if(!missing.length)return`<div style="background:var(--grl);border:1px solid rgba(27,122,74,.2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:8px;"><span style="font-size:16px;">✅</span><div style="font-size:12px;font-weight:700;color:var(--gr);">جميع المستندات المطلوبة مكتملة</div></div>`;
         return`<div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);">
           <div style="padding:10px 14px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;">
@@ -2445,10 +2446,12 @@ const rFile=()=>{
 
 // ── PARTIES MANAGEMENT ──
 const PARTY_ROLES=[
-  {k:"developer",  l:"مطور عقاري",     c:"#4A1A6B"},
-  {k:"office",     l:"مكتب هندسي",     c:"#1B7A4A"},
-  {k:"broker",     l:"وسيط",            c:"#B7770D"},
-  {k:"representative",l:"وكيل قانوني", c:"#8896A4"},
+  {k:"developer",     l:"مطور عقاري",     c:"#4A1A6B"},
+  {k:"office",        l:"مكتب هندسي",     c:"#1B7A4A"},
+  {k:"engineer",      l:"مهندس",           c:"#1A5A8A"},
+  {k:"contractor",    l:"مقاول",           c:"#5A3A1C"},
+  {k:"broker",        l:"وسيط",            c:"#B7770D"},
+  {k:"representative",l:"وكيل قانوني",    c:"#8896A4"},
 ];
 
 const openManageParties=id=>{
@@ -2764,6 +2767,23 @@ const saveEditProj=id=>{
   proj.delegatedTo=document.getElementById("ep-delegate")?.value||"";
   proj.assignedStaff=[...document.querySelectorAll(".ep-staff-cb:checked")].map(cb=>cb.value);
   proj.lastUpdated=new Date().toISOString().slice(0,10);
+  // patch conditional docs that may have been stripped at creation time
+  const _pStage=proj.stages?.find(s=>s.key==="permits");
+  if(_pStage){
+    const _ex=new Set((_pStage.docs||[]).map(d=>d.key));
+    if(proj.hasElevator)[
+      {key:"p7",  label:"عقد مقاولة المصعد",   req:true,cond:"elev"},
+      {key:"p7b", label:"وثيقة تأمين المصعد",  req:true,cond:"elev"},
+      {key:"p7c", label:"تقرير استشاري المصعد",req:true,cond:"elev"},
+    ].forEach(d=>{if(!_ex.has(d.key)){_pStage.docs.push({...d,up:null,notes:[]});}});
+    if(proj.activity==="تجاري")[
+      {key:"p3",label:"موافقة الدفاع المدني",req:false,cond:"comm"},
+      {key:"p4",label:"موافقة بيئية",         req:false,cond:"comm"},
+      {key:"p5",label:"موافقة مرورية",         req:false,cond:"comm"},
+    ].forEach(d=>{if(!_ex.has(d.key)){_pStage.docs.push({...d,up:null,notes:[]});}});
+    if((proj.basementCount||0)>=2&&!_ex.has("p_bsmt2"))
+      _pStage.docs.push({key:"p_bsmt2",label:"تقرير سند جوانب حفر",req:true,cond:"bsmt2",up:null,notes:[]});
+  }
   LS.s(K.p,projs);
   document.getElementById("m-edit-proj")?.remove();
   rFile();
