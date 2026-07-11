@@ -1571,13 +1571,13 @@ const rDash=()=>{
     </div>
   </div>`:"";
 
-  const recent=projs.slice(0,5);
+  const recent=[...projs].sort((a,b)=>{const da=a.lastUpdated||a.createdAt||"";const db=b.lastUpdated||b.createdAt||"";return db.localeCompare(da);}).slice(0,5);
   let html=`${pendingSection}<div class="card" style="margin-bottom:16px;">
     <div class="ch"><div class="cht">المشاريع الأخيرة</div>
     <button class="btn btn-gh btn-sm" onclick="showPage('projs')">عرض كافة المشاريع</button>
     </div>
     <div style="overflow:auto;"><table class="tbl"><thead><tr>
-      <th>كود المشروع</th><th>المالك</th><th>أضافه</th><th>الحالة</th><th>القيمة التقديرية</th><th>تاريخ الإضافة</th><th>إجراءات</th>
+      <th>كود المشروع</th><th>المالك</th><th>أضافه</th><th>الحالة</th><th>القيمة التقديرية</th><th>آخر تحديث</th><th>إجراءات</th>
     </tr></thead><tbody>`;
   if(!recent.length){html+=`<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--t3);">لا توجد مشاريع بعد</td></tr>`;}
   else html+=recent.map(p=>{
@@ -1589,7 +1589,7 @@ const rDash=()=>{
       <td style="font-size:11px;color:var(--t3);">${addedBy}</td>
       <td>${p.status==="pending"?pill("في انتظار الموافقة","#B7770D"):pill(p.devStatus||"—",DSC[p.devStatus]||"#8896A4")}</td>
       <td style="font-family:monospace;font-size:12px;color:var(--gold);font-weight:700;">${p.pricePerMeter&&p.area?fmtM(p.area*p.pricePerMeter):"—"}</td>
-      <td style="font-size:11px;color:var(--t3);">${p.createdAt||"—"}</td>
+      <td style="font-size:11px;color:var(--t3);">${p.lastUpdated||p.createdAt||"—"}</td>
       <td style="display:flex;gap:4px;flex-wrap:wrap;">
         <button class="btn btn-gh btn-xs" onclick="event.stopPropagation();openProj('${p.id}')">↗ فتح</button>
         ${p.status==="pending"&&["admin","staff"].includes(CU.role)?`<button class="btn btn-gr btn-xs" onclick="event.stopPropagation();approveProj('${p.id}')">✓ اعتماد</button><button class="btn btn-d btn-xs" onclick="event.stopPropagation();rejectProj('${p.id}')">✗ رفض</button>`:""}
