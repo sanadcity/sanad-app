@@ -674,7 +674,7 @@ const uploadToST=(file,projId,stageKey,docKey)=>new Promise((resolve,reject)=>{
   }else{doUpload(file);}
 });
 const deleteFromST=path=>{if(path)ST.ref(path).delete().catch(()=>{});};
-const pullDB=async()=>{try{const s=await DB.collection("sanad").get();s.forEach(d=>{if(d.id==="snd_ss4"||d.id==="snd_rm4"){DB.collection("sanad").doc(d.id).delete().catch(()=>{});return;}try{const remoteRaw=d.data().v||"null";let remoteVal;try{remoteVal=JSON.parse(remoteRaw);}catch{remoteVal=null;}const localRaw=localStorage.getItem(d.id);let localVal;try{localVal=JSON.parse(localRaw||"null");}catch{localVal=null;}if(Array.isArray(localVal)&&localVal.length>0&&(remoteVal===null||Array.isArray(remoteVal)&&remoteVal.length===0))return;localStorage.setItem(d.id,remoteRaw);}catch{}});}catch(e){console.warn("offline",e);}};
+const pullDB=async()=>{try{const s=await DB.collection("sanad").get();let loaded=0;s.forEach(d=>{if(d.id==="snd_ss4"||d.id==="snd_rm4"){DB.collection("sanad").doc(d.id).delete().catch(()=>{});return;}try{const remoteRaw=d.data().v||"null";let remoteVal;try{remoteVal=JSON.parse(remoteRaw);}catch{remoteVal=null;}const localRaw=localStorage.getItem(d.id);let localVal;try{localVal=JSON.parse(localRaw||"null");}catch{localVal=null;}if(Array.isArray(localVal)&&localVal.length>0&&(remoteVal===null||Array.isArray(remoteVal)&&remoteVal.length===0))return;localStorage.setItem(d.id,remoteRaw);loaded++;}catch{}});console.log(`[SANAD] pullDB: loaded ${loaded} keys from Firestore`);}catch(e){console.error("[SANAD] pullDB FAILED — check Firestore security rules:",e.message);}};
 
 // ── STORAGE HELPERS ──
 const LS={
