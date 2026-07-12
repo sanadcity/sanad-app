@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>SANAD — إعادة بناء البيانات من Storage</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Cairo,sans-serif;background:#0D1117;color:#E6EDF3;padding:20px;direction:rtl;}
+h1{color:#C9A84C;font-size:20px;margin-bottom:4px;}
+.sub{color:#8896A4;font-size:12px;margin-bottom:20px;}
+.card{background:#161B22;border:1px solid #30363D;border-radius:12px;padding:20px;margin-bottom:14px;}
+.card h2{font-size:13px;font-weight:800;margin-bottom:12px;color:#E6EDF3;}
+.btn{padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-family:Cairo,sans-serif;font-size:13px;font-weight:700;margin-left:8px;}
+.btn-p{background:#C9A84C;color:#0D1117;}
+.btn-g{background:#21262D;color:#E6EDF3;border:1px solid #30363D;}
+.btn-gr{background:#1a3a1a;color:#3FB950;border:1px solid #3FB95044;}
+.status{font-size:12px;padding:10px 14px;border-radius:8px;background:#21262D;margin-top:10px;min-height:36px;line-height:1.7;}
+.ok{color:#3FB950;} .err{color:#F85149;} .warn{color:#D29922;} .inf{color:#58A6FF;}
+table{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px;}
+th{text-align:right;padding:8px 10px;background:#21262D;color:#8896A4;font-weight:700;}
+td{padding:8px 10px;border-bottom:1px solid #21262D;color:#E6EDF3;word-break:break-all;}
+tr:hover td{background:#21262D55;}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;}
+.proj-group{background:#0D1117;border:1px solid #30363D;border-radius:8px;padding:12px;margin-bottom:10px;}
+.proj-id{font-size:11px;color:#C9A84C;font-weight:800;margin-bottom:8px;font-family:monospace;}
+.file-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #21262D22;font-size:11px;}
+.file-row:last-child{border:none;}
+.stage-tag{background:#1a2a3a;color:#58A6FF;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;}
+a{color:#58A6FF;}a:hover{color:#C9A84C;}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid #C9A84C44;border-top-color:#C9A84C;border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-left:6px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<h1>🔍 إعادة بناء البيانات من Firebase Storage</h1>
+<p class="sub">نسترجع كل الملفات من Storage ونعيد بناء المشاريع منها</p>
+
+<div class="card">
+  <h2>الخطوة 1 — تسجيل الدخول لـ Firebase</h2>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+    <input id="em" placeholder="البريد الإلكتروني" value="admin@sanadapp-egy.com" style="padding:8px 12px;border-radius:8px;background:#21262D;border:1px solid #30363D;color:#E6EDF3;font-family:Cairo;font-size:12px;flex:1;min-width:200px;direction:ltr;"/>
+    <input id="pw" type="password" placeholder="كلمة المرور" style="padding:8px 12px;border-radius:8px;background:#21262D;border:1px solid #30363D;color:#E6EDF3;font-family:Cairo;font-size:12px;flex:1;min-width:160px;direction:ltr;"/>
+    <button class="btn btn-p" onclick="doLogin()">دخول ✓</button>
+    <button class="btn btn-g" onclick="skipLogin()">تخطي (بدون login)</button>
+  </div>
+  <div class="status" id="auth-status">أدخل بيانات الدخول أو اضغط "تخطي"</div>
+</div>
+
+<div class="card">
+  <h2>الخطوة 2 — جلب كل ملفات Storage</h2>
+  <button class="btn btn-p" onclick="listAllFiles()">🔍 جلب كل الملفات</button>
+  <div class="status" id="storage-status">في انتظار تسجيل الدخول...</div>
+</div>
+
+<div id="results"></div>
+
+<div class="card" id="rebuild-card" style="display:none;border-color:#C9A84C55;">
+  <h2>الخطوة 3 — إعادة بناء المشاريع في Firestore</h2>
+  <p style="font-size:11px;color:#8896A4;margin-bottom:12px;">هيحفظ المشاريع المُعاد بناؤها من الملفات في Firestore تحت collection "projects"</p>
+  <button class="btn btn-p" onclick="rebuildProjects()">🔄 إعادة بناء المشاريع</button>
+  <button class="btn btn-g" onclick="downloadRebuildJSON()">💾 تحميل JSON</button>
+  <div class="status" id="rebuild-status"></div>
+</div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyA5WV_p5OKLorLu6WTqJ4T3n1njDuRv5Is",
+  authDomain:"sanad-city.firebaseapp.com",
+  projectId:"sanad-city",
+  storageBucket:"sanad-city.firebasestorage.app",
+  messagingSenderId:"632767112371",
+  appId:"1:632767112371:web:187166ea157815edd93cc6"
+});
+const DB=firebase.firestore();
+const ST=firebase.storage();
+const AUTH=firebase.auth();
+
+// Stage labels mapping
+const STAGE_LABELS={
+  land:"سجل الملكية",design:"التصميمات الهندسية",permits:"التراخيص",
+  exec:"تنفيذ الأعمال",finish:"أعمال التشطيب",utilities:"المرافق",
+  delivery:"تسليم المشروع",ops:"التشغيل والصيانة",decree:"القرار الوزاري",
+  party_poa:"توكيل",
+};
+
+let allFiles=[];
+let rebuilt=[];
+
+function st(id,html){document.getElementById(id).innerHTML=html;}
+
+async function doLogin(){
+  st("auth-status","<span class='warn'>⏳ جارٍ الدخول...</span>");
+  try{
+    const em=document.getElementById("em").value;
+    const pw=document.getElementById("pw").value;
+    await AUTH.signInWithEmailAndPassword(em,pw);
+    st("auth-status","<span class='ok'>✅ تم تسجيل الدخول بنجاح</span>");
+  }catch(e){
+    st("auth-status",`<span class='warn'>⚠️ ${e.message} — جرّب "تخطي"</span>`);
+  }
+}
+
+function skipLogin(){
+  st("auth-status","<span class='inf'>ℹ️ بدون login — ممكن يكون في قيود على Storage</span>");
+}
+
+async function listAllFiles(){
+  st("storage-status","<span class='warn'>⏳ جارٍ جلب الملفات... <span class='spinner'></span></span>");
+  allFiles=[];
+  try{
+    await listRef(ST.ref('projects'));
+    st("storage-status",`<span class='ok'>✅ وُجد ${allFiles.length} ملف في Storage</span>`);
+    renderFiles();
+  }catch(e){
+    // Try without auth prefix
+    try{
+      await listRef(ST.ref(''));
+      st("storage-status",`<span class='ok'>✅ وُجد ${allFiles.length} ملف في Storage</span>`);
+      renderFiles();
+    }catch(e2){
+      st("storage-status",`<span class='err'>❌ خطأ: ${e2.message}</span>`);
+    }
+  }
+}
+
+async function listRef(ref){
+  const res=await ref.listAll();
+  for(const item of res.items){
+    try{
+      const meta=await item.getMetadata();
+      allFiles.push({
+        path:item.fullPath,
+        name:item.name,
+        size:meta.size,
+        created:meta.timeCreated,
+        url:`https://firebasestorage.googleapis.com/v0/b/sanad-city.firebasestorage.app/o/${encodeURIComponent(item.fullPath)}?alt=media`,
+        contentType:meta.contentType||"application/octet-stream"
+      });
+    }catch{}
+  }
+  for(const prefix of res.prefixes){
+    await listRef(prefix);
+  }
+}
+
+function parseFilePath(path){
+  // Expected: projects/{projId}/{stageKey}/{docKey}_{ts}.{ext}
+  // Or: projects/{projId}/{stageKey}/{docKey}/...
+  const parts=path.split('/');
+  if(parts[0]==='projects' && parts.length>=3){
+    return{
+      projId:parts[1],
+      stageKey:parts[2]||'',
+      fileName:parts.slice(3).join('/'),
+    };
+  }
+  return null;
+}
+
+function renderFiles(){
+  if(!allFiles.length){
+    document.getElementById('results').innerHTML='<div class="card"><div style="color:#8896A4;text-align:center;padding:20px;">لا توجد ملفات في Firebase Storage</div></div>';
+    return;
+  }
+
+  // Group by project
+  const groups={};
+  allFiles.forEach(f=>{
+    const p=parseFilePath(f.path);
+    if(!p)return;
+    if(!groups[p.projId])groups[p.projId]={projId:p.projId,stages:{},files:[]};
+    if(!groups[p.projId].stages[p.stageKey])groups[p.projId].stages[p.stageKey]=[];
+    groups[p.projId].stages[p.stageKey].push({...f,...p});
+    groups[p.projId].files.push({...f,...p});
+  });
+
+  const projIds=Object.keys(groups);
+  let html=`<div class="card"><h2>📁 المشاريع المُكتشفة من Storage (${projIds.length} مشروع — ${allFiles.length} ملف)</h2>`;
+
+  projIds.forEach(pid=>{
+    const g=groups[pid];
+    const stageKeys=Object.keys(g.stages);
+    html+=`<div class="proj-group">
+      <div class="proj-id">🗂 Project ID: ${pid} | ${g.files.length} ملف | ${stageKeys.length} مرحلة</div>`;
+
+    stageKeys.forEach(sk=>{
+      const stageLabel=STAGE_LABELS[sk]||sk;
+      html+=`<div style="margin-bottom:6px;"><span class="stage-tag">${stageLabel} (${sk})</span></div>`;
+      g.stages[sk].forEach(f=>{
+        const kb=(f.size/1024).toFixed(1);
+        const icon=f.contentType?.includes('pdf')?'📄':f.contentType?.includes('image')?'🖼':' 📎';
+        html+=`<div class="file-row">
+          <span>${icon}</span>
+          <a href="${f.url}" target="_blank">${f.fileName||f.name}</a>
+          <span style="color:#484F58;">${kb}KB</span>
+          <span style="color:#484F58;">${f.created?f.created.substring(0,10):''}</span>
+        </div>`;
+      });
+    });
+    html+=`</div>`;
+  });
+
+  html+=`</div>`;
+  document.getElementById('results').innerHTML=html;
+  document.getElementById('rebuild-card').style.display='block';
+
+  // Store for rebuild
+  rebuilt=Object.values(groups);
+}
+
+async function rebuildProjects(){
+  if(!rebuilt.length){alert('لا توجد بيانات لإعادة بنائها');return;}
+  st("rebuild-status","<span class='warn'>⏳ جارٍ إعادة البناء... <span class='spinner'></span></span>");
+
+  const STAGES_DEF=[
+    {key:"land",label:"سجل الملكية",icon:"📜",color:"#1A3F6B"},
+    {key:"design",label:"التصميمات الهندسية",icon:"📐",color:"#3D5A8A"},
+    {key:"permits",label:"التراخيص",icon:"📋",color:"#1A5C3A"},
+    {key:"exec",label:"تنفيذ الأعمال",icon:"🏗",color:"#5A3A1C"},
+    {key:"finish",label:"أعمال التشطيب",icon:"🎨",color:"#4A1A6B"},
+    {key:"utilities",label:"المرافق",icon:"⚡",color:"#1A4A5C"},
+    {key:"delivery",label:"تسليم المشروع",icon:"🔑",color:"#2A5C1A"},
+    {key:"ops",label:"التشغيل والصيانة",icon:"⚙️",color:"#5C4A1A"},
+  ];
+
+  let count=0;
+  for(const g of rebuilt){
+    const stages=STAGES_DEF.map(sd=>{
+      const stageDocs=g.stages[sd.key]||[];
+      const docs=stageDocs.map((f,i)=>({
+        key:`${sd.key}_f${i}`,
+        label:f.fileName||f.name,
+        req:false,
+        up:{url:f.url,name:f.fileName||f.name,type:f.contentType,date:f.created?f.created.substring(0,10):''},
+        notes:[],
+      }));
+      return{key:sd.key,label:sd.label,icon:sd.icon,color:sd.color,docs};
+    });
+
+    // Also handle other stage keys not in STAGES_DEF
+    Object.keys(g.stages).forEach(sk=>{
+      if(!STAGES_DEF.find(s=>s.key===sk)&&!['party_poa','owner_0','owner_1','poa_0'].includes(sk)){
+        const stageDocs=g.stages[sk]||[];
+        stages.push({
+          key:sk,label:STAGE_LABELS[sk]||sk,icon:'📁',color:'#555',
+          docs:stageDocs.map((f,i)=>({key:`${sk}_f${i}`,label:f.fileName||f.name,req:false,up:{url:f.url,name:f.fileName||f.name,type:f.contentType},notes:[]}))
+        });
+      }
+    });
+
+    const projData={
+      ownerName:`مشروع ${g.projId.substring(0,8)}`,
+      devStatus:'جارٍ التنفيذ',
+      stages,
+      requiredWorks:[],
+      hasElevator:false,
+      basementCount:0,
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
+      _recoveredFromStorage:true,
+      _originalId:g.projId,
+    };
+
+    try{
+      await DB.collection('sanad').doc('snd_p4_recovered').set({},{merge:true});
+      // Save to old snd_p4 format
+      const existing=await DB.collection('sanad').doc('snd_p4').get();
+      let projs=[];
+      try{projs=JSON.parse(existing.data()?.v||'[]');}catch{}
+      // Check if already exists
+      if(!projs.find(p=>p.id===g.projId)){
+        projs.push({id:g.projId,...projData,stages:stages.map(s=>({...s,docs:s.docs.map(d=>({...d,up:d.up||null}))}))});
+        await DB.collection('sanad').doc('snd_p4').set({v:JSON.stringify(projs)});
+      }
+      count++;
+    }catch(e){console.error(e);}
+  }
+
+  st("rebuild-status",`<span class='ok'>✅ تم إعادة بناء ${count} مشروع في Firestore — <a href="index.html" style="color:#C9A84C;">افتح التطبيق</a></span>`);
+}
+
+function downloadRebuildJSON(){
+  const data=rebuilt.map(g=>({
+    id:g.projId,
+    files:g.files.map(f=>({path:f.path,url:f.url,stage:f.stageKey,name:f.fileName||f.name,size:f.size,created:f.created}))
+  }));
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`sanad-storage-recovery-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+</script>
+</body>
+</html>
