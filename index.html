@@ -810,6 +810,26 @@ const initData=()=>{
     if(dirty)LS.s(K.p,projects);
   };
   patchDocs();
+  // patch: inject new design stage docs and fix labels
+  (()=>{
+    const DES_NEW=[
+      {key:"des_a_cad",label:"Architectural AutoCAD File",req:false},
+      {key:"des_a_rvt",label:"Architectural Revit File",  req:false},
+      {key:"des_s_cad",label:"Structural AutoCAD File",   req:false},
+      {key:"des_s_rvt",label:"Structural Revit File",     req:false},
+      {key:"des3",     label:"Load Calculations",         req:false},
+      {key:"des4",     label:"Structural Calculation Notes",req:false},
+    ];
+    const DES_LABELS={"des1":"Approved Architectural Drawings","des2":"Approved Structural Drawings","des3":"Load Calculations","des4":"Structural Calculation Notes"};
+    const projs=LS.g(K.p)||[];let dirty=false;
+    projs.forEach(p=>{
+      const ds=p.stages?.find(s=>s.key==="design");if(!ds)return;
+      const ex=new Set((ds.docs||[]).map(d=>d.key));
+      (ds.docs||[]).forEach(d=>{if(DES_LABELS[d.key]&&d.label!==DES_LABELS[d.key]){d.label=DES_LABELS[d.key];dirty=true;}});
+      DES_NEW.forEach(d=>{if(!ex.has(d.key)){ds.docs.push({...d,up:null,notes:[]});dirty=true;}});
+    });
+    if(dirty)LS.s(K.p,projs);
+  })();
   // patch: fix tasaluh doc labels and inject missing tasaluh docs
   (()=>{
     const TS_LABELS={ts1:"تحليل كربوني / تصوير جوي",ts2:"شهادة مؤمنة",ts3:"تقرير سلامة إنشائية",ts4:"نموذج فني"};
@@ -854,10 +874,14 @@ const STAGES=[
     {key:"l2",label:"كروكي الأرض",req:true},
   ]},
   {key:"design",label:"التصميمات الهندسية",icon:"📐",color:"#3D5A8A",docs:[
-    {key:"des1",label:"الرسومات المعمارية المعتمدة",req:true},
-    {key:"des2",label:"التصميمات الإنشائية",req:true},
-    {key:"des3",label:"المخططات التفصيلية",req:false},
-    {key:"des4",label:"تقرير الحساب الإنشائي",req:false}
+    {key:"des1",   label:"Approved Architectural Drawings",req:true},
+    {key:"des_a_cad",label:"Architectural AutoCAD File",   req:false},
+    {key:"des_a_rvt",label:"Architectural Revit File",     req:false},
+    {key:"des2",   label:"Approved Structural Drawings",   req:true},
+    {key:"des_s_cad",label:"Structural AutoCAD File",      req:false},
+    {key:"des_s_rvt",label:"Structural Revit File",        req:false},
+    {key:"des3",   label:"Load Calculations",              req:false},
+    {key:"des4",   label:"Structural Calculation Notes",   req:false}
   ]},
   {key:"permits",label:"التراخيص والتصاريح",icon:"📑",color:"#C9A84C",docs:[
     {key:"p0", label:"بيان صلاحية الموقع",req:true},
@@ -1780,6 +1804,30 @@ const rFile=()=>{
   // land stage: custom grouped layout
   const stageCustomHtml=(()=>{
     const ownerHeader=(title,icon,color)=>`<div style="margin:16px 0 10px;padding:10px 16px;background:var(--n7);border-right:3px solid ${color};border-radius:8px;display:flex;align-items:center;gap:8px;"><span style="font-size:16px;">${icon}</span><span style="font-size:14px;font-weight:800;color:#fff;">${title}</span></div>`;
+
+    if(stage.key==="design"){
+      const sk=stage.key;
+      const archKeys=["des1","des_a_cad","des_a_rvt"];
+      const strKeys =["des2","des_s_cad","des_s_rvt","des3","des4"];
+      const tplDes=STAGES.find(s=>s.key==="design")?.docs||[];
+      const allDocsEx=[...allDocs];
+      tplDes.filter(t=>[...archKeys,...strKeys].includes(t.key)&&!allDocsEx.find(d=>d.key===t.key)).forEach(t=>allDocsEx.push({...t,up:null,notes:[]}));
+      const archDocs=archKeys.map(k=>allDocsEx.find(d=>d.key===k)).filter(Boolean);
+      const strDocs =strKeys.map(k=>allDocsEx.find(d=>d.key===k)).filter(Boolean);
+      const regularDocs=allDocs.filter(d=>![...archKeys,...strKeys].includes(d.key)&&!(stage.cd||[]).some(c=>c.key===d.key));
+      let html=regularDocs.map(d=>`${mkDocCard(d,sk,false,false)}<div style="margin-bottom:8px;"></div>`).join("");
+      if(archDocs.length){
+        html+=ownerHeader("التصميمات المعمارية","🏛","#3D5A8A");
+        html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">${archDocs.map(d=>mkDocCard(d,sk,false,true)).join("")}</div><div style="margin-bottom:8px;"></div>`;
+      }
+      if(strDocs.length){
+        html+=ownerHeader("التصميمات الإنشائية","🏗","#5A3A1C");
+        html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">${strDocs.map(d=>mkDocCard(d,sk,false,true)).join("")}</div><div style="margin-bottom:8px;"></div>`;
+      }
+      const cdDocs=(stage.cd||[]).filter(d=>!d.key.startsWith("ex_cd_"));
+      if(cdDocs.length)html+=`<div style="margin-top:8px;">${cdDocs.map(d=>mkDocCard(d,sk,true,false)).join("")}</div>`;
+      return html;
+    }
 
     if(stage.key==="permits"){
       const sk=stage.key;
