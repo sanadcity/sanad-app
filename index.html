@@ -533,8 +533,7 @@ body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--t1);-webkit
           <input id="ct-q" placeholder="🔍 بحث باسم أو رقم قومي..." oninput="rContacts()" style="flex:1;min-width:180px;border:1px solid var(--bdl);border-radius:8px;padding:7px 12px;font-size:12px;font-family:Cairo,sans-serif;background:var(--w);color:var(--t1);outline:none;"/>
           <select id="ct-status" onchange="rContacts()" style="border:1px solid var(--bdl);border-radius:8px;padding:7px 12px;font-size:12px;font-family:Cairo,sans-serif;background:var(--w);color:var(--t1);outline:none;cursor:pointer;">
             <option value="">كل الحالات</option>
-            <option>قيد التخطيط</option><option>قيد الترخيص</option><option>قيد التنفيذ</option>
-            <option>مكتمل — تصالح</option><option>مكتمل — تراخيص</option><option>موقوف</option>
+            <option>قيد التخطيط</option><option>قيد الترخيص</option><option>قيد التنفيذ</option><option>تصالح</option><option>إضافة 75% سطح</option><option>موقف</option>
           </select>
           <select id="ct-city" onchange="rContacts()" style="border:1px solid var(--bdl);border-radius:8px;padding:7px 12px;font-size:12px;font-family:Cairo,sans-serif;background:var(--w);color:var(--t1);outline:none;cursor:pointer;">
             <option value="">كل المدن</option>
@@ -732,6 +731,55 @@ const initData=()=>{
     if(dirty)LS.s(K.p,migrated);
   };
   migrateProjects();
+  // migrate: rename ملكية العقار → سجل الملكية
+  (()=>{const projs=LS.g(K.p)||[];let dirty=false;const updated=projs.map(p=>{const stages=(p.stages||[]).map(s=>{if(s.label==="ملكية العقار"){dirty=true;return{...s,label:"سجل الملكية"};}return s;});return{...p,stages};});if(dirty)LS.s(K.p,updated);})();
+  // migrate: remove تقرير استشاري معتمد (key p2) from existing projects
+  (()=>{const projs=LS.g(K.p)||[];let dirty=false;const updated=projs.map(p=>{const stages=(p.stages||[]).map(s=>{const docs=(s.docs||[]).filter(d=>d.key!=="p2"&&d.label!=="تقرير استشاري معتمد");if(docs.length!==(s.docs||[]).length){dirty=true;return{...s,docs};}return s;});return{...p,stages};});if(dirty)LS.s(K.p,updated);})();
+  // migrate: remove hardcoded land stage docs now handled by dynamic owner system
+  (()=>{
+    const staleKeys=new Set(["l4a","l4b","l4c","l5a","l5b","l5c","l5d"]);
+    const projs=LS.g(K.p)||[];let dirty=false;
+    projs.forEach(p=>{
+      const landStage=p.stages?.find(s=>s.key==="land");
+      if(!landStage)return;
+      const before=landStage.docs.length;
+      landStage.docs=landStage.docs.filter(d=>!staleKeys.has(d.key));
+      if(landStage.docs.length!==before)dirty=true;
+    });
+    if(dirty)LS.s(K.p,projs);
+  })();
+  // migrate: remove orphaned owner docs (docs with _ownerId not in landOwners)
+  (()=>{
+    const projs=LS.g(K.p)||[];let dirty=false;
+    projs.forEach(p=>{
+      const landStage=p.stages?.find(s=>s.key==="land");
+      if(!landStage)return;
+      const validIds=new Set((p.landOwners||[]).map(o=>o.id));
+      const before=landStage.docs.length;
+      landStage.docs=landStage.docs.filter(d=>!d._ownerId||validIds.has(d._ownerId));
+      if(landStage.docs.length!==before)dirty=true;
+    });
+    if(dirty)LS.s(K.p,projs);
+  })();
+  // migrate: remove individual-person docs (idFront/idBack) wrongly added to company owners
+  (()=>{
+    const projs=LS.g(K.p)||[];let dirty=false;
+    const individualKeys=new Set(["idFront","idBack"]);
+    projs.forEach(p=>{
+      const landStage=p.stages?.find(s=>s.key==="land");
+      if(!landStage||!(p.landOwners?.length))return;
+      const companyOwnerIds=new Set((p.landOwners||[]).filter(o=>o.type?.startsWith("company")).map(o=>o.id));
+      if(!companyOwnerIds.size)return;
+      const before=landStage.docs.length;
+      landStage.docs=landStage.docs.filter(d=>{
+        if(!d._ownerId||!companyOwnerIds.has(d._ownerId))return true;
+        const docSuffix=d.key.replace(d._ownerId+"_","");
+        return!individualKeys.has(docSuffix);
+      });
+      if(landStage.docs.length!==before)dirty=true;
+    });
+    if(dirty)LS.s(K.p,projs);
+  })();
   // patch: add missing docs to existing stages
   const patchDocs=()=>{
     const projects=LS.g(K.p)||[];
@@ -762,6 +810,8 @@ const initData=()=>{
     if(dirty)LS.s(K.p,projects);
   };
   patchDocs();
+  // patch: add تقرير سند جوانب حفر to projects with basementCount >= 2
+  (()=>{const projs=LS.g(K.p)||[];let dirty=false;projs.forEach(p=>{if((p.basementCount||0)<2)return;const permitStage=p.stages?.find(s=>s.key==="permits");if(!permitStage)return;if(permitStage.docs?.find(d=>d.key==="p_bsmt2"))return;permitStage.docs=permitStage.docs||[];permitStage.docs.push({key:"p_bsmt2",label:"تقرير سند جوانب حفر",req:true,cond:"bsmt2",up:null,notes:[]});dirty=true;});if(dirty)LS.s(K.p,projs);})();
   // strip "مكتمل — " prefix from devStatus
   const allProjs2=LS.g(K.p)||[];
   let statusFixed=false;
@@ -783,17 +833,10 @@ const STAGES=[
     {key:"d4",label:"موافقة الجهاز المحلي",req:true},
     {key:"d5",label:"قرار التخصيص",req:true}
   ]},
-  {key:"land",label:"ملكية العقار",icon:"🏠",color:"#1A3F6B",docs:[
+  {key:"land",label:"سجل الملكية",icon:"📜",color:"#1A3F6B",docs:[
     {key:"l0",label:"إخطار التخصيص",req:true},
     {key:"l1",label:"محضر استلام الأرض",req:true},
     {key:"l2",label:"كروكي الأرض",req:true},
-    {key:"l4a",label:"المالك الأول — عقد الهيئة / الجهاز",req:true},
-    {key:"l4b",label:"المالك الأول — صورة البطاقة (وجه)",req:true},
-    {key:"l4c",label:"المالك الأول — صورة البطاقة (ظهر)",req:true},
-    {key:"l5a",label:"المالك الثاني — توكيل رسمي",req:false},
-    {key:"l5b",label:"المالك الثاني — عقد البيع",req:false},
-    {key:"l5c",label:"المالك الثاني — صورة البطاقة (وجه)",req:false},
-    {key:"l5d",label:"المالك الثاني — صورة البطاقة (ظهر)",req:false},
   ]},
   {key:"design",label:"التصميمات الهندسية",icon:"📐",color:"#3D5A8A",docs:[
     {key:"des1",label:"الرسومات المعمارية المعتمدة",req:true},
@@ -804,7 +847,6 @@ const STAGES=[
   {key:"permits",label:"التراخيص والتصاريح",icon:"📑",color:"#C9A84C",docs:[
     {key:"p0", label:"بيان صلاحية الموقع",req:true},
     {key:"p1", label:"تقرير تربة معتمد",req:true},
-    {key:"p2", label:"تقرير استشاري معتمد",req:true},
     {key:"p3", label:"موافقة الدفاع المدني",req:false,cond:"comm"},
     {key:"p4", label:"موافقة بيئية",req:false,cond:"comm"},
     {key:"p5", label:"موافقة مرورية",req:false,cond:"comm"},
@@ -814,6 +856,10 @@ const STAGES=[
     {key:"p7c",label:"تقرير استشاري المصعد",req:true,cond:"elev"},
     {key:"p8", label:"طلب الترخيص",req:true},
     {key:"p9", label:"رخصة البناء",req:true},
+    {key:"p10",label:"عقد المقاولة",req:true},
+    {key:"p11",label:"شهادة الإشراف الهندسي",req:true},
+    {key:"p12",label:"تصريح الحفر",req:true},
+    {key:"p_bsmt2",label:"تقرير سند جوانب حفر",req:true,cond:"bsmt2"},
     {key:"eng1",label:"المهندس — صورة البطاقة (وجه)",req:true},
     {key:"eng2",label:"المهندس — صورة البطاقة (ظهر)",req:true},
     {key:"eng3",label:"المهندس — كارنيه النقابة",req:true},
@@ -831,27 +877,27 @@ const STAGES=[
   {key:"utilities",label:"المرافق والخدمات",icon:"⚡",color:"#1A6B6B",docs:[
     {key:"u_e1",label:"الكهرباء — طلب الخدمة",req:false},
     {key:"u_e2",label:"الكهرباء — موافقة الجهة",req:false},
-    {key:"u_e3",label:"الكهرباء — عقد الخدمة",req:false},
+    {key:"u_e3",label:"الكهرباء — عقد الخدمة",req:true},
     {key:"u_e4",label:"الكهرباء — تركيب العداد",req:false},
     {key:"u_w1",label:"المياه — طلب الخدمة",req:false},
     {key:"u_w2",label:"المياه — موافقة الجهة",req:false},
-    {key:"u_w3",label:"المياه — عقد الخدمة",req:false},
+    {key:"u_w3",label:"المياه — عقد الخدمة",req:true},
     {key:"u_w4",label:"المياه — تركيب العداد",req:false},
     {key:"u_s1",label:"الصرف الصحي — طلب الخدمة",req:false},
     {key:"u_s2",label:"الصرف الصحي — موافقة الجهة",req:false},
-    {key:"u_s3",label:"الصرف الصحي — عقد الخدمة",req:false},
+    {key:"u_s3",label:"الصرف الصحي — عقد الخدمة",req:true},
     {key:"u_s4",label:"الصرف الصحي — توصيل الشبكة",req:false},
     {key:"u_g1",label:"الغاز — طلب الخدمة",req:false},
     {key:"u_g2",label:"الغاز — موافقة الجهة",req:false},
-    {key:"u_g3",label:"الغاز — عقد الخدمة",req:false},
+    {key:"u_g3",label:"الغاز — عقد الخدمة",req:true},
     {key:"u_g4",label:"الغاز — تركيب العداد",req:false},
     {key:"u_t1",label:"الاتصالات — طلب الخدمة",req:false},
     {key:"u_t2",label:"الاتصالات — موافقة الجهة",req:false},
-    {key:"u_t3",label:"الاتصالات — عقد الخدمة",req:false},
+    {key:"u_t3",label:"الاتصالات — عقد الخدمة",req:true},
     {key:"u_t4",label:"الاتصالات — التركيب",req:false},
     {key:"u_i1",label:"الإنترنت — طلب الخدمة",req:false},
     {key:"u_i2",label:"الإنترنت — موافقة الجهة",req:false},
-    {key:"u_i3",label:"الإنترنت — عقد الخدمة",req:false},
+    {key:"u_i3",label:"الإنترنت — عقد الخدمة",req:true},
     {key:"u_i4",label:"الإنترنت — التركيب",req:false}
   ]},
   {key:"delivery",label:"التسليم والمطابقة",icon:"✅",color:"#1B7A4A",docs:[
@@ -929,9 +975,31 @@ const genUserCode=role=>{
   const k="UC_"+pfx;sq[k]=(sq[k]||0)+1;LS.s(K.seq,sq);
   return`${pfx}-${String(sq[k]).padStart(3,"0")}`;
 };
-const calcC=p=>{const all=p.stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]);const req=all.filter(d=>d.req);return req.length?Math.round(req.filter(d=>d.up).length/req.length*100):0;};
-const calcSC=s=>{const all=[...(s.docs||[]),...(s.cd||[])];return all.length?Math.round(all.filter(d=>d.up).length/all.length*100):0;};
-const curI=p=>{for(let i=0;i<p.stages.length;i++){const all=[...(p.stages[i].docs||[]),...(p.stages[i].cd||[])];if(all.filter(d=>d.req).some(d=>!d.up))return i;}return p.stages.length-1;};
+// returns false for docs that don't apply to this project
+const docOK=(d,p)=>{
+  // orphan check: doc belongs to an owner that no longer exists
+  if(d._ownerId){
+    const ownerIds=new Set((p.landOwners||[]).map(o=>o.id));
+    if(!ownerIds.has(d._ownerId))return false;
+    // company owner contract (عقد الهيئة) only required for compound projects
+    const owner=(p.landOwners||[]).find(o=>o.id===d._ownerId);
+    if(owner?.ownerKind==="company"&&d.key===`${d._ownerId}_contract`){
+      const isComp=p.isCompound||p.type==="compound";
+      if(!isComp)return false;
+    }
+  }
+  if(!d.cond)return true;
+  const isRes=(p.activity||"سكني")==="سكني";
+  if(d.cond==="comm"&&isRes)return false;
+  if(d.cond==="elev"&&!p.hasElevator)return false;
+  if(d.cond==="bsmt2"&&(p.basementCount||0)<2)return false;
+  return true;
+};
+const stageDocs=(s,p)=>[...(s.docs||[]),...(s.cd||[])].filter(d=>docOK(d,p));
+const calcC=p=>{const req=p.stages.flatMap(s=>stageDocs(s,p).filter(d=>d.req));return req.length?Math.round(req.filter(d=>d.up).length/req.length*100):0;};
+const calcSC=(s,p)=>{const all=p?stageDocs(s,p):([...(s.docs||[]),...(s.cd||[])]);return all.length?Math.round(all.filter(d=>d.up).length/all.length*100):0;};
+const stageComplete=(s,p)=>{if(s.done)return true;const req=stageDocs(s,p).filter(d=>d.req);return req.length>0&&req.every(d=>d.up);};
+const curI=p=>{for(let i=0;i<p.stages.length;i++){if(!stageComplete(p.stages[i],p))return i;}return p.stages.length-1;};
 const pill=(l,c,bg)=>`<span class="pill" style="background:${bg||c+"18"};color:${c};border:1px solid ${c}28;">${l}</span>`;
 const rp=r=>pill(RL[r]||r,RC[r]||"#8896A4");
 const $=id=>document.getElementById(id);
@@ -1108,15 +1176,19 @@ const migrateExistingOwners=()=>{
   const projs=LS.g(K.p)||[];
   let changed=false;
   projs.forEach(p=>{
+    const isCo=p.ownerKind==="company";
     if(!p.landOwners||p.landOwners.length===0){
       // No owners yet — create from project data
       if(p.isOriginalOwner!==false&&p.ownerName){
         const oid="lo_"+p.id;
-        p.landOwners=[{id:oid,name:p.ownerName,nid:p.nationalId||"",type:"direct",share:""}];
+        const ownerEntry={id:oid,name:p.ownerName,nid:p.nationalId||"",type:"direct",share:"",ownerKind:isCo?"company":"individual"};
+        if(isCo){ownerEntry.companyName=p.companyName||p.ownerName;ownerEntry.taxNum=p.taxNum||"";ownerEntry.comReg=p.comReg||"";ownerEntry.repName=p.repName||"";}
+        p.landOwners=[ownerEntry];
         const landStage=p.stages?.find(s=>s.key==="land");
         if(landStage){
           const existing=new Set((landStage.docs||[]).map(d=>d.key));
-          LAND_OWNER_DOCS["direct"].forEach(d=>{
+          const docsKey=isCo?"company_direct":"direct";
+          (LAND_OWNER_DOCS[docsKey]||LAND_OWNER_DOCS["direct"]).forEach(d=>{
             const dk=`${oid}_${d.key}`;
             if(!existing.has(dk))landStage.docs.push({key:dk,label:d.label,req:d.req,up:null,notes:[],_ownerId:oid});
           });
@@ -1124,14 +1196,47 @@ const migrateExistingOwners=()=>{
         changed=true;
       }
     } else {
-      // Fix existing owners: if name or nationalId matches project owner → must be "direct"
+      // Fix existing owners: remove duplicate phantom "direct" owners for company projects
+      // A phantom owner has id="lo_"+p.id and no ownerKind (created by old migration)
+      const phantomId="lo_"+p.id;
+      const phantom=p.landOwners.find(o=>o.id===phantomId&&!o.ownerKind);
+      const hasRealOwner=p.landOwners.some(o=>o.id!==phantomId&&o.type==="direct");
+      if(phantom&&hasRealOwner){
+        // Remove phantom owner and its docs
+        p.landOwners=p.landOwners.filter(o=>o.id!==phantomId);
+        const landStage=p.stages?.find(s=>s.key==="land");
+        if(landStage)landStage.docs=landStage.docs.filter(d=>d._ownerId!==phantomId);
+        changed=true;
+      } else if(phantom&&isCo){
+        // No real owner yet but phantom has wrong type — fix its ownerKind and replace individual docs with company docs
+        phantom.ownerKind="company";
+        const landStage=p.stages?.find(s=>s.key==="land");
+        if(landStage){
+          // Remove individual-only docs (idFront, idBack)
+          const individualOnly=new Set(["idFront","idBack"]);
+          const before=landStage.docs.length;
+          landStage.docs=landStage.docs.filter(d=>{
+            if(d._ownerId!==phantomId)return true;
+            const suffix=d.key.replace(phantomId+"_","");
+            return!individualOnly.has(suffix);
+          });
+          // Add missing company docs
+          const existing=new Set(landStage.docs.map(d=>d.key));
+          LAND_OWNER_DOCS["company_direct"].forEach(d=>{
+            const dk=`${phantomId}_${d.key}`;
+            if(!existing.has(dk))landStage.docs.push({key:dk,label:d.label,req:d.req,up:null,notes:[],_ownerId:phantomId});
+          });
+          if(landStage.docs.length!==before)changed=true;
+        }
+        changed=true;
+      }
+      // Fix existing owners: ensure type is correct
       p.landOwners.forEach(o=>{
         if(o.type!=="direct"){
           const sameName=p.ownerName&&o.name&&o.name.trim()===p.ownerName.trim();
           const sameNid=p.nationalId&&o.nid&&o.nid===p.nationalId;
           if(sameName||sameNid){o.type="direct";changed=true;}
         }
-        // Ensure nid is set from project if missing
         if(!o.nid&&o.type==="direct"&&p.nationalId){o.nid=p.nationalId;changed=true;}
       });
     }
@@ -1180,7 +1285,9 @@ const buildSB=()=>{
       {s:"المكتب"},{k:"office-staff",i:"👷",l:"الموظفون"},{k:"settings",i:"⚙",l:"الإعدادات"}
     ],
     developer:[
-      {k:"dash",i:"⊞",l:"لوحة التحكم"},{k:"projs",i:"◆",l:"مشاريعي"},{k:"svcs",i:"⚡",l:"طلباتي"},{k:"settings",i:"⚙",l:"الإعدادات"}
+      {k:"dash",i:"⊞",l:"لوحة التحكم"},{k:"projs",i:"◆",l:"مشاريعي"},{k:"svcs",i:"⚡",l:"طلباتي"},
+      {s:"الفريق"},{k:"office-staff",i:"👷",l:"الموظفون"},{k:"tasks",i:"☑",l:"المهام",b:true},
+      {k:"settings",i:"⚙",l:"الإعدادات"}
     ],
     client:[
       {k:"projs",i:"🏠",l:"ملفاتي"},{k:"svcs",i:"⚡",l:"طلب خدمة"},{k:"settings",i:"⚙",l:"الإعدادات"}
@@ -1559,14 +1666,14 @@ const rFile=()=>{
   const comp=calcC(proj),cc=CC(comp),ci=curI(proj);
   const can=["admin","staff","office","developer","client"].includes(CU.role);
   const canDel=CU.role==="admin";
-  const completedCount=proj.stages.filter((s)=>{const all=[...(s.docs||[]),...(s.cd||[])];const req=all.filter(d=>d.req);return req.length>0&&req.every(d=>d.up);}).length;
+  const completedCount=proj.stages.filter(s=>stageComplete(s,proj)).length;
   const addedBy=proj.byRole==="staff"?`موظف · ${proj.byName||""}`:proj.byRole==="office"?`مكتب هندسي · ${proj.byName||""}`:proj.byName||"—";
 
   // Stage tabs
   const stageTabs=proj.stages.map((s,i)=>{
-    const all=[...(s.docs||[]),...(s.cd||[])];
+    const all=stageDocs(s,proj);
     const req=all.filter(d=>d.req);
-    const done=req.length>0&&req.every(d=>d.up);
+    const done=stageComplete(s,proj);
     const isAct=i===CSV;
     const isCur=i===ci&&!done;
     const bg=done?"#1B7A4A":isCur?"var(--gold)":isAct?"var(--n7)":"transparent";
@@ -1579,21 +1686,15 @@ const rFile=()=>{
 
   // Active stage
   const stage=proj.stages[CSV];
-  const isResidential=!proj.activity||proj.activity==="سكني";
-  const hasElev=proj.hasElevator;
-  const allDocs=[...(stage.docs||[]),...(stage.cd||[])].filter(d=>{
-    if(d.cond==="comm"&&isResidential)return false;
-    if(d.cond==="elev"&&!hasElev)return false;
-    return true;
-  });
+  const allDocs=stageDocs(stage,proj);
   const req=allDocs.filter(d=>d.req);
   const isApproved=d=>d.up&&(d.up.status==="approved"||!d.up.status);
-  const stDone=req.length>0&&req.every(d=>isApproved(d));
+  const stDone=stageComplete(stage,proj);
   const stCur=CSV===ci&&!stDone;
-  const sc=calcSC(stage);
-  const upCount=allDocs.filter(d=>isApproved(d)).length;
+  const sc=stDone?100:calcSC(stage,proj);
+  const upCount=allDocs.filter(d=>d.up).length;
 
-  const mkDocCard=(doc,sk,isC,compact=false)=>{
+  const mkDocCard=(doc,sk,isC,compact=false,plain=false)=>{
     const dk=doc.key;
     const docNotes=Array.isArray(doc.notes)?doc.notes:(doc.note?[doc.note]:[]);
     const noteTagsHtml2=docNotes.map((n,i)=>`<span style="display:inline-flex;align-items:center;gap:4px;background:#FEF9EC;border:1px solid #E8D08A;border-radius:20px;padding:2px 8px;font-size:10px;color:#7A5C00;white-space:nowrap;">📝 ${n.replace(/</g,"&lt;")}${can?`<button onclick="delNote('${sk}','${dk}',${isC},${i})" style="background:none;border:none;cursor:pointer;color:#B7770D;font-size:13px;line-height:1;padding:0;">×</button>`:""}</span>`).join("");
@@ -1651,7 +1752,7 @@ const rFile=()=>{
           <button onclick="rCD('${sk}','${dk}')" style="background:none;border:none;cursor:pointer;color:#C0392B;font-size:13px;padding:2px 4px;" title="حذف المستند">🗑</button>
         </div>`:""}
       </div>
-      ${upArea}${noteHtml2}${sk!=="land"&&can?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--bdl);"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;"><input type="checkbox" ${(doc.fee||{}).enabled?"checked":""} onchange="sFeeEnabled('${sk}','${dk}',${isC},this.checked)" style="cursor:pointer;accent-color:var(--gold);width:13px;height:13px;"/><span style="font-size:11px;color:var(--t3);">💰 يوجد رسوم لهذا الإجراء</span></label><div id="fb-${sk}-${dk}" style="display:${(doc.fee||{}).enabled?"flex":"none"};margin-top:6px;background:var(--w2);border-radius:8px;padding:8px;flex-wrap:wrap;gap:6px;align-items:center;"><input placeholder="💰 المبلغ (جنيه)" value="${((doc.fee||{}).amount||"").replace(/"/g,"&quot;")}" onchange="sFee('${sk}','${dk}',${isC},'amount',this.value)" style="flex:1;min-width:90px;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);"/>${(doc.fee||{}).receipt?`<div style="flex:1;min-width:110px;background:var(--grl);border-radius:6px;padding:5px 8px;display:flex;align-items:center;gap:5px;font-size:11px;"><span>🧾</span><span style="flex:1;color:var(--gr);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px;">${doc.fee.receipt.name}</span><a href="${doc.fee.receipt.url||doc.fee.receipt.data}" download="${doc.fee.receipt.name}" class="btn btn-gh btn-xs">⬇</a><button onclick="sFee('${sk}','${dk}',${isC},'receipt',null);rFile();" class="btn btn-d btn-xs">🗑</button></div>`:`<label style="flex:1;min-width:100px;display:flex;align-items:center;justify-content:center;gap:5px;border:1.5px dashed var(--bdl);border-radius:6px;padding:5px 9px;cursor:pointer;font-size:11px;color:var(--t3);background:var(--w);">🧾 رفع الإيصال<input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadFeeReceipt('${sk}','${dk}',${isC},this)" style="display:none;"/></label>`}<input type="date" value="${(doc.fee||{}).date||""}" onchange="sFee('${sk}','${dk}',${isC},'date',this.value)" style="flex:1;min-width:110px;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);"/><select onchange="sFee('${sk}','${dk}',${isC},'method',this.value)" style="flex:1;min-width:100px;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);"><option value="">💳 طريقة الدفع</option>${["نقدي","تحويل بنكي","فودافون كاش","إنستاباي"].map(m=>`<option ${(doc.fee||{}).method===m?"selected":""}>${m}</option>`).join("")}</select></div></div>`:""}
+      ${upArea}${noteHtml2}${!plain&&sk!=="land"&&can?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--bdl);"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;"><input type="checkbox" ${(doc.fee||{}).enabled?"checked":""} onchange="sFeeEnabled('${sk}','${dk}',${isC},this.checked)" style="cursor:pointer;accent-color:var(--gold);width:13px;height:13px;"/><span style="font-size:11px;color:var(--t3);">💰 يوجد رسوم لهذا الإجراء</span></label><div id="fb-${sk}-${dk}" style="display:${(doc.fee||{}).enabled?"flex":"none"};margin-top:6px;background:var(--w2);border-radius:8px;padding:8px;flex-wrap:wrap;gap:6px;align-items:center;"><input placeholder="💰 المبلغ (جنيه)" value="${((doc.fee||{}).amount||"").replace(/"/g,"&quot;")}" onchange="sFee('${sk}','${dk}',${isC},'amount',this.value)" style="flex:1;min-width:90px;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);"/>${(doc.fee||{}).receipt?`<div style="flex:1;min-width:110px;background:var(--grl);border-radius:6px;padding:5px 8px;display:flex;align-items:center;gap:5px;font-size:11px;"><span>🧾</span><span style="flex:1;color:var(--gr);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px;">${doc.fee.receipt.name}</span><a href="${doc.fee.receipt.url||doc.fee.receipt.data}" download="${doc.fee.receipt.name}" class="btn btn-gh btn-xs">⬇</a><button onclick="sFee('${sk}','${dk}',${isC},'receipt',null);rFile();" class="btn btn-d btn-xs">🗑</button></div>`:`<label style="flex:1;min-width:100px;display:flex;align-items:center;justify-content:center;gap:5px;border:1.5px dashed var(--bdl);border-radius:6px;padding:5px 9px;cursor:pointer;font-size:11px;color:var(--t3);background:var(--w);">🧾 رفع الإيصال<input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadFeeReceipt('${sk}','${dk}',${isC},this)" style="display:none;"/></label>`}<input type="date" value="${(doc.fee||{}).date||""}" onchange="sFee('${sk}','${dk}',${isC},'date',this.value)" style="flex:1;min-width:110px;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);"/><select onchange="sFee('${sk}','${dk}',${isC},'method',this.value)" style="flex:1;min-width:100px;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);"><option value="">💳 طريقة الدفع</option>${["نقدي","تحويل بنكي","شيك مصرفي","فودافون كاش","إنستاباي"].map(m=>`<option ${(doc.fee||{}).method===m?"selected":""}>${m}</option>`).join("")}</select></div></div>`:""}
       ${(()=>{
         const cs=doc.consultant||{};
         const cFile=(field,label)=>{
@@ -1670,7 +1771,7 @@ const rFile=()=>{
             <input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadConsultantDoc('${sk}','${dk}',${isC},'${field}',this)" style="display:none;"/>
           </label>`:`<div style="background:var(--w2);border-radius:6px;padding:5px;text-align:center;"><div style="font-size:9px;color:var(--t3);">${label}</div><div style="color:var(--t3);font-size:10px;">—</div></div>`;
         };
-        if(sk==="land")return"";
+        if(sk==="land"||plain)return"";
         if(!cs.enabled&&!can)return"";
         return`<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--bdl);">
           ${can?`<label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;margin-bottom:${cs.enabled?"6px":"0"};">
@@ -1694,17 +1795,99 @@ const rFile=()=>{
     if(stage.key==="permits"){
       const sk=stage.key;
       const engKeys=["eng1","eng2","eng3","eng4","eng5","eng6"];
-      const engDocs=engKeys.map(k=>allDocs.find(d=>d.key===k)).filter(Boolean);
-      const regularDocs=allDocs.filter(d=>!engKeys.includes(d.key)&&!(stage.cd||[]).some(c=>c.key===d.key));
+      const elevKeys=["p7","p7b","p7c"];
+      const exKeys=["p10","p11","p12"];
+      // inject missing template docs into allDocs for this render
+      const tplPermits=STAGES.find(s=>s.key==="permits")?.docs||[];
+      const allDocsEx=[...allDocs];
+      tplPermits.filter(t=>[...engKeys,...elevKeys,...exKeys].includes(t.key)&&!allDocsEx.find(d=>d.key===t.key)).forEach(t=>allDocsEx.push({...t,up:null}));
+      const engDocs=engKeys.map(k=>allDocsEx.find(d=>d.key===k)).filter(Boolean);
+      const elevDocs=elevKeys.map(k=>allDocsEx.find(d=>d.key===k)).filter(Boolean);
+      const exDocs=exKeys.map(k=>allDocsEx.find(d=>d.key===k)).filter(Boolean);
+      const regularDocs=allDocs.filter(d=>!engKeys.includes(d.key)&&!elevKeys.includes(d.key)&&!exKeys.includes(d.key)&&!(stage.cd||[]).some(c=>c.key===d.key));
       const cdDocs=stage.cd||[];
+      const exCdDocs=cdDocs.filter(d=>d.key.startsWith("ex_cd_"));
+      const otherCdDocs=cdDocs.filter(d=>!d.key.startsWith("ex_cd_"));
       let html=regularDocs.map(d=>`${mkDocCard(d,sk,false,false)}<div style="margin-bottom:8px;"></div>`).join("");
+      if(elevDocs.length){
+        html+=ownerHeader("مستندات المصعد","🛗","#5A3A8A");
+        html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">${elevDocs.map(d=>mkDocCard(d,sk,false,true)).join("")}</div><div style="margin-bottom:8px;"></div>`;
+      }
       if(engDocs.length){
         html+=ownerHeader("مستندات المهندس المشرف","🏗","#3D5A8A");
-        html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">${engDocs.slice(0,2).map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`;
-        html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">${engDocs.slice(2,4).map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`;
-        if(engDocs.length>4)html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">${engDocs.slice(4).map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`;
+        html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">${engDocs.slice(0,3).map(d=>mkDocCard(d,sk,false,true,true)).join("")}</div>`;
+        if(engDocs.length>3)html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px;">${engDocs.slice(3).map(d=>mkDocCard(d,sk,false,true,true)).join("")}</div>`;
+        html+=`<div style="margin-bottom:8px;"></div>`;
       }
-      if(cdDocs.length)html+=`<div style="margin-top:8px;">${cdDocs.map(d=>mkDocCard(d,sk,true,false)).join("")}</div>`;
+      if(otherCdDocs.length)html+=`<div style="margin-top:8px;">${otherCdDocs.map(d=>mkDocCard(d,sk,true,false)).join("")}</div>`;
+      if(exDocs.length||exCdDocs.length){
+        html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          ${ownerHeader("مستندات تصريح الحفر","⛏","#7A3A1C")}
+          ${can?`<button onclick="openAddExDoc('${proj.id}')" style="background:#7A3A1C;border:none;border-radius:7px;color:#fff;cursor:pointer;font-size:12px;padding:5px 12px;font-family:Cairo,sans-serif;font-weight:700;">+ إضافة</button>`:""}
+        </div>`;
+        const allExDocs=[...exDocs,...exCdDocs];
+        html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">${allExDocs.map(d=>mkDocCard(d,sk,exCdDocs.includes(d),true)).join("")}</div>`;
+      }
+      return html;
+    }
+
+    if(stage.key==="utilities"){
+      const sk=stage.key;
+      const mkUtilCard=(label,icon,color,reqKey,conKey,insKey)=>{
+        const d1=allDocs.find(d=>d.key===reqKey);
+        const d2=allDocs.find(d=>d.key===conKey);
+        const d3=allDocs.find(d=>d.key===insKey);
+        return`<div style="background:var(--w);border:1.5px solid ${color}44;border-radius:12px;padding:12px 14px;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <span style="font-size:18px;">${icon}</span>
+            <span style="font-size:13px;font-weight:800;color:var(--t1);">${label}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+            ${d1?mkDocCard(d1,sk,false,true):""}
+            ${d2?`<div style="border-radius:9px;outline:2px solid ${color}88;outline-offset:2px;">${mkDocCard(d2,sk,false,true)}</div>`:""}
+            ${d3?mkDocCard(d3,sk,false,true):""}
+          </div>
+        </div>`;
+      };
+      let html="";
+      if(can)html+=`<div style="display:flex;justify-content:flex-start;margin-bottom:10px;">
+        <button onclick="openAddUtility('${proj.id}')" style="background:var(--n8);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:12px;padding:6px 14px;font-family:Cairo,sans-serif;font-weight:700;">+ إضافة خدمة</button>
+      </div>`;
+      html+=mkUtilCard("الكهرباء","⚡","#F59E0B","u_e1","u_e3","u_e4");
+      html+=mkUtilCard("المياه","💧","#0EA5E9","u_w1","u_w3","u_w4");
+      html+=mkUtilCard("الغاز","🔥","#EF4444","u_g1","u_g3","u_g4");
+      html+=mkUtilCard("الاتصالات","📞","#8B5CF6","u_t1","u_t3","u_t4");
+      // Custom utilities added via openAddUtility
+      const cdDocs=(stage.cd||[]);
+      const utilGroups={};
+      const standalone=[];
+      for(const d of cdDocs){
+        const m=d.key.match(/^cu_(\d+)_(req|con|ins)$/);
+        if(m){const idx=m[1];(utilGroups[idx]=utilGroups[idx]||[]).push(d);}
+        else standalone.push(d);
+      }
+      Object.keys(utilGroups).sort().forEach(idx=>{
+        const grp=utilGroups[idx];
+        const d1=grp.find(d=>d.key.endsWith("_req"));
+        const d2=grp.find(d=>d.key.endsWith("_con"));
+        const d3=grp.find(d=>d.key.endsWith("_ins"));
+        const name=d1?.label?.replace(" — طلب الخدمة","")||d2?.label?.replace(" — عقد الخدمة","")||"خدمة إضافية";
+        html+=`<div style="background:var(--w);border:1.5px solid var(--bdl);border-radius:12px;padding:12px 14px;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:18px;">🔌</span>
+              <span style="font-size:13px;font-weight:800;color:var(--t1);">${name}</span>
+            </div>
+            ${can?`<button onclick="removeUtilGroup('${proj.id}','${idx}')" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:18px;line-height:1;">×</button>`:""}
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+            ${d1?mkDocCard(d1,sk,true,true):""}
+            ${d2?mkDocCard(d2,sk,true,true):""}
+            ${d3?mkDocCard(d3,sk,true,true):""}
+          </div>
+        </div>`;
+      });
+      if(standalone.length)html+=`<div style="margin-top:8px;">${standalone.map(d=>mkDocCard(d,sk,true,false)).join("")}</div>`;
       return html;
     }
 
@@ -1727,11 +1910,24 @@ const rFile=()=>{
       </div>`;
     };
     const ownerCard=(owner,color,owners)=>{
-      const ownerDocs=allDocs.filter(d=>d.key.startsWith(owner.id+"_"));
-      const cols=Math.min(ownerDocs.length,3);
-      const autoShare=owners.length?Math.round(100/owners.length):0;
-      const shareLabel=owner.share?owner.share+"%":autoShare+"%";
+      let ownerDocs=allDocs.filter(d=>d.key.startsWith(owner.id+"_"));
       const isCo=owner.ownerKind==="company";
+      const isComp=proj.isCompound||proj.type==="compound";
+      if(isCo){
+        // For non-compound: hide عقد الهيئة (not applicable for normal projects)
+        if(!isComp) ownerDocs=ownerDocs.filter(d=>d.key!==`${owner.id}_contract`);
+        [{key:`${owner.id}_repIdFront`,label:"بطاقة الممثل (وجه)",req:false},{key:`${owner.id}_repIdBack`,label:"بطاقة الممثل (ظهر)",req:false}]
+          .forEach(mk=>{
+            const ex=ownerDocs.find(d=>d.key===mk.key);
+            if(!ex)ownerDocs=[...ownerDocs,{...mk,up:null}];
+            else if(ex.label===mk.key||!ex.label)ownerDocs=ownerDocs.map(d=>d.key===mk.key?{...d,label:mk.label}:d);
+          });
+      }
+      const cols=Math.min(ownerDocs.length,3);
+      const explicitTotal=owners.filter(o=>o.share).reduce((s,o)=>s+Number(o.share),0);
+      const withoutShare=owners.filter(o=>!o.share).length;
+      const autoShare=withoutShare>0?Math.round((100-explicitTotal)/withoutShare):0;
+      const shareLabel=owner.share?owner.share+"%":autoShare+"%";
       const subInfo=isCo
         ?[owner.comReg?"س.ت: "+owner.comReg:"",owner.taxNum?"ضريبي: "+owner.taxNum:"",owner.repName?"ممثل: "+owner.repName:""].filter(Boolean).join(" · ")
         :owner.nid?"رقم قومي: "+owner.nid:"";
@@ -1771,21 +1967,26 @@ const rFile=()=>{
       }
     }
 
-    // ── المالك الثاني / المشتري ──
-    html+=sectionHdr("المالك الثاني / المشتري","#3D5A8A","partner",partnerOwners);
-    if(partnerOwners.length){
-      partnerOwners.forEach(o=>{html+=ownerCard(o,"#3D5A8A",partnerOwners);});
-    } else {
-      const lg2=[get("l5a"),get("l5b"),get("l5c"),get("l5d")].filter(Boolean);
-      if(lg2.length){
-        html+=`<div style="background:var(--w);border:1.5px solid #3D5A8A33;border-radius:10px;padding:10px 12px;margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;"><span style="font-size:16px;">👤</span><span style="font-size:12px;font-weight:700;color:var(--t1);">المالك الثاني</span></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">${lg2.slice(0,2).map(d=>mkDocCard(d,sk,false,true)).join("")}</div>
-          ${lg2.length>2?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">${lg2.slice(2).map(d=>mkDocCard(d,sk,false,true)).join("")}</div>`:""}
+    // ── الملاك الشركاء (مرقمون) ──
+    const topPartners=partnerOwners.filter(o=>!o.parentId);
+    const nums2=["الثاني","الثالث","الرابع","الخامس","السادس","السابع","الثامن"];
+    if(topPartners.length){
+      topPartners.forEach((owner,idx)=>{
+        const ownerNum=nums2[idx]||`${idx+2}`;
+        const subParts=landOwners.filter(o=>o.parentId===owner.id);
+        const transferLabel={شراء:"المشتري",ورثة:"الوارث",هبة:"الموهوب له",قرار:"المستفيد",مزاد:"المشتري بالمزاد",تنازل:"المتنازل إليه"}[owner.transferType]||owner.transferType||"المشتري";
+        html+=`<div style="margin:14px 0 4px;display:flex;align-items:center;gap:8px;">
+          <div style="flex:1;font-size:13px;font-weight:800;color:#3D5A8A;">المالك ${ownerNum} / ${transferLabel}</div>
+          ${can?`<button onclick="addLandOwner('partner','${owner.id}')" style="background:var(--n8);border:none;border-radius:6px;color:#fff;cursor:pointer;font-size:11px;padding:4px 10px;font-family:Cairo,sans-serif;white-space:nowrap;">+ شريك</button>`:""}
         </div>`;
-      } else {
-        html+=`<div style="text-align:center;color:var(--t3);font-size:11px;padding:14px;background:var(--w2);border-radius:8px;margin-bottom:8px;">لم يُضف مالك ثانٍ بعد</div>`;
-      }
+        const groupMembers=[owner,...subParts];
+        html+=ownerCard(owner,"#3D5A8A",groupMembers);
+        subParts.forEach((sp,si)=>{
+          const spLabel=`المالك ${ownerNum} / شريك ${si+1}`;
+          html+=`<div style="margin:8px 0 4px;padding-right:12px;font-size:11px;font-weight:700;color:#8B5CF6;">${spLabel}</div>`;
+          html+=ownerCard(sp,"#8B5CF6",groupMembers);
+        });
+      });
     }
 
     const cdDocs=(stage.cd||[]);
@@ -1821,7 +2022,7 @@ const rFile=()=>{
           <input type="date" value="${fee.date||""}" onchange="sFee('${sk}','${dk}',${isC},'date',this.value)" style="flex:1;min-width:110px;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);" title="📅 تاريخ السداد"/>
           <select onchange="sFee('${sk}','${dk}',${isC},'method',this.value)" style="flex:1;min-width:100px;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);">
             <option value="">💳 طريقة الدفع</option>
-            ${["نقدي","تحويل بنكي","فودافون كاش","إنستاباي"].map(m=>`<option ${fee.method===m?"selected":""}>${m}</option>`).join("")}
+            ${["نقدي","تحويل بنكي","شيك مصرفي","فودافون كاش","إنستاباي"].map(m=>`<option ${fee.method===m?"selected":""}>${m}</option>`).join("")}
           </select>
         </div>
       </div>`:"";
@@ -1861,14 +2062,14 @@ const rFile=()=>{
   }).join("");
 
   // ── header stats ──
-  const totalDocs2=proj.stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]).length;
-  const uploadedDocs2=proj.stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]).filter(d=>d.up).length;
-  const missingReqTotal=proj.stages.flatMap(s=>[...(s.docs||[]),...(s.cd||[])]).filter(d=>d.req&&!d.up).length;
+  const totalDocs2=proj.stages.flatMap(s=>stageDocs(s,proj)).length;
+  const uploadedDocs2=proj.stages.flatMap(s=>stageDocs(s,proj)).filter(d=>d.up).length;
+  const missingReqTotal=proj.stages.flatMap(s=>stageDocs(s,proj)).filter(d=>d.req&&!d.up).length;
   const healthScore=totalDocs2>0?Math.round(uploadedDocs2/totalDocs2*100):0;
   const healthColor2=healthScore>=80?"#4ABA7A":healthScore>=50?"#C9A84C":"#E74C3C";
   const curSt=proj.stages[ci];
-  const missingCurDocs=curSt?[...(curSt.docs||[]),...(curSt.cd||[])].filter(d=>d.req&&!d.up):[];
-  const responsible=(proj.parties||[]).find(pt=>["office","staff"].includes(pt.role));
+  const missingCurDocs=curSt?stageDocs(curSt,proj).filter(d=>d.req&&!d.up):[];
+  const responsible=(proj.parties||[]).find(pt=>pt.role==="office")||(proj.byRole==="office"?{name:proj.byName}:null)||(proj.byRole==="staff"?{name:proj.byName}:null);
   const needsAttention=missingCurDocs.length>0||missingReqTotal>2;
   const locParts=[proj.plot?"قطعة "+proj.plot:"",proj.neighborhood,proj.district,proj.city,proj.governorate].filter(Boolean);
 
@@ -1876,23 +2077,33 @@ const rFile=()=>{
   const timelineHtml=(()=>{
     const parts=[];
     proj.stages.forEach((s,i)=>{
-      const all=[...(s.docs||[]),...(s.cd||[])];
-      const req=all.filter(d=>d.req);
-      const done=req.length>0&&req.every(d=>d.up);
+      const done=stageComplete(s,proj);
       const isCur=i===ci&&!done;
-      const circleBg=done?"#1B7A4A":isCur?"#C9A84C":"#2D3748";
-      const circleBdr=done?"#1B7A4A":isCur?"rgba(201,168,76,.7)":"#3D4F6A";
+      const allDocs=stageDocs(s,proj);
+      const upDocs=allDocs.filter(d=>d.up).length;
+      const totalDocs=allDocs.length;
+      const stageComp=totalDocs>0?Math.round(upDocs/totalDocs*100):0;
+      const r=20; const circ=2*Math.PI*r;
+      const dash=Math.round(circ*stageComp/100);
+      const ringColor=done?"#1B7A4A":isCur?"#C9A84C":stageComp>0?"#4A7FA8":"transparent";
+      const circleBg=done?"#1B7A4A":isCur?"rgba(201,168,76,.15)":"#2D3748";
       const labelColor=isCur?"#C9A84C":done?"#fff":"#8896A4";
-      const inner=done?`<span style="font-size:18px;color:#fff;">✓</span>`:isCur?`<span style="font-size:18px;">${s.icon||"📋"}</span>`:`<span style="font-size:12px;font-weight:700;color:#8896A4;">${i+1}</span>`;
-      parts.push(`<div onclick="switchStage(${i})" style="display:flex;flex-direction:column;align-items:center;min-width:64px;max-width:84px;cursor:pointer;flex-shrink:0;">
-        <div style="width:44px;height:44px;border-radius:50%;background:${circleBg};border:2px solid ${circleBdr};display:flex;align-items:center;justify-content:center;${isCur?"box-shadow:0 0 0 8px rgba(201,168,76,.12);":""}">${inner}</div>
-        <div style="font-size:10px;color:${labelColor};font-weight:${isCur?700:done?500:400};text-align:center;margin-top:8px;line-height:1.35;">${s.label}</div>
-        ${done?`<div style="font-size:12px;color:#1B7A4A;margin-top:3px;font-weight:700;">✓</div>`:""}
+      const inner=done?`<span style="font-size:16px;color:#fff;">✓</span>`:isCur?`<span style="font-size:16px;">${s.icon||"📋"}</span>`:`<span style="font-size:11px;font-weight:700;color:#8896A4;">${i+1}</span>`;
+      parts.push(`<div onclick="switchStage(${i})" style="display:flex;flex-direction:column;align-items:center;min-width:64px;max-width:84px;cursor:pointer;flex-shrink:0;padding-top:6px;">
+        <div style="position:relative;width:50px;height:50px;">
+          <svg viewBox="0 0 50 50" style="width:50px;height:50px;transform:rotate(-90deg);position:absolute;inset:0;">
+            <circle cx="25" cy="25" r="${r}" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="4"/>
+            ${totalDocs>0&&stageComp>0?`<circle cx="25" cy="25" r="${r}" fill="none" stroke="${ringColor}" stroke-width="4" stroke-dasharray="${dash} ${Math.round(circ)}" stroke-linecap="round"/>`:""}
+          </svg>
+          <div style="position:absolute;inset:4px;border-radius:50%;background:${circleBg};display:flex;align-items:center;justify-content:center;">${inner}</div>
+        </div>
+        <div style="font-size:10px;color:${labelColor};font-weight:${isCur?700:done?500:400};text-align:center;margin-top:7px;line-height:1.35;">${s.label}</div>
+        ${totalDocs>0&&!done?`<div style="font-size:9px;color:${isCur?"#C9A84C":"#4A5A6A"};margin-top:2px;">${upDocs}/${totalDocs}</div>`:""}
       </div>`);
       if(i<proj.stages.length-1){
         const lineColor=done?"#1B7A4A":isCur?"#C9A84C":"transparent";
         const dashed=!done&&!isCur;
-        parts.push(`<div style="flex:1;align-self:flex-start;margin-top:21px;height:2px;min-width:8px;${dashed?"border-top:2px dashed #3D4F6A;":`background:${lineColor};`}"></div>`);
+        parts.push(`<div style="flex:1;align-self:flex-start;margin-top:24px;height:2px;min-width:8px;${dashed?"border-top:2px dashed #3D4F6A;":`background:${lineColor};`}"></div>`);
       }
     });
     return parts.join("");
@@ -1911,27 +2122,36 @@ const rFile=()=>{
   </div>
 
   <!-- DARK HEADER -->
-  <div style="background:#0D1B2E;border-radius:16px;overflow:hidden;margin-bottom:14px;">
+  <div style="background:#0D1B2E;border-radius:16px;margin-bottom:14px;overflow:visible;">
 
     <!-- TOP BAR -->
     <div style="padding:20px 24px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
       <div>
-        <div style="font-size:24px;font-weight:900;color:#fff;margin-bottom:4px;">${proj.ownerName}</div>
-        <div style="font-size:12px;color:#8896A4;margin-bottom:2px;">📍 ${locParts.join(" · ")}</div>
-        <span style="font-size:11px;color:#C9A84C;font-family:monospace;font-weight:700;">#${proj.id}</span>
+        <div style="font-size:24px;font-weight:900;color:#fff;line-height:1;margin-bottom:5px;">${proj.ownerName}</div>
+        <div style="font-size:12px;color:#8896A4;margin-bottom:5px;">📍 ${locParts.join(" · ")}</div>
+        <span style="font-size:12px;color:#C9A84C;font-family:monospace;font-weight:700;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);border-radius:6px;padding:2px 8px;white-space:nowrap;">#${proj.id}</span>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
-        <div></div>
-        <div style="display:flex;gap:20px;align-items:center;">
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;">
+        <div style="display:flex;gap:18px;align-items:center;">
           <div style="text-align:center;">
             <div style="font-size:28px;font-weight:900;color:#fff;line-height:1;font-family:monospace;">${completedCount}/${proj.stages.length}</div>
             <div style="font-size:10px;color:#8896A4;margin-top:3px;">مراحل مكتملة</div>
           </div>
           <div style="width:1px;height:36px;background:rgba(255,255,255,.1);"></div>
-          <div style="text-align:center;">
-            <div style="font-size:28px;font-weight:900;color:#C9A84C;line-height:1;font-family:monospace;">${comp}%</div>
-            <div style="font-size:10px;color:#8896A4;margin-top:3px;">الإنجاز الكلي</div>
+          <div style="position:relative;width:72px;height:72px;">
+            <svg viewBox="0 0 72 72" style="width:72px;height:72px;transform:rotate(-90deg);">
+              <circle cx="36" cy="36" r="30" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7"/>
+              <circle cx="36" cy="36" r="30" fill="none" stroke="#C9A84C" stroke-width="7"
+                stroke-dasharray="${Math.round(2*Math.PI*30*comp/100)} ${Math.round(2*Math.PI*30)}"
+                stroke-linecap="round"/>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+              <span style="font-size:15px;font-weight:900;color:#C9A84C;font-family:monospace;line-height:1;">${comp}%</span>
+              <span style="font-size:8px;color:#8896A4;margin-top:2px;">الإنجاز</span>
+            </div>
           </div>
+          <div style="width:1px;height:36px;background:rgba(255,255,255,.1);"></div>
+          <button onclick="showProjAnalytics('${proj.id}')" style="background:rgba(201,168,76,.12);border:1.5px solid rgba(201,168,76,.4);color:#C9A84C;border-radius:8px;padding:8px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;white-space:nowrap;">📊 التحليلات</button>
         </div>
       </div>
     </div>
@@ -1943,21 +2163,51 @@ const rFile=()=>{
 
     <!-- INFO CARDS -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;background:#1C2D4A;border-top:1px solid rgba(255,255,255,.06);">
-      <div style="padding:16px 20px;border-left:1px solid rgba(255,255,255,.06);">
-        <div style="font-size:10px;color:#8896A4;font-weight:700;margin-bottom:10px;">📊 حالة المشروع</div>
-        <div style="display:inline-block;background:${needsAttention?"rgba(201,168,76,.15)":"rgba(27,122,74,.15)"};border:1px solid ${needsAttention?"rgba(201,168,76,.35)":"rgba(27,122,74,.35)"};color:${needsAttention?"#C9A84C":"#4ABA7A"};border-radius:8px;padding:5px 14px;font-size:13px;font-weight:800;margin-bottom:8px;">${needsAttention?"يحتاج متابعة":"على المسار"}</div>
-        <div style="font-size:11px;color:#8896A4;line-height:1.6;">${missingCurDocs.length>0?`ينقص ${missingCurDocs.length} مستندات في هذه المرحلة`:missingReqTotal>0?`${missingReqTotal} مستند مطلوب`:"المستندات الحالية مكتملة"}${missingReqTotal>0?`<br><span style="color:${needsAttention?"#C9A84C":"#8896A4"};">يوجد مستندات متأخرة</span>`:""}</div>
+
+      <!-- COL 1: حالة المشروع + الإجراء الحالي -->
+      <div style="padding:18px 20px;border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <div style="font-size:11px;color:#8896A4;font-weight:700;letter-spacing:.09em;margin-bottom:10px;">📊 حالة المشروع</div>
+          <div style="font-size:13px;font-weight:700;line-height:1.7;">${missingCurDocs.length>0?`<span style="color:#E8C96A;">⚠ ينقص </span><b style="color:#fff;">${missingCurDocs.length} مستند</b><span style="color:#8896A4;font-size:11px;"> في ${curSt?.label||""}</span>`:`<span style="color:#4ABA7A;">✓ كل المستندات المطلوبة مكتملة</span>`}</div>
+        </div>
+        <div style="margin-top:auto;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-size:11px;color:#8896A4;font-weight:700;letter-spacing:.09em;">📌 الإجراء الحالي</div>
+            ${can?`<div style="display:flex;gap:5px;">
+              ${proj.nextAction?`<button onclick="doneNextAction('${proj.id}')" title="تم" style="width:26px;height:26px;background:rgba(27,122,74,.18);border:1px solid rgba(27,122,74,.4);color:#4ABA7A;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;font-family:Cairo,sans-serif;padding:0;display:flex;align-items:center;justify-content:center;">✓</button>`:""}
+              <button onclick="openNewAction('${proj.id}')" title="إجراء جديد" style="width:26px;height:26px;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.35);color:#C9A84C;border-radius:6px;font-size:16px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;padding:0;display:flex;align-items:center;justify-content:center;">+</button>
+            </div>`:""}
+          </div>
+          <div id="na-display-${proj.id}">
+            <div style="background:transparent;border:1.5px solid rgba(201,168,76,.45);border-radius:8px;padding:8px 14px;font-size:13px;color:${proj.nextAction?"#fff":"#4A5A6A"};font-weight:${proj.nextAction?600:400};line-height:1.5;width:100%;box-sizing:border-box;">${proj.nextAction||"لم يُحدد إجراء بعد"}</div>
+          </div>
+          <div id="na-input-${proj.id}" style="display:none;">
+            <input id="na-val-${proj.id}" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(201,168,76,.4);border-radius:7px;padding:7px 11px;font-size:11px;color:#fff;font-family:Cairo,sans-serif;outline:none;margin-bottom:7px;" placeholder="اكتب الإجراء الجديد..." onkeydown="if(event.key==='Enter')saveNewAction('${proj.id}');if(event.key==='Escape')closeNewAction('${proj.id}');"/>
+            <div style="display:flex;gap:6px;">
+              <button onclick="saveNewAction('${proj.id}')" style="flex:1;background:#C9A84C;border:none;color:#0D1B2E;border-radius:7px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Cairo,sans-serif;">✓ حفظ</button>
+              <button onclick="closeNewAction('${proj.id}')" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#8896A4;border-radius:7px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:Cairo,sans-serif;">✕</button>
+            </div>
+          </div>
+        </div>
       </div>
-      <div style="padding:16px 20px;border-left:1px solid rgba(255,255,255,.06);text-align:center;">
-        <div style="font-size:10px;color:#8896A4;font-weight:700;margin-bottom:8px;">📋 المرحلة الحالية</div>
-        <div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:10px;">${curSt?.label||"—"}</div>
-        ${responsible?`<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);border-radius:20px;padding:4px 12px;font-size:11px;color:#60A5FA;margin-bottom:6px;">المسؤول: ${responsible.name}</div>`:""}
-        <div style="font-size:11px;color:#8896A4;">📌 الإجراء المنتظر حالياً: ${proj.nextAction||"—"}</div>
+
+      <!-- COL 2: المرحلة الحالية + المسؤول — محور الصفحة -->
+      <div style="padding:18px 20px;border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;align-items:center;text-align:center;">
+        <div style="font-size:11px;color:#8896A4;font-weight:700;letter-spacing:.09em;margin-bottom:18px;">📋 المرحلة الحالية</div>
+        <div style="font-size:22px;font-weight:900;color:#fff;line-height:1.25;text-wrap:balance;">${curSt?.label||"—"}</div>
+        <div style="margin-top:auto;padding-top:16px;width:100%;">
+          <div style="font-size:10px;color:#8896A4;font-weight:700;letter-spacing:.07em;margin-bottom:8px;">المسؤول عن المرحلة</div>
+          ${responsible?`<div style="background:transparent;border:1.5px solid rgba(201,168,76,.45);color:#C9A84C;border-radius:8px;padding:8px 16px;font-size:11px;font-weight:700;font-family:Cairo,sans-serif;width:100%;box-sizing:border-box;text-align:center;">👤 ${responsible.name}</div>`:`<div style="background:transparent;border:1.5px solid rgba(255,255,255,.1);color:#4A5A6A;border-radius:8px;padding:8px 16px;font-size:11px;font-family:Cairo,sans-serif;width:100%;box-sizing:border-box;text-align:center;">لم يُحدد مسؤول</div>`}
+        </div>
       </div>
-      <div style="padding:16px 20px;">
-        <div style="font-size:10px;color:#8896A4;font-weight:700;margin-bottom:10px;">📝 الإجراء القادم</div>
-        ${missingCurDocs.length>0?`<ul style="margin:0;padding-right:16px;font-size:11px;color:#D1D9E0;line-height:2;list-style:disc;">${missingCurDocs.slice(0,3).map(d=>`<li>${d.label}</li>`).join("")}${missingCurDocs.length>3?`<li style="color:#8896A4;">و ${missingCurDocs.length-3} أخرى...</li>`:""}</ul>`:`<div style="font-size:11px;color:#8896A4;">لا توجد إجراءات معلقة</div>`}
-        <button onclick="switchStage(${ci})" style="margin-top:10px;background:transparent;border:1.5px solid #C9A84C;color:#C9A84C;border-radius:8px;padding:7px 16px;font-size:11px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;width:100%;">عرض التفاصيل</button>
+
+      <!-- COL 3: الإجراء القادم (المستندات الناقصة) -->
+      <div style="padding:18px 20px;display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:11px;color:#8896A4;font-weight:700;letter-spacing:.09em;margin-bottom:2px;">📝 المستندات المطلوبة</div>
+        ${missingCurDocs.length>0
+          ?`<ul style="margin:0;padding-right:14px;font-size:11px;color:#C8D5E0;line-height:2.1;list-style:none;">${missingCurDocs.slice(0,3).map(d=>`<li style="display:flex;align-items:center;gap:6px;"><span style="width:5px;height:5px;border-radius:50%;background:#C9A84C;display:inline-block;flex-shrink:0;"></span>${d.label}</li>`).join("")}${missingCurDocs.length>3?`<li style="color:#5A6A7A;font-size:10px;">+ ${missingCurDocs.length-3} أخرى</li>`:""}</ul>`
+          :`<div style="display:flex;align-items:center;gap:7px;font-size:11px;color:#4ABA7A;"><span>✓</span> لا توجد مستندات معلقة</div>`}
+        <button onclick="switchStage(${ci})" style="margin-top:auto;background:transparent;border:1.5px solid rgba(201,168,76,.45);color:#C9A84C;border-radius:8px;padding:8px 16px;font-size:11px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;width:100%;transition:background .15s;" onmouseover="this.style.background='rgba(201,168,76,.1)'" onmouseout="this.style.background='transparent'">عرض التفاصيل ←</button>
       </div>
     </div>
 
@@ -1981,8 +2231,9 @@ const rFile=()=>{
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
           <div style="width:36px;height:36px;border-radius:9px;background:${stDone?"#1B7A4A":stage.color};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;color:#fff;">${stDone?"✓":stage.icon}</div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:800;color:var(--t1);">مرحلة ${CSV+1}: ${stage.label}</div>
-            <div style="font-size:10px;color:var(--t3);margin-top:1px;">${upCount}/${allDocs.length} مرفوع · ${req.length} مطلوب</div>
+            <div style="font-size:9px;color:var(--t3);font-weight:600;margin-bottom:2px;">مرحلة ${CSV+1}</div>
+            <div style="font-size:13px;font-weight:800;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${stage.label}</div>
+            <div style="font-size:10px;color:var(--t3);margin-top:1px;">${upCount}/${allDocs.length} مرفوع · ${(()=>{const miss=req.filter(d=>!d.up).length;return miss===0?`<span style="color:#1B7A4A;font-weight:700;">✓ مكتمل</span>`:`<span style="color:#C0392B;font-weight:700;">${miss} ناقص</span>`;})()}</div>
           </div>
           ${stDone?pill("مكتملة","#1B7A4A"):stCur?pill("الحالية",stage.color):""}
         </div>
@@ -2027,7 +2278,7 @@ const rFile=()=>{
       <!-- Parties card -->
       ${(()=>{
         const parties=proj.parties||[];
-        const PROLES={owner:{l:"مالك",c:"#1A3F6B",bg:"#E6EEF8"},developer:{l:"مطور",c:"#4A1A6B",bg:"#EEE6F8"},office:{l:"مكتب هندسي",c:"#1B7A4A",bg:"#E3F5EC"},broker:{l:"وسيط",c:"#B7770D",bg:"#FEF3DC"},representative:{l:"وكيل",c:"#8896A4",bg:"#F4F5F7"}};
+        const PROLES={owner:{l:"مالك",c:"#1A3F6B",bg:"#E6EEF8"},developer:{l:"مطور",c:"#4A1A6B",bg:"#EEE6F8"},office:{l:"مكتب هندسي",c:"#1B7A4A",bg:"#E3F5EC"},engineer:{l:"مهندس",c:"#1A5A8A",bg:"#E0EAF5"},contractor:{l:"مقاول",c:"#5A3A1C",bg:"#F5EFE8"},broker:{l:"وسيط",c:"#B7770D",bg:"#FEF3DC"},representative:{l:"وكيل",c:"#8896A4",bg:"#F4F5F7"}};
         return`<div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
             <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;">أطراف المشروع</div>
@@ -2051,7 +2302,7 @@ const rFile=()=>{
                 ${pt.phone?`<a href="tel:${pt.phone}" style="color:var(--t3);text-decoration:none;font-size:14px;" title="${pt.phone}">📞</a>`:""}
                 ${can?`<button onclick="removeParty('${proj.id}','${pt.partyId||pt.name}')" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:15px;padding:2px;">×</button>`:""}
               </div>
-              <div style="margin-top:5px;margin-right:43px;">
+              ${pt.role!=="owner"?`<div style="margin-top:5px;margin-right:43px;">
                 ${hasPoa?`<div style="display:flex;align-items:center;gap:5px;background:rgba(27,122,74,.07);border:1px solid rgba(27,122,74,.2);border-radius:6px;padding:4px 8px;">
                   <span style="font-size:10px;color:#1B7A4A;font-weight:700;">📄 توكيل إدارة</span>
                   <button onclick="previewFile('${pt.poa.url}','${(pt.poa.name||"").replace(/'/g,"\\'")}','${pt.poa.type||""}')" class="btn btn-gh btn-xs">👁</button>
@@ -2062,7 +2313,8 @@ const rFile=()=>{
                   📄 رفع توكيل إدارة
                   <input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadPartyPOA('${proj.id}',${pti},this)" style="display:none;"/>
                 </label>`:""}
-              </div>
+              </div>`:""}
+
             </div>`;
           }).join("")}
         </div>`;
@@ -2078,21 +2330,20 @@ const rFile=()=>{
           ["حالة العقار",proj.propertyState||"—"],
           ["نوع الطلب",proj.requestType||"—"],
           ["النشاط",proj.activity||"—"],
-          ["الأدوار",proj.floors?proj.floors+" أدوار":"—"],
-          ["مصعد",proj.hasElevator?"نعم ✓":"لا"],
-          ["بدروم",proj.hasBasement?"نعم ✓":"لا"],
+          ...(proj.projectName?[["اسم المشروع",proj.projectName]]:[]),
+          ...(proj.buildingRatio?[["نسبة المبنى",proj.buildingRatio+"%"]]:[]),
           ["حالة السوق",proj.marketStatus||"—"],
           ["كود الجهاز",proj.authorityCode||"—"],
-        ].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bdl);"><span style="font-size:10px;color:var(--t3);">${l}</span><span style="font-size:11px;font-weight:600;color:var(--t1);">${v}</span></div>`).join("")}
-        ${(proj.requiredWorks||[]).length?`<div style="margin-top:8px;"><div style="font-size:9px;color:var(--t3);font-weight:700;margin-bottom:5px;">الأعمال المطلوبة</div><div style="display:flex;flex-wrap:wrap;gap:4px;">${(proj.requiredWorks||[]).map(w=>`<span style="font-size:9px;background:rgba(26,63,107,.08);color:var(--n8);border-radius:5px;padding:2px 7px;font-weight:600;">${w}</span>`).join("")}</div></div>`:""}
+        ].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bdl);"><span style="font-size:11px;color:var(--t3);">${l}</span><span style="font-size:12px;font-weight:600;color:var(--t1);">${v}</span></div>`).join("")}
+        ${(()=>{const byan=(()=>{const pts=[];if(proj.basementCount>=2)pts.push(proj.basementCount+" بدروم");else if(proj.basementCount===1||proj.hasBasement)pts.push("بدروم");if(proj.hasGround)pts.push("أرضي");if(proj.floors)pts.push(proj.floors+" متكرر");if(proj.hasElevator)pts.push("مصعد");if(proj.hasPergola)pts.push("برجولة");if(proj.hasPool)pts.push("حمام سباحة");if(proj.hasWall)pts.push("سور");return pts.join(" + ")||"—";})();const rw=proj.requiredWorks||[];const parts=[];if(byan!=="—")parts.push(`<div style="margin-bottom:${rw.length?8:0}px;"><div style="font-size:9px;color:var(--t3);font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em;">بيان الأعمال</div><div style="font-size:13px;font-weight:700;color:var(--n8);line-height:1.7;">${byan}</div></div>`);if(rw.length)parts.push(`<div><div style="font-size:9px;color:var(--t3);font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em;">الأعمال المطلوبة</div><div style="display:flex;flex-wrap:wrap;gap:4px;">${rw.map(w=>`<span style="font-size:9px;background:rgba(26,63,107,.08);color:var(--n8);border-radius:5px;padding:2px 7px;font-weight:600;">${w}</span>`).join("")}</div></div>`);return parts.length?`<div style="margin-top:10px;background:rgba(28,45,74,.04);border:1px solid var(--bdl);border-radius:8px;padding:10px 12px;">${parts.join("")}</div>`:"";})()}
         ${proj.agents?.length?`<div style="margin-top:8px;font-size:10px;color:var(--t3);">الوكلاء: <span style="color:var(--t1);font-weight:600;">${proj.agents.map(a=>a.name).join(" · ")}</span></div>`:""}
         ${proj.pricePerMeter&&proj.area?`<div style="margin-top:10px;background:linear-gradient(135deg,var(--gl),#fff);border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:10px;"><div style="font-size:9px;color:var(--gd);font-weight:700;margin-bottom:2px;">💰 التقدير المالي</div><div style="font-size:16px;font-weight:800;color:var(--n8);font-family:monospace;">${fmtM(proj.area*proj.pricePerMeter)}</div><div style="font-size:9px;color:var(--gd);margin-top:2px;">${Number(proj.pricePerMeter).toLocaleString()} ج/م²</div></div>`:""}
       </div>
 
       <!-- HEALTH SCORE -->
       ${(()=>{
-        const totalD=proj.stages.flatMap(s=>s.docs||[]).filter(d=>d.req).length;
-        const upD=proj.stages.flatMap(s=>s.docs||[]).filter(d=>d.req&&d.up).length;
+        const totalD=proj.stages.flatMap(s=>stageDocs(s,proj)).filter(d=>d.req).length;
+        const upD=proj.stages.flatMap(s=>stageDocs(s,proj)).filter(d=>d.req&&d.up).length;
         const docScore=totalD?Math.round(upD/totalD*100):0;
         const stageScore=proj.stages.length?Math.round(completedCount/proj.stages.length*100):0;
         const poaOk=(proj.poas||[]).length===0||(proj.poas||[]).every(p=>!p.expiryDate||p.expiryDate>=new Date().toISOString().slice(0,10));
@@ -2126,7 +2377,7 @@ const rFile=()=>{
 
       <!-- MISSING DOCS -->
       ${(()=>{
-        const missing=proj.stages.flatMap(s=>(s.docs||[]).filter(d=>d.req&&!d.up).map(d=>({label:d.label,stage:s.label})));
+        const missing=proj.stages.flatMap(s=>stageDocs(s,proj).filter(d=>d.req&&!d.up).map(d=>({label:d.label,stage:s.label})));
         if(!missing.length)return`<div style="background:var(--grl);border:1px solid rgba(27,122,74,.2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:8px;"><span style="font-size:16px;">✅</span><div style="font-size:12px;font-weight:700;color:var(--gr);">جميع المستندات المطلوبة مكتملة</div></div>`;
         return`<div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);">
           <div style="padding:10px 14px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;">
@@ -2173,7 +2424,7 @@ const rFile=()=>{
     <div>
       <div style="background:var(--w);border:1px solid var(--bd);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;">
         <div style="padding:14px 16px;border-bottom:1px solid var(--bdl);display:flex;align-items:center;justify-content:space-between;background:var(--w);">
-          <div style="font-size:14px;font-weight:800;color:var(--t1);">${stage.icon} ${stage.label}</div>
+          <div style="font-size:14px;font-weight:800;color:var(--t1);display:flex;align-items:center;gap:7px;">${stage.key==="land"?`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="#C9A84C" stroke="#C9A84C" stroke-width="1.5" stroke-linejoin="round"/></svg> تسلسل الملكية`:`${stage.icon} ${stage.label}`}</div>
           <span style="font-size:11px;color:var(--t3);">${upCount} من ${allDocs.length} مرفوع</span>
         </div>
         ${(()=>{
@@ -2188,23 +2439,35 @@ const rFile=()=>{
                 <div style="width:7px;height:7px;border-radius:50%;background:${o.type==="direct"?"#1A3F6B":"#8B5CF6"};flex-shrink:0;"></div>
                 <div>
                   <div style="font-size:11px;font-weight:700;color:var(--t1);">${o.ownerKind==="company"?"🏢 ":""}${o.name||"—"}</div>
-                  <div style="font-size:9px;color:var(--t3);">${o.type==="direct"?"المالك الأصلي":"المالك الثاني"}${o.ownerKind==="company"?" · شركة":""}${o.share?" · "+o.share+"%":""}${o.nid?" · "+o.nid:""}${o.comReg?" · س.ت: "+o.comReg:""}${o.repName?" · ممثل: "+o.repName:""}</div>
+                  <div style="font-size:9px;color:var(--t3);">${o.type==="direct"?"المالك الأصلي":o.parentId?o.partnerType||"شريك":"المالك الثاني"}${o.transferType?" · "+o.transferType:""}${o.ownerKind==="company"?" · شركة":""}${o.share?" · "+o.share+"%":""}${o.nid?" · "+o.nid:""}${o.comReg?" · س.ت: "+o.comReg:""}${o.repName?" · ممثل: "+o.repName:""}</div>
                 </div>
               </div>`)
-            :chainOwners.map((o,i)=>`
-              <div style="display:flex;align-items:center;gap:6px;background:var(--w);border:1px solid var(--bdl);border-radius:8px;padding:5px 10px;">
-                <div style="width:7px;height:7px;border-radius:50%;background:${i===chainOwners.length-1?"#1A3F6B":"var(--t3)"};flex-shrink:0;"></div>
-                <div>
-                  <div style="font-size:11px;font-weight:700;color:var(--t1);">${o.name||"—"}</div>
-                  <div style="font-size:9px;color:var(--t3);">${i===chainOwners.length-1?"المالك الحالي":o.transferType||"سابق"}</div>
+            :chainOwners.map((o,i)=>{
+              const isCurrent=i===chainOwners.length-1;
+              const partners=o.partners||[];
+              return`<div style="background:var(--w);border:1px solid var(--bdl);border-radius:8px;padding:6px 10px;min-width:140px;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <div style="width:7px;height:7px;border-radius:50%;background:${isCurrent?"#1A3F6B":"var(--t3)"};flex-shrink:0;"></div>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:11px;font-weight:700;color:var(--t1);">${o.name||"—"}</div>
+                    <div style="font-size:9px;color:var(--t3);">${isCurrent?"المالك الحالي":o.transferType||"سابق"}</div>
+                  </div>
+                  ${can?`<button onclick="openAddChainPartner('${proj.id}',${i})" style="background:none;border:1px solid var(--bdl);border-radius:5px;padding:1px 6px;font-size:10px;cursor:pointer;color:var(--t2);font-family:Cairo,sans-serif;flex-shrink:0;">+ شريك</button>`:""}
                 </div>
-              </div>`);
+                ${partners.length?`<div style="margin-top:5px;padding-top:5px;border-top:1px solid var(--bdl);display:flex;flex-wrap:wrap;gap:3px;">
+                  ${partners.map((p,pi)=>`<span style="font-size:9px;background:var(--w2);border:1px solid var(--bdl);border-radius:4px;padding:1px 6px;color:var(--t2);display:inline-flex;align-items:center;gap:3px;">${p.name}${p.share?" "+p.share+"%":""}${can?`<button onclick="removeChainPartner('${proj.id}',${i},${pi})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:11px;padding:0;line-height:1;">×</button>`:""}
+                  </span>`).join("")}
+                </div>`:""}
+              </div>`;
+            });
           return`<div style="padding:10px 14px;border-bottom:1px solid var(--bdl);background:linear-gradient(135deg,rgba(26,63,107,.04),rgba(26,63,107,.01));">
-            <div style="font-size:9px;font-weight:700;color:var(--t3);letter-spacing:.08em;margin-bottom:7px;">الملاك</div>
+            <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:7px;">
+              ${can?`<button onclick="addLandOwner('partner')" style="background:none;border:1px solid var(--bd);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--t2);font-family:Cairo,sans-serif;">+ إضافة مالك</button>`:""}
+            </div>
             <div style="display:flex;flex-wrap:wrap;gap:6px;">${cards.join("")}</div>
           </div>`;
         })()}
-        <div style="padding:14px;max-height:500px;overflow-y:auto;">
+        <div style="padding:14px;">
           ${docsHtml||`<div style="padding:28px;text-align:center;color:var(--t3);font-size:12px;">لا توجد مستندات</div>`}
           ${can?`<div style="display:flex;gap:8px;margin-top:4px;padding-top:10px;border-top:1px dashed var(--bdl);">
             <input id="cd-${stage.key}" style="flex:1;background:var(--w);border:1.5px solid var(--bd);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--t1);outline:none;font-family:Cairo,sans-serif;" placeholder="إضافة مستند مخصص..."/>
@@ -2213,34 +2476,10 @@ const rFile=()=>{
         </div>
       </div>
 
-      <!-- POWER OF ATTORNEYS (hidden - POA now embedded in party/owner cards) -->
-      <div style="display:none;">
-        <div>
-        <div style="padding:12px 14px;">
-          ${(proj.poas||[]).length===0?`<div style="text-align:center;color:var(--t3);font-size:11px;padding:12px;">لا توجد توكيلات مسجلة</div>`:""}
-          ${(proj.poas||[]).map((p,i)=>{
-            const today=new Date().toISOString().slice(0,10);
-            const expired=p.expiryDate&&p.expiryDate<today;
-            return`<div style="background:${expired?"var(--rdl)":"var(--w2)"};border:1px solid ${expired?"rgba(192,57,43,.2)":"var(--bdl)"};border-radius:9px;padding:10px 12px;margin-bottom:8px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;">
-                <div style="font-size:12px;font-weight:800;color:var(--t1);">${p.name}</div>
-                <div style="display:flex;gap:5px;align-items:center;">
-                  ${expired?`<span style="font-size:9px;font-weight:700;background:var(--rdl);color:var(--rd);border-radius:5px;padding:1px 6px;">منتهي</span>`:`<span style="font-size:9px;font-weight:700;background:var(--grl);color:var(--gr);border-radius:5px;padding:1px 6px;">ساري</span>`}
-                  ${can?`<button onclick="removePOA('${proj.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:13px;">×</button>`:""}
-                </div>
-              </div>
-              <div style="font-size:10px;color:${expired?"var(--rd)":"var(--t3)"};margin-top:3px;">ينتهي: ${p.expiryDate||"—"} ${p.poaType?"· "+p.poaType:""}</div>
-              ${expired?`<div style="font-size:10px;color:var(--rd);font-weight:700;margin-top:4px;">⚠ التوكيل منتهي — يحتاج تجديد</div>`:""}
-              <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;">
-                ${p.files?.doc?`<button onclick="previewFile('${p.files.doc.data}','${p.files.doc.name}','${p.files.doc.type||""}')" class="btn btn-gh btn-xs">👁 التوكيل</button>`:(can?`<label class="btn btn-gh btn-xs" style="cursor:pointer;">📎 رفع التوكيل<input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="uploadPOAFile('${proj.id}',${i},'doc',this)"/></label>`:`<span style="font-size:9px;color:var(--t3);">التوكيل: غير مرفوع</span>`)}
-                ${p.files?.idFront?`<button onclick="previewFile('${p.files.idFront.data}','${p.files.idFront.name}','${p.files.idFront.type||""}')" class="btn btn-gh btn-xs">👁 بطاقة وجه</button>`:(can?`<label class="btn btn-gh btn-xs" style="cursor:pointer;">📎 بطاقة وجه<input type="file" accept=".jpg,.jpeg,.png" style="display:none;" onchange="uploadPOAFile('${proj.id}',${i},'idFront',this)"/></label>`:"")}
-                ${p.files?.idBack?`<button onclick="previewFile('${p.files.idBack.data}','${p.files.idBack.name}','${p.files.idBack.type||""}')" class="btn btn-gh btn-xs">👁 بطاقة ظهر</button>`:(can?`<label class="btn btn-gh btn-xs" style="cursor:pointer;">📎 بطاقة ظهر<input type="file" accept=".jpg,.jpeg,.png" style="display:none;" onchange="uploadPOAFile('${proj.id}',${i},'idBack',this)"/></label>`:"")}
-              </div>
-            </div>`;
-          }).join("")}
-        </div>
-      </div>`:""}
 
+
+      <!-- Stage done toggle -->
+      ${(()=>{const s=proj.stages[CSV];const done=stageComplete(s,proj);if(done&&!s.done){return"";}if(s.done){return`<div style="display:flex;align-items:center;gap:8px;margin-top:12px;background:rgba(27,122,74,.08);border:1px solid rgba(27,122,74,.25);border-radius:10px;padding:9px 14px;"><span style="font-size:14px;">✅</span><span style="font-size:12px;font-weight:700;color:#1B7A4A;flex:1;">تم تأكيد اكتمال هذه المرحلة</span><button onclick="markStageDone(${CSV},false)" style="background:none;border:1px solid #aaa;color:#888;border-radius:7px;padding:4px 10px;font-size:10px;cursor:pointer;font-family:Cairo,sans-serif;">إلغاء التأكيد</button></div>`;}return`<button onclick="markStageDone(${CSV},true)" style="width:100%;margin-top:12px;background:linear-gradient(135deg,#1B7A4A,#27ae60);border:none;color:#fff;border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:Cairo,sans-serif;letter-spacing:.03em;">✓ تأكيد اكتمال هذه المرحلة</button>`;})()}
       <!-- Stage navigation -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
         <button class="btn btn-gh" onclick="switchStage(${CSV-1})" ${CSV===0?"disabled style='opacity:.4;pointer-events:none;'":""}>‹ السابقة</button>
@@ -2260,10 +2499,12 @@ const rFile=()=>{
 
 // ── PARTIES MANAGEMENT ──
 const PARTY_ROLES=[
-  {k:"developer",  l:"مطور عقاري",     c:"#4A1A6B"},
-  {k:"office",     l:"مكتب هندسي",     c:"#1B7A4A"},
-  {k:"broker",     l:"وسيط",            c:"#B7770D"},
-  {k:"representative",l:"وكيل قانوني", c:"#8896A4"},
+  {k:"developer",     l:"مطور عقاري",     c:"#4A1A6B"},
+  {k:"office",        l:"مكتب هندسي",     c:"#1B7A4A"},
+  {k:"engineer",      l:"مهندس",           c:"#1A5A8A"},
+  {k:"contractor",    l:"مقاول",           c:"#5A3A1C"},
+  {k:"broker",        l:"وسيط",            c:"#B7770D"},
+  {k:"representative",l:"وكيل قانوني",    c:"#8896A4"},
 ];
 
 const openManageParties=id=>{
@@ -2476,10 +2717,20 @@ const openEditProj=id=>{
       <div class="fg"><label class="fl">الحي / المنطقة</label><input class="fi" id="ep-dist" value="${proj.district||""}"/></div>
       <div class="fg"><label class="fl">المساحة (م²)</label><input class="fi" id="ep-area" type="number" value="${proj.area||""}"/></div>
     </div>
+    <div class="fg"><label class="fl">اسم المشروع <span style="font-size:10px;color:var(--t3);">(اختياري — مول، مبنى، ...)</span></label><input class="fi" id="ep-projname" value="${proj.projectName||""}" placeholder="مثال: برج النيل، مول الرياض"/></div>
     <div class="fw">
       <div class="fg"><label class="fl">سعر المتر (ج.م)</label><input class="fi" id="ep-price" type="number" value="${proj.pricePerMeter||""}"/></div>
-      <div class="fg"><label class="fl">عدد الأدوار</label><input class="fi" id="ep-floors" type="number" value="${proj.floors||""}"/></div>
+      <div class="fg"><label class="fl">نسبة المبنى (%)</label><input class="fi" id="ep-bldgratio" type="number" min="0" max="100" value="${proj.buildingRatio||""}" placeholder="مثال: 60"/></div>
     </div>
+    <div style="display:flex;gap:16px;margin-top:4px;align-items:center;flex-wrap:wrap;">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:700;color:var(--n8);"><input type="checkbox" id="ep-ground" ${proj.hasGround!==false?"checked":""} style="accent-color:var(--n8);width:15px;height:15px;"/> دور أرضي</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t1);">بدروم <input class="fi" id="ep-basement-count" type="number" min="0" max="5" value="${proj.basementCount||0}" style="width:60px;padding:4px 8px;font-size:12px;"/></label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="ep-elevator" ${proj.hasElevator?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> مصعد</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="ep-pergola" ${proj.hasPergola?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> برجولة</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="ep-pool" ${proj.hasPool?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> حمام سباحة</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--t1);"><input type="checkbox" id="ep-wall" ${proj.hasWall?"checked":""} style="accent-color:var(--n8);width:14px;height:14px;"/> سور</label>
+    </div>
+    <div class="fg" style="margin-top:8px;"><label class="fl">الأدوار المتكررة</label><input class="fi" id="ep-floors" type="number" value="${proj.floors||""}" placeholder="عدد الأدوار المتكررة"/></div>
     <div class="fg"><label class="fl">كود جهة الولاية</label><input class="fi" id="ep-auth" value="${proj.authorityCode||""}" placeholder="NUCA-2024-XXX"/></div>
     <div class="fg"><label class="fl">ملاحظات</label><textarea class="fi" id="ep-note" rows="3">${proj.note||""}</textarea></div>
     <div style="border-top:1px solid var(--bd);margin:14px 0 10px;padding-top:12px;">
@@ -2499,6 +2750,9 @@ const openEditProj=id=>{
           <span style="font-size:12px;color:var(--t1);">${s.name}</span>
         </label>`).join("");
       })()}
+    </div>
+    <div style="border-top:1px solid var(--bd);margin:14px 0 10px;padding-top:12px;">
+      <div class="fg"><label class="fl">📌 الإجراء المنتظر حالياً</label><input class="fi" id="ep-next-action" value="${(proj.nextAction||"").replace(/"/g,"&quot;")}" placeholder="مثال: انتظار موافقة الهيئة، سداد رسوم، رفع الرسومات..."/></div>
     </div>
     <div style="border-top:1px solid var(--bd);margin:14px 0 10px;padding-top:12px;">
       <div class="fl" style="font-weight:700;margin-bottom:8px;font-size:13px;">تفويض المشروع لمكتب هندسي</div>
@@ -2537,8 +2791,17 @@ const saveEditProj=id=>{
   proj.marketStatus=document.getElementById("ep-mkt")?.value||proj.marketStatus;
   proj.district=document.getElementById("ep-dist")?.value?.trim()||proj.district;
   proj.area=Number(document.getElementById("ep-area")?.value)||proj.area;
+  proj.projectName=document.getElementById("ep-projname")?.value?.trim()||"";
   proj.pricePerMeter=Number(document.getElementById("ep-price")?.value)||proj.pricePerMeter;
-  proj.floors=Number(document.getElementById("ep-floors")?.value)||proj.floors;
+  proj.buildingRatio=Number(document.getElementById("ep-bldgratio")?.value)||0;
+  proj.floors=Number(document.getElementById("ep-floors")?.value)||0;
+  proj.basementCount=Number(document.getElementById("ep-basement-count")?.value)||0;
+  proj.hasBasement=proj.basementCount>0;
+  proj.hasGround=document.getElementById("ep-ground")?.checked||false;
+  proj.hasElevator=document.getElementById("ep-elevator")?.checked||false;
+  proj.hasPergola=document.getElementById("ep-pergola")?.checked||false;
+  proj.hasPool=document.getElementById("ep-pool")?.checked||false;
+  proj.hasWall=document.getElementById("ep-wall")?.checked||false;
   proj.authorityCode=document.getElementById("ep-auth")?.value?.trim()||"";
   proj.note=document.getElementById("ep-note")?.value||"";
   proj.activity=document.getElementById("ep-activity")?.value||proj.activity||"سكني";
@@ -2559,7 +2822,25 @@ const saveEditProj=id=>{
   if(autoSt)proj.devStatus=autoSt;
   proj.delegatedTo=document.getElementById("ep-delegate")?.value||"";
   proj.assignedStaff=[...document.querySelectorAll(".ep-staff-cb:checked")].map(cb=>cb.value);
+  proj.nextAction=document.getElementById("ep-next-action")?.value?.trim()||"";
   proj.lastUpdated=new Date().toISOString().slice(0,10);
+  // patch conditional docs that may have been stripped at creation time
+  const _pStage=proj.stages?.find(s=>s.key==="permits");
+  if(_pStage){
+    const _ex=new Set((_pStage.docs||[]).map(d=>d.key));
+    if(proj.hasElevator)[
+      {key:"p7",  label:"عقد مقاولة المصعد",   req:true,cond:"elev"},
+      {key:"p7b", label:"وثيقة تأمين المصعد",  req:true,cond:"elev"},
+      {key:"p7c", label:"تقرير استشاري المصعد",req:true,cond:"elev"},
+    ].forEach(d=>{if(!_ex.has(d.key)){_pStage.docs.push({...d,up:null,notes:[]});}});
+    if(proj.activity==="تجاري")[
+      {key:"p3",label:"موافقة الدفاع المدني",req:false,cond:"comm"},
+      {key:"p4",label:"موافقة بيئية",         req:false,cond:"comm"},
+      {key:"p5",label:"موافقة مرورية",         req:false,cond:"comm"},
+    ].forEach(d=>{if(!_ex.has(d.key)){_pStage.docs.push({...d,up:null,notes:[]});}});
+    if((proj.basementCount||0)>=2&&!_ex.has("p_bsmt2"))
+      _pStage.docs.push({key:"p_bsmt2",label:"تقرير سند جوانب حفر",req:true,cond:"bsmt2",up:null,notes:[]});
+  }
   LS.s(K.p,projs);
   document.getElementById("m-edit-proj")?.remove();
   rFile();
@@ -2600,6 +2881,120 @@ const switchStage=i=>{
   CSV=i;rFile();
 };
 
+const showProjAnalytics=(projId)=>{
+  const proj=(LS.g(K.p)||[]).find(p=>p.id===projId);
+  if(!proj)return;
+  const tl=proj.timeline||[];
+  // نشاط كل شخص
+  const byPerson={};
+  tl.forEach(e=>{
+    const name=e.by||"غير محدد";
+    if(!byPerson[name])byPerson[name]={count:0,last:""};
+    byPerson[name].count++;
+    if(!byPerson[name].last||e.date>byPerson[name].last)byPerson[name].last=e.date;
+  });
+  // مراحل منجزة
+  const stagesInfo=(proj.stages||[]).map(s=>{
+    const completedEvt=tl.filter(e=>e.event&&e.event.includes(s.label)).sort((a,b)=>b.date.localeCompare(a.date))[0];
+    return {label:s.label,done:stageComplete(s,proj),by:completedEvt?.by||"—",date:completedEvt?.date||"—"};
+  });
+
+  const personRows=Object.entries(byPerson).sort((a,b)=>b[1].count-a[1].count).map(([name,d])=>`
+    <tr>
+      <td style="padding:8px 12px;font-size:12px;color:#fff;font-weight:700;">${name}</td>
+      <td style="padding:8px 12px;font-size:12px;color:#C9A84C;text-align:center;font-weight:800;">${d.count}</td>
+      <td style="padding:8px 12px;font-size:11px;color:#8896A4;">${d.last||"—"}</td>
+    </tr>`).join("");
+
+  const stageRows=stagesInfo.map(s=>`
+    <tr>
+      <td style="padding:8px 12px;font-size:12px;color:#fff;">${s.label}</td>
+      <td style="padding:8px 12px;text-align:center;">${s.done?'<span style="color:#4ABA7A;font-weight:800;">✓ مكتملة</span>':'<span style="color:#8896A4;">جارية</span>'}</td>
+      <td style="padding:8px 12px;font-size:12px;color:#C9A84C;">${s.by}</td>
+      <td style="padding:8px 12px;font-size:11px;color:#8896A4;">${s.date}</td>
+    </tr>`).join("");
+
+  const tlRows=[...tl].reverse().slice(0,30).map(e=>`
+    <tr>
+      <td style="padding:6px 12px;font-size:11px;color:#8896A4;white-space:nowrap;">${e.date||""}</td>
+      <td style="padding:6px 12px;font-size:12px;color:#fff;">${e.icon||""} ${e.event||""}</td>
+      <td style="padding:6px 12px;font-size:11px;color:#C9A84C;">${e.by||"—"}</td>
+    </tr>`).join("");
+
+  const section=(title,content)=>`
+    <div style="margin-bottom:24px;">
+      <div style="font-size:12px;color:#8896A4;font-weight:700;letter-spacing:.08em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.07);">${title}</div>
+      ${content}
+    </div>`;
+
+  const tbl=(head,rows)=>`<div style="overflow-x:auto;border-radius:8px;border:1px solid rgba(255,255,255,.07);">
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="background:rgba(255,255,255,.04);">${head}</tr></thead>
+      <tbody>${rows||'<tr><td colspan="4" style="padding:16px;text-align:center;color:#4A5A6A;font-size:12px;">لا توجد بيانات بعد</td></tr>'}</tbody>
+    </table></div>`;
+
+  const th=t=>`<th style="padding:8px 12px;font-size:10px;color:#8896A4;font-weight:700;text-align:right;">${t}</th>`;
+
+  $("analytics-modal-body").innerHTML=`
+    ${section("👤 نشاط الأشخاص",tbl([th("الاسم"),th("عدد الأحداث"),th("آخر نشاط")].join(""),personRows))}
+    ${section("📋 حالة المراحل",tbl([th("المرحلة"),th("الحالة"),th("بواسطة"),th("التاريخ")].join(""),stageRows))}
+    ${section("📅 سجل الأحداث (آخر 30)",tbl([th("التاريخ"),th("الحدث"),th("بواسطة")].join(""),tlRows))}
+  `;
+  $("analytics-modal").classList.remove("hid");
+};
+
+const doneNextAction=(projId)=>{
+  const projs=LS.g(K.p)||[];
+  const proj=projs.find(p=>p.id===projId);
+  if(!proj||!proj.nextAction)return;
+  if(!proj.timeline)proj.timeline=[];
+  proj.timeline.push({date:new Date().toISOString().slice(0,10),event:`✅ اكتمل: ${proj.nextAction}`,by:CU.name,icon:"✅"});
+  proj.nextAction="";
+  proj.lastUpdated=new Date().toISOString().slice(0,10);
+  LS.s(K.p,projs);
+  toast("✓ تم تسجيل الإنجاز","ok");
+  rFile();
+  // open new action input after re-render
+  setTimeout(()=>openNewAction(projId),80);
+};
+const openNewAction=(projId)=>{
+  const disp=document.getElementById("na-display-"+projId);
+  const inp=document.getElementById("na-input-"+projId);
+  if(disp)disp.style.display="none";
+  if(inp){inp.style.display="";document.getElementById("na-val-"+projId)?.focus();}
+};
+const closeNewAction=(projId)=>{
+  const disp=document.getElementById("na-display-"+projId);
+  const inp=document.getElementById("na-input-"+projId);
+  if(disp)disp.style.display="";
+  if(inp)inp.style.display="none";
+};
+const saveNewAction=(projId)=>{
+  const val=(document.getElementById("na-val-"+projId)?.value||"").trim();
+  if(!val){toast("اكتب الإجراء أولاً","warn");return;}
+  const projs=LS.g(K.p)||[];
+  const proj=projs.find(p=>p.id===projId);
+  if(!proj)return;
+  proj.nextAction=val;
+  proj.lastUpdated=new Date().toISOString().slice(0,10);
+  if(!proj.timeline)proj.timeline=[];
+  proj.timeline.push({date:new Date().toISOString().slice(0,10),event:`📌 إجراء جديد: ${val}`,by:CU.name,icon:"📌"});
+  LS.s(K.p,projs);
+  toast("✓ تم تحديث الإجراء","ok");
+  rFile();
+};
+
+const markStageDone=(idx,done)=>{
+  const projs=LS.g(K.p)||[];
+  const proj=projs.find(p=>p.id===CPJ);
+  if(!proj||!proj.stages[idx])return;
+  proj.stages[idx].done=done;
+  if(done&&!proj.stages[idx].doneAt)proj.stages[idx].doneAt=new Date().toISOString().slice(0,10);
+  LS.s(K.p,projs);
+  toast(done?"✓ تم تأكيد اكتمال المرحلة":"تم إلغاء تأكيد المرحلة","ok");
+  rFile();
+};
+
 const tgS=k=>{const b=$("sb-"+k),a=$("sa-"+k);const h=b.classList.contains("hid");b.classList.toggle("hid");if(a)a.classList.toggle("open",h);};
 const gP=()=>(LS.g(K.p)||[]).find(p=>p.id===CPJ);
 const svP=p=>{p.lastUpdated=new Date().toISOString().slice(0,10);LS.s(K.p,(LS.g(K.p)||[]).map(x=>x.id===p.id?p:x));};
@@ -2613,8 +3008,13 @@ const hUp=(sk,dk,isC,inp)=>{
     const now=new Date();
     const needsReview=!["admin","staff"].includes(CU.role);
     const upFinal={...up,uploadedBy:CU.id,status:needsReview?"pending":"approved"};
-    const upd=arr=>arr.map(d=>d.key===dk?{...d,up:upFinal}:d);
-    p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[])}:{...s,docs:upd(s.docs)});
+    const upd=(arr,label)=>{
+      if(arr.some(d=>d.key===dk))return arr.map(d=>d.key===dk?{...d,up:upFinal}:d);
+      return[...arr,{key:dk,label:label||dk,req:false,up:upFinal}];
+    };
+    const stg=p.stages.find(s=>s.key===sk);
+    const docLabel=isC?(stg?.cd||[]).find(d=>d.key===dk)?.label:(stg?.docs||[]).find(d=>d.key===dk)?.label||dk;
+    p.stages=p.stages.map(s=>s.key!==sk?s:isC?{...s,cd:upd(s.cd||[],docLabel)}:{...s,docs:upd(s.docs,docLabel)});
     const stageLbl=p.stages.find(s=>s.key===sk)?.label||sk;
     const docLbl=p.stages.find(s=>s.key===sk)?.docs?.find(d=>d.key===dk)?.label||file.name;
     if(!p.timeline)p.timeline=[];
@@ -2737,12 +3137,16 @@ const LAND_OWNER_DOCS={
     {key:"comReg",      label:"السجل التجاري",       req:true},
     {key:"taxCard",     label:"البطاقة الضريبية",    req:true},
     {key:"poa",         label:"توكيل رسمي (ممثل الشركة)",req:false},
+    {key:"repIdFront",  label:"بطاقة الممثل (وجه)",  req:false},
+    {key:"repIdBack",   label:"بطاقة الممثل (ظهر)",  req:false},
   ],
   company_partner:[
     {key:"saleContract",label:"عقد البيع",           req:false},
     {key:"comReg",      label:"السجل التجاري",       req:true},
     {key:"taxCard",     label:"البطاقة الضريبية",    req:true},
     {key:"poa",         label:"توكيل رسمي (ممثل الشركة)",req:false},
+    {key:"repIdFront",  label:"بطاقة الممثل (وجه)",  req:false},
+    {key:"repIdBack",   label:"بطاقة الممثل (ظهر)",  req:false},
   ]
 };
 const _loKindToggle=()=>{
@@ -2759,8 +3163,11 @@ const toggleNPOwnerKind=()=>{
   if(indF)indF.style.display=isCo?"none":"";
   if(coF)coF.style.display=isCo?"":"none";
 };
-const addLandOwner=(type)=>{
-  const typeLabel=type==="direct"?"المالك الأصلي":"المالك الثاني";
+const addLandOwner=(type,parentId=null)=>{
+  const p=gP();
+  const partnerCount=(p?.landOwners||[]).filter(o=>o.type==="partner"&&!o.parentId).length;
+  const nums=["الثاني","الثالث","الرابع","الخامس","السادس","السابع","الثامن"];
+  const typeLabel=type==="direct"?"المالك الأصلي":parentId?"شريك":(`المالك ${nums[partnerCount]||"الجديد"}`);
   showModal(`إضافة ${typeLabel}`,`
     <div style="display:flex;gap:8px;margin-bottom:12px;">
       <label style="flex:1;display:flex;align-items:center;gap:6px;cursor:pointer;background:var(--w2);border:1.5px solid var(--bdl);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--t1);">
@@ -2782,8 +3189,11 @@ const addLandOwner=(type)=>{
       </div>
       <div class="fg"><label class="fl">اسم الممثل القانوني</label><input class="fi" id="lo-rep-name" placeholder="مثال: أحمد محمد"/></div>
     </div>
+    ${!parentId?`<div class="fg"><label class="fl">نوع الانتقال <span class="rq">*</span></label><select class="fi" id="lo-transfer-type"><option value="">اختر نوع الانتقال</option><option>شراء</option><option>ورثة</option><option>قرار</option><option>هبة</option><option>مزاد</option><option>تنازل</option></select></div>`:""}
     <div class="fg"><label class="fl">النسبة % <span style="color:var(--t3);font-size:11px;">— اتركها فارغة للتوزيع بالتساوي</span></label><input class="fi" id="lo-share" type="number" min="1" max="100" placeholder="مثال: 50"/></div>
+    ${parentId?`<div class="fg"><label class="fl">نوع الشراكة</label><select class="fi" id="lo-partner-type"><option value="">اختر النوع</option><option>شريك ملكية</option><option>شريك تطوير</option><option>شريك استثماري</option><option>شريك تمويل</option><option>شريك ميراث</option></select></div>`:""}
     <input type="hidden" id="lo-type" value="${type}"/>
+    <input type="hidden" id="lo-parent-id" value="${parentId||""}"/>
   `,`
     <button class="btn btn-gh" onclick="closeModal()">إلغاء</button>
     <button class="btn btn-p" onclick="confirmAddLandOwner()">+ إضافة</button>
@@ -2808,11 +3218,14 @@ const confirmAddLandOwner=()=>{
     if(nid&&nid.length!==14){toast("الرقم القومي يجب أن يكون 14 رقماً","err");return;}
     ownerKind="individual";
   }
+  const parentId=document.getElementById("lo-parent-id")?.value||null;
+  const partnerType=document.getElementById("lo-partner-type")?.value||"";
+  const transferType=document.getElementById("lo-transfer-type")?.value||"";
   closeModal();
   const p=gP();if(!p)return;
   const id="lo_"+Date.now();
   if(!p.landOwners)p.landOwners=[];
-  p.landOwners.push({id,name,nid,type,share,ownerKind,...companyData});
+  p.landOwners.push({id,name,nid,type,share,ownerKind,...companyData,...(parentId?{parentId}:{}),...(partnerType?{partnerType}:{}),...(transferType?{transferType}:{})});
   const landStage=p.stages.find(s=>s.key==="land");
   if(landStage){
     const docsKey=isComp?`company_${type}`:type;
@@ -2912,7 +3325,7 @@ const delCP=()=>{
 // ── NEW PROJECT WIZARD ──
 const openNP=()=>{
   PS=1;
-  PFrm={type:"normal",activity:"سكني",gov:"",city:"",district:"",neighborhood:"",propertyState:"أرض فضاء",requestType:"مشروع جديد",requiredWorks:[],marketStatus:"غير محدد",nextAction:"",hasElevator:false,hasBasement:false,hasPool:false,hasPergola:false,models:[{name:"نموذج A",count:"",area:""}],agents:[]};
+  PFrm={type:"normal",activity:"سكني",gov:"",city:"",district:"",neighborhood:"",propertyState:"أرض فضاء",requestType:"مشروع جديد",requiredWorks:[],marketStatus:"غير محدد",nextAction:"",hasElevator:false,hasBasement:false,hasGround:true,hasPool:false,hasPergola:false,hasWall:false,models:[{name:"نموذج A",count:"",area:""}],agents:[]};
   rPM();$("mnp").classList.remove("hid");
 };
 
@@ -2956,8 +3369,8 @@ const rPM=()=>{
         <div class="fg"><label class="fl">السجل التجاري <span class="rq">*</span></label><input class="fi" id="p-co-reg" value="${PFrm.comReg||""}" placeholder="رقم السجل التجاري"/></div>
       </div>
       <div class="fw">
-        <div class="fg"><label class="fl">الممثل القانوني <span class="rq">*</span></label><input class="fi" id="po" value="${PFrm.repName||""}" placeholder="اسم الممثل القانوني"/></div>
-        <div class="fg"><label class="fl">رقمه القومي <span class="rq">*</span></label><input class="fi" id="pnid" value="${PFrm.nationalId||""}" placeholder="14 رقم" maxlength="14"/></div>
+        <div class="fg"><label class="fl">الممثل القانوني <span class="rq">*</span></label><input class="fi" id="p-co-rep" value="${PFrm.repName||""}" placeholder="اسم الممثل القانوني"/></div>
+        <div class="fg"><label class="fl">رقمه القومي <span class="rq">*</span></label><input class="fi" id="p-co-nid" value="${PFrm.nationalId||""}" placeholder="14 رقم" maxlength="14"/></div>
       </div>
     </div>
     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--w2);border:1px solid var(--bdl);border-radius:8px;padding:8px 12px;margin-bottom:12px;">
@@ -2991,16 +3404,22 @@ const rPM=()=>{
       <div class="fg"><label class="fl">المساحة الإجمالية (م²) <span class="rq">*</span></label><input class="fi" id="par" type="number" value="${PFrm.area||""}" placeholder="0.00"/></div>
     </div>
 
+    <div class="fg"><label class="fl">اسم المشروع <span style="font-size:10px;color:var(--t3);">(اختياري — مول، مبنى، ...)</span></label><input class="fi" id="p-projname" value="${PFrm.projectName||""}" placeholder="مثال: برج النيل، مول الرياض"/></div>
     <div class="fw">
       <div class="fg"><label class="fl">كود جهة الولاية</label><input class="fi" id="pau" value="${PFrm.authorityCode||""}" placeholder="NUCA-2024-XXX"/></div>
-      <div class="fg"><label class="fl">عدد الأدوار</label><input class="fi" id="pfl" type="number" value="${PFrm.floors||""}" placeholder="مثال: 5"/></div>
+      <div class="fg"><label class="fl">نسبة المبنى (%)</label><input class="fi" id="p-bldgratio" type="number" min="0" max="100" value="${PFrm.buildingRatio||""}" placeholder="مثال: 60"/></div>
     </div>
+    <div style="display:flex;gap:16px;margin-top:4px;align-items:center;flex-wrap:wrap;">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:700;color:var(--n8);"><input type="checkbox" id="p-ground" ${PFrm.hasGround!==false?"checked":""} style="accent-color:var(--n8);width:15px;height:15px;"/> دور أرضي</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t1);">بدروم <input class="fi" id="p-basement-count" type="number" min="0" max="5" value="${PFrm.basementCount||0}" style="width:60px;padding:4px 8px;font-size:12px;"/></label>
+    </div>
+    <div class="fg" style="margin-top:8px;"><label class="fl">الأدوار المتكررة</label><input class="fi" id="pfl" type="number" value="${PFrm.floors||""}" placeholder="عدد الأدوار المتكررة"/></div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
       <div class="trow"><div><div class="ti">مصعد كهربائي</div></div><label class="tsw"><input type="checkbox" id="pel2" ${PFrm.hasElevator?"checked":""}/><span class="tsl"></span></label></div>
-      <div class="trow"><div><div class="ti">بدروم</div></div><label class="tsw"><input type="checkbox" id="pbas" ${PFrm.hasBasement?"checked":""}/><span class="tsl"></span></label></div>
       <div class="trow"><div><div class="ti">حمام سباحة</div></div><label class="tsw"><input type="checkbox" id="ppoo" ${PFrm.hasPool?"checked":""}/><span class="tsl"></span></label></div>
       <div class="trow"><div><div class="ti">برجولة</div></div><label class="tsw"><input type="checkbox" id="pper" ${PFrm.hasPergola?"checked":""}/><span class="tsl"></span></label></div>
+      <div class="trow"><div><div class="ti">سور</div></div><label class="tsw"><input type="checkbox" id="pwal" ${PFrm.hasWall?"checked":""}/><span class="tsl"></span></label></div>
     </div>`;
     foot=`<button class="btn btn-gh" onclick="cm('mnp')">إلغاء</button><div style="flex:1;"></div><button class="btn btn-p" onclick="nxPS()">الخطوة التالية ‹</button>`;
   }
@@ -3073,7 +3492,9 @@ const rmAgent=i=>{PFrm.agents.splice(i,1);rPM();};
 const nxPS=()=>{
   if(PS===1){
     const isCo=document.getElementById("p-kind-co")?.checked;
-    const o=$("po")?.value?.trim(),nid=$("pnid")?.value?.trim(),d=$("pd")?.value?.trim(),pl=$("ppl")?.value?.trim(),ar=$("par")?.value?.trim();
+    const o=isCo?$("p-co-rep")?.value?.trim():$("po")?.value?.trim();
+    const nid=isCo?$("p-co-nid")?.value?.trim():$("pnid")?.value?.trim();
+    const d=$("pd")?.value?.trim(),pl=$("ppl")?.value?.trim(),ar=$("par")?.value?.trim();
     const city2=$("pc")?.value;
     if(!o||!nid||!city2||!d||!pl||!ar){toast("يرجى تعبئة الحقول المطلوبة (*)","err");return;}
     if(nid.length!==14){toast("الرقم القومي يجب أن يكون 14 رقماً","err");return;}
@@ -3088,11 +3509,16 @@ const nxPS=()=>{
     PFrm.type=$("pt")?.value||"normal";PFrm.activity=$("pa")?.value||"سكني";
     PFrm.city=city2;PFrm.gov=$("pgov")?.value||PFrm.gov||"";
     PFrm.district=d;PFrm.neighborhood=$("pnb")?.value||"";PFrm.plot=pl;PFrm.area=ar;
+    PFrm.projectName=$("p-projname")?.value?.trim()||"";
+    PFrm.buildingRatio=Number($("p-bldgratio")?.value)||0;
     PFrm.authorityCode=$("pau")?.value||"";PFrm.floors=$("pfl")?.value||"";
+    PFrm.basementCount=Number($("p-basement-count")?.value)||0;
+    PFrm.hasBasement=PFrm.basementCount>0;
+    PFrm.hasGround=$("p-ground")?.checked||false;
     PFrm.hasElevator=$("pel2")?.checked||false;
-    PFrm.hasBasement=$("pbas")?.checked||false;
     PFrm.hasPool=$("ppoo")?.checked||false;
     PFrm.hasPergola=$("pper")?.checked||false;
+    PFrm.hasWall=$("pwal")?.checked||false;
     PFrm.isOriginalOwner=$("p-isoriginal")?.checked!==false;
   }
   if(PS===2){
@@ -3122,6 +3548,7 @@ const svPF=()=>{
     .map(s=>({...s,docs:s.docs.filter(d=>{
       if(d.cond==="elev"&&!PFrm.hasElevator)return false;
       if(d.cond==="comm"&&PFrm.activity!=="تجاري")return false;
+      if(d.cond==="bsmt2"&&(PFrm.basementCount||0)<2)return false;
       return true;
     }).map(d=>({...d,up:null,note:""})),cd:[]}));
 
@@ -3152,8 +3579,8 @@ const svPF=()=>{
     gov:PFrm.gov||"",city:PFrm.city,district:PFrm.district,neighborhood:PFrm.neighborhood||"",plot:PFrm.plot,
     area:Number(PFrm.area)||0,
     authorityCode:PFrm.authorityCode||"",floors:Number(PFrm.floors)||0,
-    hasElevator:PFrm.hasElevator||false,hasBasement:PFrm.hasBasement||false,
-    hasPool:PFrm.hasPool||false,hasPergola:PFrm.hasPergola||false,
+    hasElevator:PFrm.hasElevator||false,hasBasement:PFrm.hasBasement||false,basementCount:PFrm.basementCount||0,hasGround:PFrm.hasGround||false,
+    hasPool:PFrm.hasPool||false,hasPergola:PFrm.hasPergola||false,hasWall:PFrm.hasWall||false,projectName:PFrm.projectName||"",buildingRatio:PFrm.buildingRatio||0,
     propertyState:PFrm.propertyState||"أرض فضاء",requestType:PFrm.requestType||"مشروع جديد",
     requiredWorks:PFrm.requiredWorks||[],marketStatus:PFrm.marketStatus||"غير محدد",
     pricePerMeter:Number(PFrm.pricePerMeter)||0,note:PFrm.note||"",nextAction:PFrm.nextAction||"",
@@ -3260,237 +3687,350 @@ const openPassport=projId=>{
   const projs=LS.g(K.p)||[];
   const proj=projs.find(p=>p.id===projId);
   if(!proj)return;
-  const users=LS.g(K.u)||[];
   const today=new Date().toLocaleDateString("ar-EG",{year:"numeric",month:"long",day:"numeric"});
   const stages=proj.stages||[];
-  const doneCount=stages.filter(s=>{const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);return req.length>0&&req.every(d=>d.up);}).length;
+  const doneCount=stages.filter(s=>stageComplete(s,proj)).length;
   const pct=stages.length?Math.round(doneCount/stages.length*100):0;
-  const currentStage=stages.find(s=>{const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);return!req.every(d=>d.up);})||stages[stages.length-1];
+  const currentStage=stages.find(s=>!stageComplete(s,proj))||stages[stages.length-1];
   const parties=proj.parties||[];
-  const totalDocs=stages.flatMap(s=>s.docs||[]).filter(d=>d.req).length;
-  const uploadedDocs=stages.flatMap(s=>s.docs||[]).filter(d=>d.req&&d.up).length;
+  const totalDocs=stages.flatMap(s=>stageDocs(s,proj)).filter(d=>d.req).length;
+  const uploadedDocs=stages.flatMap(s=>stageDocs(s,proj)).filter(d=>d.req&&d.up).length;
   const docPct=totalDocs?Math.round(uploadedDocs/totalDocs*100):0;
   const expiredPOA=(proj.poas||[]).filter(p=>p.expiryDate&&p.expiryDate<new Date().toISOString().slice(0,10));
-  const timeline=(proj.timeline||[]).slice(-4).reverse();
-  const uploadedFiles=stages.flatMap(s=>(s.docs||[]).filter(d=>d.up).map(d=>({...d,stage:s.label||s.name})));
+  const timeline=(proj.timeline||[]).slice(-5).reverse();
+  const landOwners=proj.landOwners||[];
   const projUrl=`https://sanad.curveapp.net/#${proj.id}`;
-  const qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(projUrl)}&color=C9A84C&bgcolor=1C2D4A&qzone=1`;
+  const qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(projUrl)}&color=1C2D4A&bgcolor=ffffff&qzone=1`;
+  const hlabel=pct>=85?"ممتاز ✦":pct>=65?"جيد":pct>=40?"يحتاج مراجعة":"يحتاج اهتمام";
+  const hcolor=pct>=85?"#1B7A4A":pct>=65?"#2563EB":pct>=40?"#B7770D":"#C0392B";
 
-  const statCard=(label,val,sub,color="#1C2D4A")=>`
-    <div style="background:#fff;border-radius:10px;padding:14px 16px;border:1px solid #eee;">
-      <div style="font-size:9px;color:#999;margin-bottom:4px;">${label}</div>
-      <div style="font-size:18px;font-weight:900;color:${color};line-height:1;">${val}</div>
-      ${sub?`<div style="font-size:9px;color:#aaa;margin-top:4px;">${sub}</div>`:""}
-    </div>`;
+  const chip=(t,c="#1C2D4A",bg="rgba(28,45,74,.08)")=>`<span style="display:inline-flex;align-items:center;background:${bg};color:${c};border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;white-space:nowrap;">${t}</span>`;
+  const byanAlAmal=p=>{const pts=[];if(p.basementCount>=2)pts.push(p.basementCount+" بدروم");else if(p.basementCount===1||p.hasBasement)pts.push("بدروم");if(p.hasGround)pts.push("أرضي");if(p.floors)pts.push(p.floors+" متكرر");if(p.hasElevator)pts.push("مصعد");if(p.hasPergola)pts.push("برجولة");if(p.hasPool)pts.push("حمام سباحة");if(p.hasWall)pts.push("سور");return pts.join(" + ")||"—";};
 
-  const infoRow=(l,v)=>v&&v!=="—"?`<tr>
-    <td style="padding:6px 0;font-size:10px;color:#888;width:45%;">${l}</td>
-    <td style="padding:6px 0;font-size:11px;font-weight:700;color:#1a1a1a;">${v}</td>
-  </tr>`:"";
+  const infoCell=(l,v)=>v?`<div style="padding:8px 0;border-bottom:1px solid #f4f4f4;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+    <span style="font-size:10px;color:#aaa;white-space:nowrap;">${l}</span>
+    <span style="font-size:11px;font-weight:700;color:#1a1a1a;text-align:left;">${v}</span>
+  </div>`:"";
 
-  const h=`<div id="m-passport" style="position:fixed;inset:0;background:rgba(5,12,24,.75);z-index:500;display:flex;align-items:center;justify-content:center;padding:12px;" onclick="if(event.target===this)closePassport()">
-    <div style="background:#f0f2f5;border-radius:18px;width:100%;max-width:760px;max-height:94vh;overflow-y:auto;box-shadow:0 32px 100px rgba(0,0,0,.4);position:relative;">
+  const secTitle=(t,icon="")=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">
+    ${icon?`<span style="font-size:14px;">${icon}</span>`:""}
+    <span style="font-size:10px;font-weight:800;color:#1C2D4A;letter-spacing:.06em;text-transform:uppercase;">${t}</span>
+    <div style="flex:1;height:1px;background:linear-gradient(90deg,#e0e0e0,transparent);margin-right:4px;"></div>
+  </div>`;
 
-      <!-- TOOLBAR -->
-      <div id="passport-toolbar" style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px;background:#fff;border-radius:18px 18px 0 0;border-bottom:1px solid #eee;position:sticky;top:0;z-index:10;">
-        <div style="font-size:13px;font-weight:800;color:#1C2D4A;">جواز المشروع الرقمي</div>
-        <div style="display:flex;gap:8px;">
-          <button onclick="copyPassportLink('${proj.id}')" style="padding:6px 14px;border-radius:8px;border:1.5px solid #d8d8d8;background:#fff;font-family:Cairo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:#555;">نسخ ملخص</button>
-          <button onclick="printPassport()" style="padding:6px 16px;border-radius:8px;border:none;background:#1C2D4A;color:#fff;font-family:Cairo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">طباعة / PDF</button>
-          <button onclick="closePassport()" style="width:30px;height:30px;border-radius:8px;border:1.5px solid #e0e0e0;background:#fff;cursor:pointer;font-size:15px;line-height:1;">×</button>
+  const ownerNums=["الأول","الثاني","الثالث","الرابع","الخامس","السادس","السابع","الثامن"];
+  const transferLabels={شراء:"مشتري",ورثة:"وارث",هبة:"موهوب له",قرار:"مستفيد",مزاد:"مشتري مزاد",تنازل:"متنازل إليه"};
+
+  const h=`<div id="m-passport" style="position:fixed;inset:0;background:rgba(5,12,24,.8);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;" onclick="if(event.target===this)closePassport()">
+    <div style="background:#f5f6f8;border-radius:20px;width:100%;max-width:800px;max-height:95vh;overflow-y:auto;box-shadow:0 40px 120px rgba(0,0,0,.5);position:relative;font-family:Cairo,sans-serif;direction:rtl;">
+
+      <!-- STICKY TOP (toolbar + banner) -->
+      <div id="passport-toolbar" style="position:sticky;top:0;z-index:10;border-radius:20px 20px 0 0;">
+        <!-- NAV BAR -->
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#1C2D4A;">
+          <button onclick="closePassport()" style="width:30px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);cursor:pointer;font-size:16px;color:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;font-family:Cairo,sans-serif;">×</button>
+          <div style="position:relative;">
+            <button id="pp-dots-btn" onclick="(function(){var d=document.getElementById('pp-dots-drop');d.style.display=d.style.display==='block'?'none':'block';})()" style="width:34px;height:34px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);cursor:pointer;color:#C9A84C;font-size:20px;display:flex;align-items:center;justify-content:center;font-family:Cairo,sans-serif;line-height:1;">⋯</button>
+            <div id="pp-dots-drop" style="display:none;position:absolute;left:0;top:40px;background:#fff;border:1px solid #e8e8e8;border-radius:10px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,.14);z-index:99;overflow:hidden;">
+              <div onclick="printPassport();document.getElementById('pp-dots-drop').style.display='none'" style="padding:11px 14px;font-size:11px;font-weight:700;color:#1C2D4A;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid #f5f5f5;">🖨 طباعة</div>
+              <div onclick="navigator.clipboard&&navigator.clipboard.writeText('https://sanad.curveapp.net/#${proj.id}');document.getElementById('pp-dots-drop').style.display='none'" style="padding:11px 14px;font-size:11px;font-weight:700;color:#1C2D4A;cursor:pointer;display:flex;align-items:center;gap:8px;">🔗 نسخ الرابط</div>
+            </div>
+          </div>
+        </div>
+        <!-- HEADER BANNER -->
+        <div style="background:#1C2D4A;padding:12px 22px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,.06);">
+          <div style="font-size:15px;font-weight:800;color:#C9A84C;letter-spacing:.04em;">وثيقة المشروع الرقمية</div>
+          <div style="font-family:Montserrat,sans-serif;font-size:15px;font-weight:700;color:rgba(255,255,255,.9);letter-spacing:.12em;">SANAD</div>
         </div>
       </div>
 
-      <!-- PASSPORT BODY -->
-      <div id="passport-body" style="display:grid;grid-template-columns:1fr 220px;gap:0;font-family:Cairo,sans-serif;direction:rtl;">
+      <div id="passport-body" style="padding:18px;display:flex;flex-direction:column;gap:14px;">
 
-        <!-- LEFT: MAIN CONTENT -->
-        <div style="padding:20px;display:flex;flex-direction:column;gap:14px;">
-
-          <!-- HEADER -->
-          <div style="background:linear-gradient(135deg,#0D1B2E,#243D5E);border-radius:14px;padding:20px 22px;color:#fff;position:relative;overflow:hidden;">
-            <div style="position:absolute;left:-20px;bottom:-20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.04);"></div>
-            <div style="font-size:10px;color:rgba(255,255,255,.35);letter-spacing:.12em;margin-bottom:5px;">سند · وثيقة المشروع الرقمية</div>
-            <div style="font-size:20px;font-weight:900;line-height:1.2;">${proj.ownerName}</div>
-            <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:5px;">&#128205; ${[proj.gov,proj.city,proj.district,proj.neighborhood].filter(Boolean).join(" · ")}</div>
-            <div style="margin-top:12px;display:flex;gap:7px;flex-wrap:wrap;">
-              <span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-size:9px;font-weight:700;">${proj.id}</span>
-              ${proj.area?`<span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-size:9px;">${Number(proj.area).toLocaleString()} م²</span>`:""}
-              ${proj.activity?`<span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-size:9px;">${proj.activity}</span>`:""}
-              ${proj.floors?`<span style="background:rgba(255,255,255,.1);border-radius:5px;padding:3px 9px;font-size:9px;">${proj.floors} أدوار</span>`:""}
-            </div>
-          </div>
-
-          <!-- STATS ROW -->
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
-            ${statCard("اكتمال المراحل",pct+"%",doneCount+" من "+stages.length+" مرحلة","#C9A84C")}
-            ${statCard("المستندات المرفوعة",uploadedDocs+" / "+totalDocs,docPct+"% مكتملة",docPct===100?"#1B7A4A":"#1C2D4A")}
-            ${statCard("المرحلة الحالية",currentStage?.label||currentStage?.name||"—",proj.nextAction?"الإجراء: "+proj.nextAction:"",  "#1A3F6B")}
-          </div>
-
-          <!-- STAGE PROGRESS -->
-          <div style="background:#fff;border-radius:12px;padding:16px 18px;border:1px solid #eee;">
-            <div style="font-size:10px;font-weight:700;color:#999;margin-bottom:14px;letter-spacing:.08em;">تقدم المراحل</div>
-            <div style="display:flex;align-items:flex-start;gap:0;">
-              ${stages.map((s,i)=>`
-                <div style="display:flex;align-items:center;flex:1;">
-                  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
-                    <div style="width:24px;height:24px;border-radius:50%;background:${(()=>{const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);const done=req.length>0&&req.every(d=>d.up);return done?"#1B7A4A":s===currentStage?"#1C2D4A":"#e8e8e8";})()};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                      <span style="color:${(()=>{const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);const done=req.length>0&&req.every(d=>d.up);return done||s===currentStage?"#fff":"#bbb";})()};font-size:10px;font-weight:700;">${(()=>{const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);return req.length>0&&req.every(d=>d.up)?"✓":i+1;})()}</span>
-                    </div>
-                    <div style="font-size:7.5px;text-align:center;color:${(()=>{const req=[...(s.docs||[]),...(s.cd||[])].filter(d=>d.req);const done=req.length>0&&req.every(d=>d.up);return done?"#1B7A4A":s===currentStage?"#1C2D4A":"#bbb";})()};font-weight:${s===currentStage?"700":"400"};max-width:48px;line-height:1.3;">${s.label||s.name||""}</div>
-                  </div>
-                  ${i<stages.length-1?`<div style="height:2px;flex:1;background:${s.done?"#1B7A4A":"#e8e8e8"};margin-bottom:20px;"></div>`:""}
-                </div>`).join("")}
-            </div>
-          </div>
-
-          <!-- TWO COL: SPECS + PARTIES -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div style="background:#fff;border-radius:12px;border:1px solid #eee;overflow:hidden;">
-              <div style="padding:10px 14px;border-bottom:1px solid #f0f0f0;font-size:9px;font-weight:700;color:#aaa;letter-spacing:.1em;">المواصفات الفنية</div>
-              <div style="padding:10px 14px;">
-                <table style="width:100%;border-collapse:collapse;">
-                  ${infoRow("المحافظة",proj.gov)}
-                  ${infoRow("المدينة",proj.city)}
-                  ${infoRow("الحي",proj.district)}
-                  ${infoRow("المجاورة",proj.neighborhood)}
-                  ${infoRow("المساحة",proj.area?Number(proj.area).toLocaleString()+" م²":"")}
-                  ${infoRow("النشاط",proj.activity)}
-                  ${infoRow("الأدوار",proj.floors?proj.floors+" أدوار":"")}
-                  ${infoRow("مصعد",proj.hasElevator?"نعم":proj.hasElevator===false?"لا":"")}
-                  ${infoRow("بدروم",proj.hasBasement?"نعم":proj.hasBasement===false?"لا":"")}
-                  ${infoRow("كود الجهاز",proj.authorityCode)}
-                  ${infoRow("سبب التسجيل",proj.serviceReason)}
-                </table>
-              </div>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:10px;">
-              <div style="background:#fff;border-radius:12px;border:1px solid #eee;overflow:hidden;flex:1;">
-                <div style="padding:10px 14px;border-bottom:1px solid #f0f0f0;font-size:9px;font-weight:700;color:#aaa;letter-spacing:.1em;">أطراف المشروع</div>
-                <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px;">
-                  ${parties.length?parties.map(pt=>{
-                    const rc=PARTY_ROLES.find(r=>r.k===pt.role)||{l:pt.role,c:"#8896A4"};
-                    return`<div style="display:flex;align-items:center;gap:8px;">
-                      <div style="width:28px;height:28px;border-radius:50%;background:${rc.c}18;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:${rc.c};flex-shrink:0;">${pt.name.charAt(0)}</div>
-                      <div>
-                        <div style="font-size:11px;font-weight:700;color:#1a1a1a;">${pt.name}</div>
-                        <div style="font-size:9px;color:#aaa;">${rc.l}</div>
-                      </div>
-                    </div>`;}).join(""):`<div style="font-size:11px;font-weight:700;color:#1a1a1a;">${proj.ownerName}</div>`}
+        <!-- ① HERO CARD (white) -->
+        <div style="background:#fff;border-radius:16px;border:1px solid #e8e8e8;display:flex;align-items:stretch;overflow:hidden;">
+          <div style="width:6px;background:#1C2D4A;flex-shrink:0;"></div>
+          <div style="flex:1;padding:20px 24px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+              <div style="flex:1;">
+                <div style="font-size:23px;font-weight:900;color:#1C2D4A;line-height:1.2;margin-bottom:6px;">${proj.ownerName}</div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+                  ${proj.projectName?`<span style="font-size:11px;font-weight:700;color:#888;">${proj.projectName}</span><div style="width:1px;height:12px;background:#ddd;"></div>`:""}
+                  <span style="font-size:11px;font-weight:800;color:#1C2D4A;font-family:monospace;background:#f0f2f5;padding:2px 8px;border-radius:6px;direction:ltr;display:inline-block;">${proj.id}</span>
+                </div>
+                <div style="font-size:11px;color:#888;margin-bottom:12px;">📍 ${[proj.gov,proj.city,proj.district,proj.neighborhood].filter(Boolean).join(" · ")||"—"}</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  ${proj.requestType?`<span style="display:inline-flex;align-items:center;background:#FBF5E6;color:#8B5E1A;border:1px solid #E8D5A0;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;">${proj.requestType}</span>`:""}
+                  ${proj.activity?`<span style="display:inline-flex;align-items:center;background:#f5f6f8;color:#1C2D4A;border:1px solid #e8e8e8;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;">${proj.activity}</span>`:""}
+                  ${proj.area?`<span style="display:inline-flex;align-items:center;background:#f5f6f8;color:#1C2D4A;border:1px solid #e8e8e8;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;">${Number(proj.area).toLocaleString()} م²</span>`:""}
+                  ${(()=>{const v=byanAlAmal(proj);return v&&v!=="—"?`<span style="display:inline-flex;align-items:center;background:#f5f6f8;color:#1C2D4A;border:1px solid #e8e8e8;border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;">${v}</span>`:""})()}
                 </div>
               </div>
-              ${proj.pricePerMeter&&proj.area?`<div style="background:linear-gradient(135deg,#F0E6C8,#fdf7e8);border-radius:12px;border:1px solid rgba(201,168,76,.3);padding:12px 14px;">
-                <div style="font-size:9px;color:#B7770D;font-weight:700;margin-bottom:4px;">التقدير المالي</div>
-                <div style="font-size:16px;font-weight:900;color:#8B5E1A;">${Number(proj.area*proj.pricePerMeter).toLocaleString()} ج.م</div>
+              <div style="text-align:center;background:#f5f6f8;border-radius:12px;padding:14px 18px;flex-shrink:0;min-width:88px;align-self:center;">
+                <div style="font-size:28px;font-weight:900;color:#1C2D4A;line-height:1;">${docPct}%</div>
+                <div style="font-size:8px;color:#888;margin-top:3px;">${hlabel}</div>
+                <div style="width:56px;height:4px;background:#e0e0e0;border-radius:4px;margin:8px auto 0;">
+                  <div style="height:100%;width:${docPct}%;background:#C9A84C;border-radius:4px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ② KPI ROW -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+          <div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #eee;">
+            <div style="font-size:9px;color:#aaa;margin-bottom:6px;">المراحل المكتملة</div>
+            <div style="font-size:18px;font-weight:900;color:#C9A84C;line-height:1;">${doneCount} <span style="font-size:12px;font-weight:600;color:#ccc;">/ ${stages.length}</span></div>
+          </div>
+          <div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #eee;">
+            <div style="font-size:9px;color:#aaa;margin-bottom:6px;">المستندات</div>
+            <div style="font-size:18px;font-weight:900;color:${docPct===100?"#1B7A4A":"#1C2D4A"};line-height:1;">${uploadedDocs} <span style="font-size:12px;font-weight:600;color:#ccc;">/ ${totalDocs}</span></div>
+          </div>
+          <div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #eee;">
+            <div style="font-size:9px;color:#aaa;margin-bottom:6px;">المرحلة الحالية</div>
+            <div style="font-size:11px;font-weight:800;color:#1C2D4A;line-height:1.3;">${currentStage?.label||currentStage?.name||"—"}</div>
+          </div>
+          <div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #eee;">
+            <div style="font-size:9px;color:#aaa;margin-bottom:6px;">الإجراء التالي</div>
+            <div style="font-size:10px;font-weight:700;color:#1C2D4A;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${proj.nextAction||"—"}</div>
+          </div>
+        </div>
+
+        <!-- ③ STAGE TIMELINE -->
+        <div style="background:#fff;border-radius:14px;padding:18px 20px;border:1px solid #eee;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+          ${secTitle("تقدم المراحل","📊")}
+          <div style="display:flex;align-items:flex-start;overflow-x:auto;padding-bottom:4px;">
+            ${stages.map((s,i)=>{
+              const req=stageDocs(s,proj).filter(d=>d.req);
+              const up=req.filter(d=>d.up).length;
+              const done=stageComplete(s,proj);
+              const isCur=s===currentStage;
+              const bg=done?"#1B7A4A":isCur?"#1C2D4A":"#e8e8e8";
+              const tc=done||isCur?"#fff":"#bbb";
+              const lc=done?"#1B7A4A":isCur?"#1C2D4A":"#bbb";
+              return`<div style="display:flex;align-items:center;flex:1;min-width:0;">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;min-width:0;">
+                  <div style="width:28px;height:28px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;flex-shrink:0;${isCur?"box-shadow:0 0 0 4px rgba(28,45,74,.15);":""}">
+                    <span style="color:${tc};font-size:11px;font-weight:800;">${done?"✓":i+1}</span>
+                  </div>
+                  <div style="font-size:7.5px;text-align:center;color:${lc};font-weight:${isCur?"800":"500"};max-width:52px;line-height:1.3;overflow:hidden;">${s.label||s.name||""}</div>
+                  ${req.length?`<div style="font-size:7px;color:#ccc;">${up}/${req.length}</div>`:""}
+                </div>
+                ${i<stages.length-1?`<div style="height:2px;flex:1;min-width:8px;background:${done?"#1B7A4A":"#e8e8e8"};margin-bottom:24px;border-radius:2px;"></div>`:""}
+              </div>`;
+            }).join("")}
+          </div>
+        </div>
+
+        <!-- ④ OWNERSHIP REGISTRY -->
+        <div style="background:#fff;border-radius:14px;border:1px solid #eee;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+          <div style="padding:12px 20px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;gap:6px;">
+            <span style="font-size:10px;font-weight:800;color:#1C2D4A;letter-spacing:.06em;">📜 سجل الملكية</span>
+            <div style="flex:1;height:1px;background:#f0f0f0;"></div>
+            ${landOwners.filter(o=>!o.parentId).length?`<span style="font-size:9px;background:#EEF1F7;color:#1C2D4A;font-weight:700;padding:2px 8px;border-radius:10px;">${landOwners.filter(o=>!o.parentId).length} ملاك</span>`:""}
+          </div>
+          <div style="padding:14px 20px;display:flex;gap:0;align-items:stretch;overflow-x:auto;">
+            ${(()=>{
+              const owners=landOwners.filter(o=>!o.parentId);
+              if(!owners.length)return`<div style="font-size:12px;font-weight:700;color:#1C2D4A;padding:8px 0;">${proj.ownerName}</div>`;
+              return owners.map((o,i,arr)=>{
+                const isLast=i===arr.length-1;
+                const tl=transferLabels[o.transferType]||o.transferType||"";
+                const subs=landOwners.filter(x=>x.parentId===o.id);
+                const isCompany=o.ownerKind==="company";
+                const bg=isLast?"#1C2D4A":i===0?"#FDFAF3":"#F5F7FB";
+                const bdr=isLast?"#1C2D4A":i===0?"#E8D5A0":"#DDE3EE";
+                const tc=isLast?"#fff":"#1C2D4A";
+                const sub=isLast?"rgba(255,255,255,.45)":"#888";
+                const faint=isLast?"rgba(255,255,255,.25)":"#bbb";
+                const sep=`border-top:1px solid ${isLast?"rgba(255,255,255,.1)":"#eee"};margin-top:7px;padding-top:7px;`;
+                const card=`<div style="flex:1;min-width:160px;padding:14px;background:${bg};border:1px solid ${bdr};border-radius:${i===0?"12px 0 0 12px":isLast?"0 12px 12px 0":"0"};${i>0&&!isLast?"border-left:none;border-right:none;":""}${i===0&&arr.length>1?"border-left:none;":""}">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                    <div style="width:28px;height:28px;border-radius:50%;background:${isLast?"#C9A84C":i===0?"#C9A84C":"#1C2D4A"};color:${isLast?"#1C2D4A":"#fff"};font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</div>
+                    <span style="font-size:8px;font-weight:700;color:${isLast?"#C9A84C":i===0?"#8B5E1A":"#1C2D4A"};">${isLast?"المالك الحالي"+(tl?" · "+tl:""):i===0?"المالك الأصلي":tl||"مالك"}</span>
+                  </div>
+                  <div style="font-size:13px;font-weight:800;color:${tc};margin-bottom:8px;">${o.name}</div>
+                  <div style="font-size:9px;color:${sub};line-height:1.7;">
+                    ${isCompany?[o.repName?"ممثل: "+o.repName:"",o.nid?o.nid:"",o.comReg?"ش.ت "+o.comReg:"",o.taxNum?"ض "+o.taxNum:""].filter(Boolean).join(" · "):o.nid||""}
+                  </div>
+                  ${o.date?`<div style="font-size:8px;color:${faint};margin-top:3px;">${o.date}</div>`:""}
+                  ${subs.map(sp=>`<div style="${sep}"><div style="font-size:8px;color:#8B5CF6;font-weight:700;">${sp.partnerType||"شريك"}</div><div style="font-size:10px;font-weight:700;color:${isLast?"rgba(255,255,255,.8)":"#333"};">${sp.name}</div></div>`).join("")}
+                </div>`;
+                const arrow=i<arr.length-1?`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 2px;background:#f5f6f8;gap:1px;flex-shrink:0;">
+                  <div style="font-size:7px;color:#C9A84C;font-weight:700;writing-mode:vertical-rl;transform:rotate(180deg);line-height:1;">${transferLabels[arr[i+1]?.transferType]||arr[i+1]?.transferType||""}</div>
+                  <div style="font-size:11px;color:#C9A84C;line-height:1;">◄</div>
+                </div>`:"";
+                return card+arrow;
+              }).join("");
+            })()}
+          </div>
+        </div>
+
+        <!-- ⑤ TWO COL: SPECS + PARTIES -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+
+          <!-- SPECS -->
+          <div style="background:#fff;border-radius:14px;border:1px solid #eee;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+            <div style="padding:14px 18px;border-bottom:1px solid #f0f0f0;">${secTitle("المواصفات الفنية","🏗")}</div>
+            <div style="padding:10px 18px 14px;">
+              ${infoCell("المحافظة",proj.gov)}
+              ${infoCell("المدينة",proj.city)}
+              ${infoCell("الحي",proj.district)}
+              ${infoCell("المجاورة",proj.neighborhood)}
+              ${infoCell("المساحة",proj.area?Number(proj.area).toLocaleString()+" م²":"")}
+              ${infoCell("النشاط",proj.activity)}
+              ${infoCell("اسم المشروع",proj.projectName)}
+              ${infoCell("بيان الأعمال",byanAlAmal(proj))}
+              ${infoCell("نسبة المبنى",proj.buildingRatio?proj.buildingRatio+"%":"")}
+              ${infoCell("كود الجهاز",proj.authorityCode)}
+              ${infoCell("القطعة",proj.plot)}
+              ${infoCell("حالة العقار",proj.propertyState)}
+            </div>
+          </div>
+
+          <!-- PARTIES -->
+          <div style="background:#fff;border-radius:14px;border:1px solid #eee;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+            <div style="padding:14px 18px;border-bottom:1px solid #f0f0f0;">${secTitle("أطراف المشروع","👥")}</div>
+            <div style="padding:10px 14px 14px;display:flex;flex-direction:column;gap:8px;">
+              ${parties.length?parties.map(pt=>{const rc=PARTY_ROLES.find(r=>r.k===pt.role)||{l:pt.role,c:"#8896A4"};return`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#f9f9f9;border-radius:10px;border:1px solid #f0f0f0;">
+                <div style="width:32px;height:32px;border-radius:50%;background:${rc.c}20;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:${rc.c};flex-shrink:0;">${pt.name.charAt(0)}</div>
+                <div><div style="font-size:11px;font-weight:700;color:#1a1a1a;">${pt.name}</div><div style="font-size:9px;color:#aaa;">${rc.l}</div></div>
+              </div>`;}).join(""):`<div style="font-size:11px;color:#bbb;padding:8px;">لا يوجد أطراف مسجلة</div>`}
+              ${proj.pricePerMeter&&proj.area?`<div style="background:#FDFAF3;border:1px solid rgba(201,168,76,.25);border-radius:10px;padding:12px 14px;margin-top:4px;">
+                <div style="font-size:9px;color:#B7770D;font-weight:800;margin-bottom:4px;">💰 التقدير المالي</div>
+                <div style="font-size:18px;font-weight:900;color:#8B5E1A;">${Number(proj.area*proj.pricePerMeter).toLocaleString()} ج.م</div>
                 <div style="font-size:9px;color:#B7770D;margin-top:2px;">${Number(proj.pricePerMeter).toLocaleString()} ج.م / م²</div>
               </div>`:""}
             </div>
           </div>
+        </div>
 
-          <!-- DOCUMENTS STATUS -->
-          <div style="background:#fff;border-radius:12px;border:1px solid #eee;padding:14px 16px;">
-            <div style="font-size:9px;font-weight:700;color:#aaa;letter-spacing:.1em;margin-bottom:10px;">حالة المستندات</div>
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-              <div style="flex:1;height:7px;background:#f0f0f0;border-radius:10px;overflow:hidden;">
-                <div style="height:100%;width:${docPct}%;background:linear-gradient(90deg,#1B7A4A,#2ecc71);border-radius:10px;"></div>
-              </div>
-              <span style="font-size:12px;font-weight:800;color:${docPct===100?"#1B7A4A":"#1C2D4A"};white-space:nowrap;">${uploadedDocs} / ${totalDocs}</span>
+        <!-- ⑥ DOCUMENTS STATUS -->
+        <div style="background:#fff;border-radius:14px;border:1px solid #eee;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+          ${secTitle("حالة المستندات","📂")}
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+            <div style="flex:1;height:8px;background:#f0f0f0;border-radius:10px;overflow:hidden;">
+              <div style="height:100%;width:${docPct}%;background:linear-gradient(90deg,${docPct===100?"#1B7A4A,#2ecc71":"#1C2D4A,#3B6FD4"});border-radius:10px;transition:width .4s;"></div>
             </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              ${stages.map(s=>{
-                const req=(s.docs||[]).filter(d=>d.req).length;
-                const up=(s.docs||[]).filter(d=>d.req&&d.up).length;
-                if(!req)return"";
-                const done=up===req;
-                return`<div style="display:flex;align-items:center;gap:4px;background:${done?"#E3F5EC":"#F4F5F7"};border:1px solid ${done?"rgba(27,122,74,.2)":"#e8e8e8"};border-radius:6px;padding:3px 8px;">
-                  <span style="font-size:8px;color:${done?"#1B7A4A":"#888"};">${done?"✓":"○"}</span>
-                  <span style="font-size:9px;font-weight:600;color:${done?"#1B7A4A":"#666"};">${s.label||s.name||"—"}</span>
-                  <span style="font-size:8px;color:#aaa;">${up}/${req}</span>
-                </div>`;
-              }).join("")}
-            </div>
-            ${expiredPOA.length?`<div style="margin-top:8px;padding:7px 10px;background:#FDEAEA;border-radius:7px;font-size:9px;color:#C0392B;font-weight:700;">تحذير: ${expiredPOA.length} توكيل منتهي الصلاحية</div>`:""}
+            <span style="font-size:13px;font-weight:900;color:${docPct===100?"#1B7A4A":"#1C2D4A"};white-space:nowrap;">${uploadedDocs} / ${totalDocs}</span>
+            <span style="font-size:10px;font-weight:700;color:${hcolor};background:${hcolor}18;padding:2px 8px;border-radius:10px;">${docPct}%</span>
           </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${stages.map(s=>{
+              const all=stageDocs(s,proj);
+              const req=all.length;
+              const up=all.filter(d=>d.up).length;
+              if(!req)return"";
+              const done=stageComplete(s,proj);
+              return`<div style="display:flex;align-items:center;gap:5px;background:${done?"#E3F5EC":"#F7F8FA"};border:1px solid ${done?"rgba(27,122,74,.2)":"#e8e8e8"};border-radius:8px;padding:5px 10px;">
+                <span style="font-size:10px;">${done?"✅":"🔲"}</span>
+                <span style="font-size:9px;font-weight:700;color:${done?"#1B7A4A":"#555"};">${s.label||s.name||"—"}</span>
+                <span style="font-size:8px;color:#bbb;font-family:monospace;">${up}/${req}</span>
+              </div>`;
+            }).join("")}
+          </div>
+          ${expiredPOA.length?`<div style="margin-top:10px;padding:9px 12px;background:#FEF0F0;border-right:3px solid #C0392B;border-radius:0 8px 8px 0;font-size:9px;color:#C0392B;font-weight:700;">⚠️ تحذير: ${expiredPOA.length} توكيل منتهي الصلاحية</div>`:""}
+        </div>
 
-          ${proj.ownerChain?.length?`<!-- OWNERSHIP CHAIN -->
-          <div style="background:#fff;border-radius:12px;border:1px solid #eee;padding:14px 16px;">
-            <div style="font-size:9px;font-weight:700;color:#aaa;letter-spacing:.1em;margin-bottom:12px;">سلسلة الملكية</div>
-            <div style="display:flex;align-items:center;overflow-x:auto;gap:0;">
-              ${proj.ownerChain.map((o,i)=>`
-                <div style="display:flex;align-items:center;flex-shrink:0;">
-                  <div style="text-align:center;padding:0 6px;">
-                    <div style="width:30px;height:30px;border-radius:50%;background:${i===proj.ownerChain.length-1?"#1C2D4A":"#e8e8e8"};color:${i===proj.ownerChain.length-1?"#fff":"#888"};font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 3px;">${i+1}</div>
-                    <div style="font-size:8px;font-weight:700;color:#333;white-space:nowrap;">${o.name}</div>
-                    <div style="font-size:7px;color:#aaa;">${o.transferType||""}</div>
+        <!-- ⑦ CURRENT STAGE + NEXT STAGE + TIMELINE -->
+        ${(()=>{
+          const nextStageIdx=stages.indexOf(currentStage)+1;
+          const nextStage=stages[nextStageIdx]||null;
+          const nextReq=nextStage?[...(nextStage.docs||[]),...(nextStage.cd||[])].filter(d=>d.req):[];
+          const nextUp=nextReq.filter(d=>d.up).length;
+          const curReq=[...(currentStage?.docs||[]),...(currentStage?.cd||[])].filter(d=>d.req);
+          const curUp=curReq.filter(d=>d.up).length;
+          const lastComment=(proj.comments||[]).slice(-1)[0];
+          const responsible=(proj.parties||[]).find(p=>p.stage===currentStage?.name||p.stage===currentStage?.label);
+          const responsibleName=responsible?.name||(proj.byRole==="office"?proj.byName:"")||(proj.byRole==="staff"?proj.byName:"")||"";
+          return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <!-- المرحلة الحالية -->
+            <div style="background:#fff;border-radius:14px;border:2px solid #1C2D4A;overflow:hidden;">
+              <div style="background:#1C2D4A;padding:12px 16px;display:flex;align-items:center;gap:8px;">
+                <span style="font-size:11px;font-weight:800;color:#fff;">المرحلة الحالية</span>
+                <span style="background:#C9A84C;color:#1C2D4A;font-size:9px;font-weight:900;padding:2px 8px;border-radius:10px;margin-right:auto;">جارية</span>
+              </div>
+              <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;align-items:flex-start;gap:10px;">
+                  <div style="width:30px;height:30px;border-radius:8px;background:#EEF1F7;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">📋</div>
+                  <div><div style="font-size:9px;color:#888;margin-bottom:3px;">المرحلة</div><div style="font-size:13px;font-weight:800;color:#1C2D4A;">${currentStage?.label||currentStage?.name||"—"}</div></div>
+                </div>
+                ${responsibleName?`<div style="display:flex;align-items:flex-start;gap:10px;">
+                  <div style="width:30px;height:30px;border-radius:8px;background:#EEF1F7;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">👤</div>
+                  <div><div style="font-size:9px;color:#888;margin-bottom:3px;">المسؤول</div><div style="font-size:12px;font-weight:800;color:#1C2D4A;">${responsibleName}</div></div>
+                </div>`:""}
+                ${lastComment?`<div style="background:#FDFAF3;border:1px solid #E8D5A0;border-radius:10px;padding:12px 14px;">
+                  <div style="font-size:9px;color:#8B5E1A;font-weight:800;margin-bottom:6px;">💬 آخر تعليق</div>
+                  <div style="font-size:10px;color:#5A4010;line-height:1.6;">${lastComment.text||lastComment}</div>
+                </div>`:""}
+              </div>
+            </div>
+            <!-- المرحلة القادمة + آخر الأحداث -->
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              ${nextStage?`<div style="background:#fff;border-radius:14px;border:1px solid #e8e8e8;overflow:hidden;">
+                <div style="background:#f5f6f8;padding:10px 16px;display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:13px;">⏭</span>
+                  <span style="font-size:11px;font-weight:800;color:#555;">المرحلة القادمة</span>
+                </div>
+                <div style="padding:14px 16px;">
+                  <div style="font-size:13px;font-weight:900;color:#1C2D4A;margin-bottom:6px;">${nextStage.label||nextStage.name}</div>
+                  <div style="display:flex;gap:6px;margin-top:8px;">
+                    <span style="background:#FBF5E6;color:#8B5E1A;border:1px solid #E8D5A0;border-radius:6px;padding:3px 8px;font-size:9px;font-weight:700;">${nextReq.length} مستند مطلوب</span>
+                    <span style="background:#f5f6f8;color:#555;border:1px solid #e8e8e8;border-radius:6px;padding:3px 8px;font-size:9px;font-weight:700;">${nextUp} مرفوع</span>
                   </div>
-                  ${i<proj.ownerChain.length-1?`<div style="width:20px;height:1px;background:#ddd;flex-shrink:0;"></div>`:""}
-                </div>`).join("")}
+                </div>
+              </div>`:""}
+              ${timeline.length?`<div style="background:#fff;border-radius:14px;border:1px solid #e8e8e8;padding:14px 16px;flex:1;">
+                ${secTitle("آخر الأحداث","⏱")}
+                <div style="display:flex;flex-direction:column;">
+                  ${timeline.map((t,i)=>`<div style="display:flex;gap:10px;padding:8px 0;${i<timeline.length-1?"border-bottom:1px solid #f5f5f5;":""}">
+                    <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
+                      <div style="width:28px;height:28px;border-radius:50%;background:#f5f6f8;display:flex;align-items:center;justify-content:center;font-size:12px;border:1px solid #ebebeb;">${t.icon||"📌"}</div>
+                      ${i<timeline.length-1?`<div style="width:1px;flex:1;background:#ebebeb;margin:4px 0;min-height:8px;"></div>`:""}
+                    </div>
+                    <div style="flex:1;padding-top:3px;">
+                      <div style="font-size:10px;font-weight:700;color:#1a1a1a;">${t.event}</div>
+                      <div style="font-size:8px;color:#bbb;margin-top:2px;">${t.date||""} ${t.by?"· "+t.by:""}</div>
+                    </div>
+                  </div>`).join("")}
+                </div>
+              </div>`:""}
             </div>
-          </div>`:""}
+          </div>`;
+        })()}
 
-          ${timeline.length?`<!-- TIMELINE -->
-          <div style="background:#fff;border-radius:12px;border:1px solid #eee;padding:14px 16px;">
-            <div style="font-size:9px;font-weight:700;color:#aaa;letter-spacing:.1em;margin-bottom:10px;">آخر التحديثات</div>
-            ${timeline.map(t=>`<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid #f5f5f5;">
-              <div style="font-size:14px;flex-shrink:0;">${t.icon||"●"}</div>
-              <div style="flex:1;">
-                <div style="font-size:10px;font-weight:600;color:#333;">${t.event}</div>
-                <div style="font-size:9px;color:#bbb;margin-top:1px;">${t.date||""} ${t.by?"· "+t.by:""}</div>
-              </div>
-            </div>`).join("")}
-          </div>`:""}
-
-          <!-- FOOTER -->
-          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid #e8e8e8;">
+        <!-- ⑨ FOOTER (navy) -->
+        <div style="background:#1C2D4A;border-radius:16px;overflow:hidden;">
+          <div style="padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;">
             <div>
-              <div style="font-size:10px;font-weight:800;color:#1C2D4A;">سند · منصة إدارة المشاريع العقارية</div>
-              <div style="font-size:8px;color:#bbb;margin-top:2px;">صادرة بتاريخ ${today} · للتحقق تواصل مع المكتب المصدر</div>
+              <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">
+                <span style="font-size:20px;font-weight:900;color:#C9A84C;letter-spacing:.04em;">سند</span>
+                <span style="font-family:Montserrat,sans-serif;font-size:13px;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:.1em;">· SANAD</span>
+              </div>
+              <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,.4);letter-spacing:.03em;margin-bottom:6px;">منصة إدارة المشاريع العقارية الرقمية</div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:8px;color:rgba(255,255,255,.25);font-family:monospace;direction:ltr;">${proj.id}</span>
+                <span style="width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.15);display:inline-block;"></span>
+                <span style="font-size:8px;color:rgba(255,255,255,.25);">${today}</span>
+              </div>
             </div>
-            <div style="font-size:8px;color:#ccc;font-family:monospace;">${proj.id}</div>
-          </div>
-
-        </div>
-
-        <!-- RIGHT: DARK SIDEBAR -->
-        <div style="background:linear-gradient(180deg,#0D1B2E,#1C2D4A);border-radius:0 0 18px 0;padding:20px 16px;display:flex;flex-direction:column;gap:16px;align-items:center;">
-
-          <!-- LOGO / BRAND -->
-          <div style="text-align:center;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.08);width:100%;">
-            <div style="font-size:18px;font-weight:900;color:#fff;letter-spacing:.05em;">سند</div>
-            <div style="font-size:8px;color:rgba(255,255,255,.3);margin-top:2px;">جواز المشروع الرقمي</div>
-          </div>
-
-          <!-- QR CODE -->
-          <div style="background:rgba(255,255,255,.06);border-radius:12px;padding:12px;text-align:center;width:100%;">
-            <img src="${qrUrl}" width="110" height="110" style="border-radius:6px;display:block;margin:0 auto;" alt="QR"/>
-            <div style="font-size:8px;color:rgba(255,255,255,.3);margin-top:6px;font-family:monospace;">${proj.id}</div>
-          </div>
-
-          <!-- DOCS SUMMARY -->
-          <div style="width:100%;padding:12px 0;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);">
-            <div style="font-size:8px;color:rgba(255,255,255,.3);margin-bottom:8px;text-align:center;">المستندات</div>
-            <div style="display:flex;justify-content:space-around;">
-              <div style="text-align:center;"><div style="font-size:18px;font-weight:900;color:#4ade80;">${uploadedDocs}</div><div style="font-size:8px;color:rgba(255,255,255,.3);">مرفوع</div></div>
-              <div style="text-align:center;"><div style="font-size:18px;font-weight:900;color:#C9A84C;">${totalDocs-uploadedDocs}</div><div style="font-size:8px;color:rgba(255,255,255,.3);">ناقص</div></div>
-              <div style="text-align:center;"><div style="font-size:18px;font-weight:900;color:#fff;">${totalDocs}</div><div style="font-size:8px;color:rgba(255,255,255,.3);">إجمالي</div></div>
+            <div style="text-align:center;flex-shrink:0;">
+              <div style="background:#fff;border-radius:8px;padding:6px;display:inline-block;">
+                <img src="${qrUrl}" width="60" height="60" style="display:block;border-radius:3px;" alt="QR"/>
+              </div>
+              <div style="font-size:7px;color:rgba(255,255,255,.25);margin-top:4px;">امسح للتحقق</div>
             </div>
           </div>
-
-          <!-- issued by -->
-          <div style="width:100%;text-align:center;padding-top:12px;border-top:1px solid rgba(255,255,255,.06);">
-            <div style="font-size:8px;color:rgba(255,255,255,.25);">صادر من نظام سند</div>
-            <div style="font-size:8px;color:rgba(255,255,255,.25);margin-top:2px;">${today}</div>
+          <!-- Bottom strip -->
+          <div style="background:rgba(0,0,0,.2);padding:10px 24px;display:flex;justify-content:space-between;align-items:center;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="color:#C9A84C;font-size:12px;">✓</span>
+              <span style="font-size:9px;font-weight:700;color:rgba(255,255,255,.6);">بيانات موثقة — محفوظة على منصة سند</span>
+            </div>
+            <span style="font-size:8px;color:rgba(255,255,255,.25);font-family:monospace;direction:ltr;">${proj.id} · ${today}</span>
           </div>
-
-          <!-- VERIFIED BADGE -->
-          <div style="margin-top:auto;background:rgba(27,122,74,.2);border:1px solid rgba(27,122,74,.3);border-radius:10px;padding:10px 12px;width:100%;text-align:center;">
-            <div style="font-size:16px;margin-bottom:4px;">&#10003;</div>
-            <div style="font-size:9px;font-weight:700;color:#4ade80;">بيانات موثقة</div>
-            <div style="font-size:7px;color:rgba(255,255,255,.3);margin-top:2px;line-height:1.4;">محفوظة على منصة سند المركزية للتحقق التلقائي</div>
-          </div>
-
         </div>
+
       </div><!-- /passport-body -->
     </div>
   </div>`;
@@ -3538,6 +4078,78 @@ const copyPassportLink=projId=>{
 };
 
 // ── OWNERSHIP CHAIN ──
+const openAddUtility=projId=>{
+  const html=`<div style="display:flex;flex-direction:column;gap:10px;padding:4px 0;">
+    <input id="util-name" placeholder="اسم الخدمة (مثل: صرف صحي، إنترنت)" class="inp" style="font-size:13px;"/>
+  </div>`;
+  showModal("إضافة خدمة جديدة",html,`
+    <button class="btn btn-p" onclick="saveNewUtility('${projId}')">إضافة</button>
+    <button class="btn btn-gh" onclick="closeModal()">إلغاء</button>
+  `);
+};
+const saveNewUtility=projId=>{
+  const name=$("util-name")?.value?.trim();
+  if(!name)return toast("أدخل اسم الخدمة");
+  const p=gP();if(!p)return;
+  const stage=p.stages?.find(s=>s.key==="utilities");if(!stage)return;
+  const idx=Date.now();
+  const newDocs=[
+    {key:`cu_${idx}_req`,label:`${name} — طلب الخدمة`,req:false,up:null,note:""},
+    {key:`cu_${idx}_con`,label:`${name} — عقد الخدمة`,req:true,up:null,note:""},
+    {key:`cu_${idx}_ins`,label:`${name} — تركيب`,req:false,up:null,note:""},
+  ];
+  p.stages=p.stages.map(s=>s.key!=="utilities"?s:{...s,cd:[...(s.cd||[]),...newDocs]});
+  closeModal();svP(p);rFile();toast(`تمت إضافة ${name}`);
+};
+const openAddExDoc=projId=>{
+  showModal("إضافة مستند للحفر",`<div style="display:flex;flex-direction:column;gap:10px;padding:4px 0;">
+    <input id="exdoc-name" placeholder="اسم المستند (مثل: موافقة الشبكات، تجديد التصريح)" class="inp" style="font-size:13px;"/>
+  </div>`,`
+    <button class="btn btn-p" onclick="saveNewExDoc('${projId}')">إضافة</button>
+    <button class="btn btn-gh" onclick="closeModal()">إلغاء</button>
+  `);
+};
+const saveNewExDoc=projId=>{
+  const name=$("exdoc-name")?.value?.trim();
+  if(!name)return toast("أدخل اسم المستند");
+  const p=gP();if(!p)return;
+  const idx=Date.now();
+  const newDoc={key:`ex_cd_${idx}`,label:name,req:false,up:null,note:""};
+  p.stages=p.stages.map(s=>s.key!=="permits"?s:{...s,cd:[...(s.cd||[]),newDoc]});
+  closeModal();svP(p);rFile();toast(`تمت إضافة ${name}`);
+};
+const removeUtilGroup=(projId,idx)=>{
+  const p=gP();if(!p)return;
+  p.stages=p.stages.map(s=>s.key!=="utilities"?s:{...s,cd:(s.cd||[]).filter(d=>!d.key.startsWith(`cu_${idx}_`))});
+  svP(p);rFile();toast("تم الحذف");
+};
+const openAddChainPartner=(projId,ownerIdx)=>{
+  showModal("إضافة شريك",`<div style="display:flex;flex-direction:column;gap:10px;padding:4px 0;">
+    <input id="cp-name" placeholder="اسم الشريك" class="inp" style="font-size:13px;"/>
+    <input id="cp-nid"  placeholder="رقم قومي (اختياري)" class="inp" style="font-size:13px;"/>
+    <input id="cp-share" placeholder="نسبة الملكية % (اختياري)" class="inp" type="number" min="1" max="100" style="font-size:13px;"/>
+  </div>`,`
+    <button class="btn btn-p" onclick="saveChainPartner('${projId}',${ownerIdx})">إضافة</button>
+    <button class="btn btn-gh" onclick="closeModal()">إلغاء</button>
+  `);
+};
+const saveChainPartner=(projId,ownerIdx)=>{
+  const name=$("cp-name")?.value?.trim();
+  if(!name)return toast("أدخل اسم الشريك");
+  const nid=$("cp-nid")?.value?.trim();
+  const share=$("cp-share")?.value?.trim();
+  const p=gP();if(!p)return;
+  p.ownerChain=p.ownerChain||[];
+  if(!p.ownerChain[ownerIdx])return;
+  p.ownerChain[ownerIdx].partners=[...(p.ownerChain[ownerIdx].partners||[]),{name,nid,share}];
+  closeModal();svP(p);rFile();toast("تمت إضافة الشريك");
+};
+const removeChainPartner=(projId,ownerIdx,partnerIdx)=>{
+  const p=gP();if(!p)return;
+  if(!p.ownerChain?.[ownerIdx])return;
+  p.ownerChain[ownerIdx].partners=(p.ownerChain[ownerIdx].partners||[]).filter((_,i)=>i!==partnerIdx);
+  svP(p);rFile();toast("تم الحذف");
+};
 const openAddOwner=projId=>{
   const html=`<div style="display:flex;flex-direction:column;gap:10px;padding:4px 0;">
     <input id="oc-name" placeholder="اسم المالك" class="inp" style="font-size:13px;"/>
@@ -3556,21 +4168,16 @@ const openAddOwner=projId=>{
 const saveOwner=projId=>{
   const name=document.getElementById("oc-name")?.value?.trim();
   if(!name){toast("أدخل اسم المالك","warn");return;}
-  const projs=LS.g(K.p)||[];
-  const proj=projs.find(p=>p.id===projId);
-  if(!proj)return;
-  if(!proj.ownerChain)proj.ownerChain=[];
-  proj.ownerChain.push({
+  const p=gP();if(!p)return;
+  if(!p.ownerChain)p.ownerChain=[];
+  p.ownerChain.push({
     name,
     transferType:document.getElementById("oc-type")?.value||"",
     date:document.getElementById("oc-date")?.value||"",
     docType:document.getElementById("oc-doctype")?.value||"",
     files:{}
   });
-  LS.s(K.p,projs);
-  closeModal();
-  openProj(projId);
-  toast("تم إضافة المالك");
+  closeModal();svP(p);rFile();toast("تم إضافة المالك");
 };
 const removeOwner=(projId,idx)=>{
   if(!confirm("حذف هذا المالك؟"))return;
@@ -3727,7 +4334,7 @@ const rContacts=()=>{
   el.innerHTML=`<div class="card" style="overflow:hidden;"><table class="tbl"><thead><tr><th>المالك</th><th>الرقم القومي</th><th>الموقع</th><th>القطعة</th><th>الحالة</th><th>الإنجاز</th><th></th></tr></thead><tbody>
   ${projs.map(p=>{const comp=calcC(p),cc=CC(comp);return`<tr>
     <td><div style="font-weight:700;color:var(--t1);">${p.ownerName}</div>${p.ownerEmail?`<div style="font-size:10px;color:var(--t3);">${p.ownerEmail}</div>`:""}</td>
-    <td style="font-size:11px;font-family:monospace;color:var(--t2);">${p.nationalId||"—"}</td>
+    <td style="font-size:13px;font-family:monospace;font-weight:700;color:var(--n8);letter-spacing:.04em;">${p.nationalId||"—"}</td>
     <td style="font-size:12px;color:var(--t2);">${[p.city,p.district].filter(Boolean).join(" · ")||"—"}</td>
     <td style="font-size:12px;color:var(--t2);">${p.plot||"—"}</td>
     <td>${pill(p.devStatus||"—",DSC[p.devStatus]||"#8896A4")}</td>
@@ -3751,7 +4358,14 @@ const rTasks=()=>{
   const users=LS.g(K.u)||[];
   const projs=LS.g(K.p)||[];
   const isAdmin=["admin","staff"].includes(CU.role);
-  const myTasks=isAdmin?tasks:tasks.filter(t=>t.assignedTo===CU.id||t.createdBy===CU.id);
+  let myTasks;
+  if(isAdmin){myTasks=tasks;}
+  else if(CU.role==="developer"){
+    const myStaffIds=(LS.g(K.u)||[]).filter(u=>u.developerId===CU.id).map(u=>u.id);
+    myTasks=tasks.filter(t=>t.createdBy===CU.id||myStaffIds.includes(t.assignedTo));
+  } else {
+    myTasks=tasks.filter(t=>t.assignedTo===CU.id||t.createdBy===CU.id);
+  }
 
   // KPIs
   const kpis=[
@@ -3866,7 +4480,13 @@ const openTaskDetail=id=>{
 };
 
 const openAddTask=(presetProjId)=>{
-  const users=(LS.g(K.u)||[]).filter(u=>["admin","staff","office"].includes(u.role)&&u.status==="active");
+  const allUsers=LS.g(K.u)||[];
+  let users;
+  if(CU.role==="developer"){
+    users=allUsers.filter(u=>u.developerId===CU.id&&u.status==="active");
+  } else {
+    users=allUsers.filter(u=>["admin","staff","office"].includes(u.role)&&u.status==="active");
+  }
   const projs=LS.g(K.p)||[];
   const today=new Date().toISOString().slice(0,10);
   const h=`<div class="ov" id="m-add-task" style="position:fixed;inset:0;background:rgba(13,27,46,.55);z-index:300;display:flex;align-items:center;justify-content:center;">
@@ -4083,8 +4703,9 @@ const deleteStaff=id=>{
 
 // ── OFFICE STAFF ──
 const rOfficeStaff=()=>{
-  if(CU.role!=="office"){$("office-staff-list").innerHTML="";return;}
-  const staffList=(LS.g(K.u)||[]).filter(u=>u.officeId===CU.officeId&&u.id!==CU.id);
+  if(!["office","developer"].includes(CU.role)){$("office-staff-list").innerHTML="";return;}
+  const orgId=CU.officeId||CU.id;
+  const staffList=(LS.g(K.u)||[]).filter(u=>(u.officeId===orgId||u.developerId===orgId)&&u.id!==CU.id);
   const el=$("office-staff-list");
   if(!staffList.length){
     el.innerHTML=`<div class="card"><div class="empty"><div class="ei">👷</div><div class="et">لا يوجد موظفون</div><div class="es">أضف موظفي مكتبك وامنحهم صلاحية إدارة المشاريع</div><button class="btn btn-p" onclick="openAddStaff()" style="margin-top:8px;">+ إضافة موظف</button></div></div>`;
@@ -4112,12 +4733,10 @@ const addOfficeStaff=()=>{
   if(pass.length<8){toast("كلمة المرور 8 أحرف على الأقل","err");return;}
   const users=LS.g(K.u)||[];
   if(users.find(u=>u.email===email)){toast("هذا الإيميل مسجل بالفعل","err");return;}
-  users.push({
-    id:"u"+Date.now(),name,jobTitle:title,email,pass,phone,
-    role:"staff",status:"active",
-    officeId:CU.officeId,
-    created:new Date().toISOString().slice(0,10)
-  });
+  const newUser={id:"u"+Date.now(),name,jobTitle:title,email,pass,phone,role:"staff",status:"active",created:new Date().toISOString().slice(0,10)};
+  if(CU.role==="developer") newUser.developerId=CU.id;
+  else newUser.officeId=CU.officeId;
+  users.push(newUser);
   LS.s(K.u,users);
   cm("m-staff");rOfficeStaff();
   toast(`✓ تمت إضافة ${name} للمكتب`);
@@ -4381,5 +5000,16 @@ window.dlAllFiles=async()=>{
   toast(`✓ تم تحميل ${items.length} ملف`);
 };
 </script>
+
+<!-- ANALYTICS MODAL -->
+<div id="analytics-modal" class="hid" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);" onclick="if(event.target===this)this.classList.add('hid')">
+  <div style="background:#0D1B2E;border:1px solid rgba(201,168,76,.25);border-radius:16px;width:min(700px,95vw);max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.6);">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid rgba(255,255,255,.07);">
+      <div style="font-size:15px;font-weight:800;color:#fff;">📊 تحليلات المشروع</div>
+      <button onclick="$('analytics-modal').classList.add('hid')" style="background:rgba(255,255,255,.07);border:none;color:#8896A4;border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer;font-family:Cairo,sans-serif;">✕</button>
+    </div>
+    <div id="analytics-modal-body" style="overflow-y:auto;padding:22px;direction:rtl;font-family:Cairo,sans-serif;"></div>
+  </div>
+</div>
 </body>
 </html>
