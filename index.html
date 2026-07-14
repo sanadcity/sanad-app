@@ -810,6 +810,21 @@ const initData=()=>{
     if(dirty)LS.s(K.p,projects);
   };
   patchDocs();
+  // patch: fix tasaluh doc labels and inject missing tasaluh docs
+  (()=>{
+    const TS_LABELS={ts1:"تحليل كربوني / تصوير جوي",ts2:"شهادة مؤمنة",ts3:"تقرير سلامة إنشائية",ts4:"نموذج فني"};
+    const projs=LS.g(K.p)||[];let dirty=false;
+    projs.forEach(p=>{
+      const permitStage=p.stages?.find(s=>s.key==="permits");if(!permitStage)return;
+      const hasTasaluh=(p.requiredWorks||[]).includes("تصالح على مخالفة");
+      const ex=new Set((permitStage.docs||[]).map(d=>d.key));
+      // fix wrong labels
+      (permitStage.docs||[]).forEach(d=>{if(TS_LABELS[d.key]&&d.label!==TS_LABELS[d.key]){d.label=TS_LABELS[d.key];dirty=true;}});
+      // inject missing if needed
+      if(hasTasaluh){Object.entries(TS_LABELS).forEach(([k,l])=>{if(!ex.has(k)){permitStage.docs.push({key:k,label:l,req:true,cond:"tasaluh",up:null,notes:[]});dirty=true;}});}
+    });
+    if(dirty)LS.s(K.p,projs);
+  })();
   // patch: add تقرير سند جوانب حفر to projects with basementCount >= 2
   (()=>{const projs=LS.g(K.p)||[];let dirty=false;projs.forEach(p=>{if((p.basementCount||0)<2)return;const permitStage=p.stages?.find(s=>s.key==="permits");if(!permitStage)return;if(permitStage.docs?.find(d=>d.key==="p_bsmt2"))return;permitStage.docs=permitStage.docs||[];permitStage.docs.push({key:"p_bsmt2",label:"تقرير سند جوانب حفر",req:true,cond:"bsmt2",up:null,notes:[]});dirty=true;});if(dirty)LS.s(K.p,projs);})();
   // strip "مكتمل — " prefix from devStatus
@@ -860,6 +875,10 @@ const STAGES=[
     {key:"p11",label:"شهادة الإشراف الهندسي",req:true},
     {key:"p12",label:"تصريح الحفر",req:true},
     {key:"p_bsmt2",label:"تقرير سند جوانب حفر",req:true,cond:"bsmt2"},
+    {key:"ts1",label:"تحليل كربوني / تصوير جوي",req:true,cond:"tasaluh"},
+    {key:"ts2",label:"شهادة مؤمنة",req:true,cond:"tasaluh"},
+    {key:"ts3",label:"تقرير سلامة إنشائية",req:true,cond:"tasaluh"},
+    {key:"ts4",label:"نموذج فني",req:true,cond:"tasaluh"},
     {key:"eng1",label:"المهندس — صورة البطاقة (وجه)",req:true},
     {key:"eng2",label:"المهندس — صورة البطاقة (ظهر)",req:true},
     {key:"eng3",label:"المهندس — كارنيه النقابة",req:true},
@@ -993,6 +1012,7 @@ const docOK=(d,p)=>{
   if(d.cond==="comm"&&isRes)return false;
   if(d.cond==="elev"&&!p.hasElevator)return false;
   if(d.cond==="bsmt2"&&(p.basementCount||0)<2)return false;
+  if(d.cond==="tasaluh"&&!(p.requiredWorks||[]).includes("تصالح على مخالفة"))return false;
   return true;
 };
 const stageDocs=(s,p)=>[...(s.docs||[]),...(s.cd||[])].filter(d=>docOK(d,p));
@@ -1566,13 +1586,13 @@ const rDash=()=>{
     </div>
   </div>`:"";
 
-  const recent=projs.slice(0,5);
+  const recent=[...projs].sort((a,b)=>{const da=a.lastUpdated||a.createdAt||"";const db=b.lastUpdated||b.createdAt||"";return db.localeCompare(da);}).slice(0,5);
   let html=`${pendingSection}<div class="card" style="margin-bottom:16px;">
     <div class="ch"><div class="cht">المشاريع الأخيرة</div>
     <button class="btn btn-gh btn-sm" onclick="showPage('projs')">عرض كافة المشاريع</button>
     </div>
     <div style="overflow:auto;"><table class="tbl"><thead><tr>
-      <th>كود المشروع</th><th>المالك</th><th>أضافه</th><th>الحالة</th><th>القيمة التقديرية</th><th>تاريخ الإضافة</th><th>إجراءات</th>
+      <th>كود المشروع</th><th>المالك</th><th>أضافه</th><th>الحالة</th><th>القيمة التقديرية</th><th>آخر تحديث</th><th>إجراءات</th>
     </tr></thead><tbody>`;
   if(!recent.length){html+=`<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--t3);">لا توجد مشاريع بعد</td></tr>`;}
   else html+=recent.map(p=>{
@@ -1584,7 +1604,7 @@ const rDash=()=>{
       <td style="font-size:11px;color:var(--t3);">${addedBy}</td>
       <td>${p.status==="pending"?pill("في انتظار الموافقة","#B7770D"):pill(p.devStatus||"—",DSC[p.devStatus]||"#8896A4")}</td>
       <td style="font-family:monospace;font-size:12px;color:var(--gold);font-weight:700;">${p.pricePerMeter&&p.area?fmtM(p.area*p.pricePerMeter):"—"}</td>
-      <td style="font-size:11px;color:var(--t3);">${p.createdAt||"—"}</td>
+      <td style="font-size:11px;color:var(--t3);">${p.lastUpdated||p.createdAt||"—"}</td>
       <td style="display:flex;gap:4px;flex-wrap:wrap;">
         <button class="btn btn-gh btn-xs" onclick="event.stopPropagation();openProj('${p.id}')">↗ فتح</button>
         ${p.status==="pending"&&["admin","staff"].includes(CU.role)?`<button class="btn btn-gr btn-xs" onclick="event.stopPropagation();approveProj('${p.id}')">✓ اعتماد</button><button class="btn btn-d btn-xs" onclick="event.stopPropagation();rejectProj('${p.id}')">✗ رفض</button>`:""}
@@ -1698,7 +1718,7 @@ const rFile=()=>{
     const dk=doc.key;
     const docNotes=Array.isArray(doc.notes)?doc.notes:(doc.note?[doc.note]:[]);
     const noteTagsHtml2=docNotes.map((n,i)=>`<span style="display:inline-flex;align-items:center;gap:4px;background:#FEF9EC;border:1px solid #E8D08A;border-radius:20px;padding:2px 8px;font-size:10px;color:#7A5C00;white-space:nowrap;">📝 ${n.replace(/</g,"&lt;")}${can?`<button onclick="delNote('${sk}','${dk}',${isC},${i})" style="background:none;border:none;cursor:pointer;color:#B7770D;font-size:13px;line-height:1;padding:0;">×</button>`:""}</span>`).join("");
-    const noteHtml2=can?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;"><input style="width:100%;border:1px solid var(--bdl);border-radius:6px;padding:4px 8px;font-size:10px;color:var(--t2);outline:none;font-family:Cairo,sans-serif;background:transparent;" placeholder="ملاحظة..." onkeydown="if(event.key==='Enter'){event.preventDefault();saveNoteFromInput('${sk}','${dk}',${isC},this);}"/><div id="ntags-${sk}-${dk}" style="display:flex;flex-wrap:wrap;gap:3px;">${noteTagsHtml2}</div></div>`:(docNotes.length?`<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">${noteTagsHtml2}</div>`:"");
+    const noteHtml2=docNotes.length||can?`<div id="ntags-${sk}-${dk}" style="display:flex;flex-wrap:wrap;gap:3px;${docNotes.length?"margin-top:4px;":""}">${noteTagsHtml2}</div>`:"";
     const upSt=doc.up?.status||(doc.up?"approved":null);
     const isAdmin=["admin","staff"].includes(CU.role);
     const upStatus=doc.up?.status||(doc.up?"approved":null);
@@ -1752,39 +1772,8 @@ const rFile=()=>{
           <button onclick="rCD('${sk}','${dk}')" style="background:none;border:none;cursor:pointer;color:#C0392B;font-size:13px;padding:2px 4px;" title="حذف المستند">🗑</button>
         </div>`:""}
       </div>
-      ${upArea}${noteHtml2}${!plain&&sk!=="land"&&can?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--bdl);"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;"><input type="checkbox" ${(doc.fee||{}).enabled?"checked":""} onchange="sFeeEnabled('${sk}','${dk}',${isC},this.checked)" style="cursor:pointer;accent-color:var(--gold);width:13px;height:13px;"/><span style="font-size:11px;color:var(--t3);">💰 يوجد رسوم لهذا الإجراء</span></label><div id="fb-${sk}-${dk}" style="display:${(doc.fee||{}).enabled?"flex":"none"};margin-top:6px;background:var(--w2);border-radius:8px;padding:8px;flex-wrap:wrap;gap:6px;align-items:center;"><input placeholder="💰 المبلغ (جنيه)" value="${((doc.fee||{}).amount||"").replace(/"/g,"&quot;")}" onchange="sFee('${sk}','${dk}',${isC},'amount',this.value)" style="flex:1;min-width:90px;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);"/>${(doc.fee||{}).receipt?`<div style="flex:1;min-width:110px;background:var(--grl);border-radius:6px;padding:5px 8px;display:flex;align-items:center;gap:5px;font-size:11px;"><span>🧾</span><span style="flex:1;color:var(--gr);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px;">${doc.fee.receipt.name}</span><a href="${doc.fee.receipt.url||doc.fee.receipt.data}" download="${doc.fee.receipt.name}" class="btn btn-gh btn-xs">⬇</a><button onclick="sFee('${sk}','${dk}',${isC},'receipt',null);rFile();" class="btn btn-d btn-xs">🗑</button></div>`:`<label style="flex:1;min-width:100px;display:flex;align-items:center;justify-content:center;gap:5px;border:1.5px dashed var(--bdl);border-radius:6px;padding:5px 9px;cursor:pointer;font-size:11px;color:var(--t3);background:var(--w);">🧾 رفع الإيصال<input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadFeeReceipt('${sk}','${dk}',${isC},this)" style="display:none;"/></label>`}<input type="date" value="${(doc.fee||{}).date||""}" onchange="sFee('${sk}','${dk}',${isC},'date',this.value)" style="flex:1;min-width:110px;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);"/><select onchange="sFee('${sk}','${dk}',${isC},'method',this.value)" style="flex:1;min-width:100px;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);"><option value="">💳 طريقة الدفع</option>${["نقدي","تحويل بنكي","شيك مصرفي","فودافون كاش","إنستاباي"].map(m=>`<option ${(doc.fee||{}).method===m?"selected":""}>${m}</option>`).join("")}</select></div></div>`:""}
-      ${(()=>{
-        const cs=doc.consultant||{};
-        const cFile=(field,label)=>{
-          const f=cs[field];
-          if(f)return`<div style="background:var(--w);border:1px solid var(--bdl);border-radius:6px;padding:5px;text-align:center;">
-            <div style="font-size:9px;color:var(--t3);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</div>
-            <div style="display:flex;gap:2px;justify-content:center;">
-              <button onclick="previewFile('${f.url||f.data}','${(f.name||"").replace(/'/g,"\\'")}','${f.type||""}')" class="btn btn-gh btn-xs">👁</button>
-              <a href="${f.url||f.data}" download="${f.name}" class="btn btn-gh btn-xs">⬇</a>
-              ${can?`<button onclick="delConsultantDoc('${sk}','${dk}',${isC},'${field}')" class="btn btn-d btn-xs">🗑</button>`:""}
-            </div>
-          </div>`;
-          return can?`<label style="background:var(--w2);border:1.5px dashed var(--bdl);border-radius:6px;padding:5px;cursor:pointer;display:block;text-align:center;">
-            <div style="font-size:9px;color:var(--t3);margin-bottom:2px;">${label}</div>
-            <div style="font-size:11px;color:var(--t3);opacity:.6;">📤</div>
-            <input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadConsultantDoc('${sk}','${dk}',${isC},'${field}',this)" style="display:none;"/>
-          </label>`:`<div style="background:var(--w2);border-radius:6px;padding:5px;text-align:center;"><div style="font-size:9px;color:var(--t3);">${label}</div><div style="color:var(--t3);font-size:10px;">—</div></div>`;
-        };
-        if(sk==="land"||plain)return"";
-        if(!cs.enabled&&!can)return"";
-        return`<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--bdl);">
-          ${can?`<label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;margin-bottom:${cs.enabled?"6px":"0"};">
-            <input type="checkbox" ${cs.enabled?"checked":""} onchange="sConsultantEnabled('${sk}','${dk}',${isC},this.checked)" style="cursor:pointer;accent-color:#3D5A8A;width:13px;height:13px;"/>
-            <span style="font-size:11px;color:var(--t3);">👤 يوجد استشاري / مهندس</span>
-          </label>`:(cs.enabled?`<div style="font-size:11px;color:var(--t2);font-weight:700;margin-bottom:6px;">👤 الاستشاري / المهندس</div>`:"")}
-          <div id="cb-${sk}-${dk}" style="display:${cs.enabled?"grid":"none"};grid-template-columns:1fr 1fr 1fr;gap:5px;">
-            ${cFile("karneh","كارنيه النقابة")}
-            ${cFile("taxCard","بطاقة ضريبية")}
-            ${cFile("registry","سجل هندسي / تجاري")}
-          </div>
-        </div>`;
-      })()}
+      ${upArea}${noteHtml2}
+      ${!plain&&sk!=="land"?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--bdl);display:flex;align-items:center;gap:6px;">${can?`<input style="flex:1;min-width:0;border:1px solid var(--bdl);border-radius:6px;padding:4px 8px;font-size:10px;color:var(--t2);outline:none;font-family:Cairo,sans-serif;background:transparent;" placeholder="ملاحظة..." onkeydown="if(event.key==='Enter'){event.preventDefault();saveNoteFromInput('${sk}','${dk}',${isC},this);}"/>`:``}${can?`<label style="display:flex;align-items:center;gap:3px;cursor:pointer;flex-shrink:0;"><input type="checkbox" ${(doc.fee||{}).enabled?"checked":""} onchange="sFeeEnabled('${sk}','${dk}',${isC},this.checked)" style="cursor:pointer;accent-color:var(--gold);width:12px;height:12px;"/><span style="font-size:10px;color:var(--t3);white-space:nowrap;">💰 رسوم</span></label>`:``}${can?`<label style="display:flex;align-items:center;gap:3px;cursor:pointer;flex-shrink:0;"><input type="checkbox" ${(doc.consultant||{}).enabled?"checked":""} onchange="sConsultantEnabled('${sk}','${dk}',${isC},this.checked)" style="cursor:pointer;accent-color:#3D5A8A;width:12px;height:12px;"/><span style="font-size:10px;color:var(--t3);white-space:nowrap;">👤 استشاري</span></label>`:``}</div><div id="fb-${sk}-${dk}" style="display:${(doc.fee||{}).enabled?"flex":"none"};margin-top:6px;background:var(--w2);border-radius:8px;padding:8px;flex-wrap:wrap;gap:6px;align-items:center;"><input placeholder="💰 المبلغ (جنيه)" value="${((doc.fee||{}).amount||"").replace(/"/g,"&quot;")}" onchange="sFee('${sk}','${dk}',${isC},'amount',this.value)" style="flex:1;min-width:90px;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);"/>${(doc.fee||{}).receipt?`<div style="flex:1;min-width:110px;background:var(--grl);border-radius:6px;padding:5px 8px;display:flex;align-items:center;gap:5px;font-size:11px;"><span>🧾</span><span style="flex:1;color:var(--gr);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px;">${doc.fee.receipt.name}</span><a href="${doc.fee.receipt.url||doc.fee.receipt.data}" download="${doc.fee.receipt.name}" class="btn btn-gh btn-xs">⬇</a><button onclick="sFee('${sk}','${dk}',${isC},'receipt',null);rFile();" class="btn btn-d btn-xs">🗑</button></div>`:`<label style="flex:1;min-width:100px;display:flex;align-items:center;justify-content:center;gap:5px;border:1.5px dashed var(--bdl);border-radius:6px;padding:5px 9px;cursor:pointer;font-size:11px;color:var(--t3);background:var(--w);">🧾 رفع الإيصال<input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadFeeReceipt('${sk}','${dk}',${isC},this)" style="display:none;"/></label>`}<input type="date" value="${(doc.fee||{}).date||""}" onchange="sFee('${sk}','${dk}',${isC},'date',this.value)" style="flex:1;min-width:110px;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);"/><select onchange="sFee('${sk}','${dk}',${isC},'method',this.value)" style="flex:1;min-width:100px;border:1px solid var(--bdl);border-radius:6px;padding:5px 9px;font-size:11px;font-family:Cairo,sans-serif;outline:none;background:var(--w);color:var(--t1);"><option value="">💳 طريقة الدفع</option>${["نقدي","تحويل بنكي","شيك مصرفي","فودافون كاش","إنستاباي"].map(m=>`<option ${(doc.fee||{}).method===m?"selected":""}>${m}</option>`).join("")}</select></div>${(()=>{const cs=doc.consultant||{};const cFile=(field,label)=>{const f=cs[field];if(f)return`<div style="background:var(--w);border:1px solid var(--bdl);border-radius:6px;padding:5px;text-align:center;"><div style="font-size:9px;color:var(--t3);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</div><div style="display:flex;gap:2px;justify-content:center;"><button onclick="previewFile('${f.url||f.data}','${(f.name||"").replace(/'/g,"\\'")}','${f.type||""}')" class="btn btn-gh btn-xs">👁</button><a href="${f.url||f.data}" download="${f.name}" class="btn btn-gh btn-xs">⬇</a>${can?`<button onclick="delConsultantDoc('${sk}','${dk}',${isC},'${field}')" class="btn btn-d btn-xs">🗑</button>`:""}</div></div>`;return can?`<label style="background:var(--w2);border:1.5px dashed var(--bdl);border-radius:6px;padding:5px;cursor:pointer;display:block;text-align:center;"><div style="font-size:9px;color:var(--t3);margin-bottom:2px;">${label}</div><div style="font-size:11px;color:var(--t3);opacity:.6;">📤</div><input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadConsultantDoc('${sk}','${dk}',${isC},'${field}',this)" style="display:none;"/></label>`:`<div style="background:var(--w2);border-radius:6px;padding:5px;text-align:center;"><div style="font-size:9px;color:var(--t3);">${label}</div><div style="color:var(--t3);font-size:10px;">—</div></div>`;};if(!cs.enabled&&!can)return"";return`<div id="cb-${sk}-${dk}" style="display:${cs.enabled?"grid":"none"};grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:6px;">${cFile("karneh","كارنيه النقابة")}${cFile("taxCard","بطاقة ضريبية")}${cFile("registry","سجل هندسي / تجاري")}</div>`;})()}`:``}
     </div>`;
   };
 
@@ -1797,18 +1786,24 @@ const rFile=()=>{
       const engKeys=["eng1","eng2","eng3","eng4","eng5","eng6"];
       const elevKeys=["p7","p7b","p7c"];
       const exKeys=["p10","p11","p12"];
+      const tasaluhKeys=["ts1","ts2","ts3","ts4"];
       // inject missing template docs into allDocs for this render
       const tplPermits=STAGES.find(s=>s.key==="permits")?.docs||[];
       const allDocsEx=[...allDocs];
-      tplPermits.filter(t=>[...engKeys,...elevKeys,...exKeys].includes(t.key)&&!allDocsEx.find(d=>d.key===t.key)).forEach(t=>allDocsEx.push({...t,up:null}));
+      tplPermits.filter(t=>[...engKeys,...elevKeys,...exKeys,...tasaluhKeys].includes(t.key)&&!allDocsEx.find(d=>d.key===t.key)).forEach(t=>allDocsEx.push({...t,up:null}));
       const engDocs=engKeys.map(k=>allDocsEx.find(d=>d.key===k)).filter(Boolean);
       const elevDocs=elevKeys.map(k=>allDocsEx.find(d=>d.key===k)).filter(Boolean);
       const exDocs=exKeys.map(k=>allDocsEx.find(d=>d.key===k)).filter(Boolean);
-      const regularDocs=allDocs.filter(d=>!engKeys.includes(d.key)&&!elevKeys.includes(d.key)&&!exKeys.includes(d.key)&&!(stage.cd||[]).some(c=>c.key===d.key));
+      const tasaluhDocs=(proj.requiredWorks||[]).includes("تصالح على مخالفة")?tasaluhKeys.map(k=>allDocsEx.find(d=>d.key===k)).filter(Boolean):[];
+      const regularDocs=allDocs.filter(d=>!engKeys.includes(d.key)&&!elevKeys.includes(d.key)&&!exKeys.includes(d.key)&&!tasaluhKeys.includes(d.key)&&!(stage.cd||[]).some(c=>c.key===d.key));
       const cdDocs=stage.cd||[];
       const exCdDocs=cdDocs.filter(d=>d.key.startsWith("ex_cd_"));
       const otherCdDocs=cdDocs.filter(d=>!d.key.startsWith("ex_cd_"));
       let html=regularDocs.map(d=>`${mkDocCard(d,sk,false,false)}<div style="margin-bottom:8px;"></div>`).join("");
+      if(tasaluhDocs.length){
+        html+=ownerHeader("مستندات التصالح","⚖️","#B8860B");
+        html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">${tasaluhDocs.map(d=>mkDocCard(d,sk,false,true)).join("")}</div><div style="margin-bottom:8px;"></div>`;
+      }
       if(elevDocs.length){
         html+=ownerHeader("مستندات المصعد","🛗","#5A3A8A");
         html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">${elevDocs.map(d=>mkDocCard(d,sk,false,true)).join("")}</div><div style="margin-bottom:8px;"></div>`;
@@ -2840,6 +2835,12 @@ const saveEditProj=id=>{
     ].forEach(d=>{if(!_ex.has(d.key)){_pStage.docs.push({...d,up:null,notes:[]});}});
     if((proj.basementCount||0)>=2&&!_ex.has("p_bsmt2"))
       _pStage.docs.push({key:"p_bsmt2",label:"تقرير سند جوانب حفر",req:true,cond:"bsmt2",up:null,notes:[]});
+    if((proj.requiredWorks||[]).includes("تصالح على مخالفة"))[
+      {key:"ts1",label:"تحليل كربوني / تصوير جوي",req:true,cond:"tasaluh"},
+      {key:"ts2",label:"شهادة مؤمنة",req:true,cond:"tasaluh"},
+      {key:"ts3",label:"تقرير سلامة إنشائية",req:true,cond:"tasaluh"},
+      {key:"ts4",label:"نموذج فني",req:true,cond:"tasaluh"},
+    ].forEach(d=>{if(!_ex.has(d.key)){_pStage.docs.push({...d,up:null,notes:[]});}});
   }
   LS.s(K.p,projs);
   document.getElementById("m-edit-proj")?.remove();
@@ -3549,6 +3550,7 @@ const svPF=()=>{
       if(d.cond==="elev"&&!PFrm.hasElevator)return false;
       if(d.cond==="comm"&&PFrm.activity!=="تجاري")return false;
       if(d.cond==="bsmt2"&&(PFrm.basementCount||0)<2)return false;
+      if(d.cond==="tasaluh"&&!(PFrm.requiredWorks||[]).includes("تصالح على مخالفة"))return false;
       return true;
     }).map(d=>({...d,up:null,note:""})),cd:[]}));
 
