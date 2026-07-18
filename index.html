@@ -9,6 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
@@ -492,6 +493,8 @@ body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--t1);-webkit
         <div id="db"></div>
       </div>
 
+      <div class="page hid" id="pg-adgen"></div>
+
       <div class="page hid" id="pg-projs">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
           <div>
@@ -649,6 +652,7 @@ firebase.initializeApp({
 });
 const DB=firebase.firestore();
 const ST=firebase.storage();
+const FN=firebase.functions();
 const pushDB=(k,v)=>{if(k==="snd_ss4"||k==="snd_rm4")return;DB.collection("sanad").doc(k).set({v:JSON.stringify(v)}).catch(()=>{});};
 
 const uploadToST=(file,projId,stageKey,docKey)=>new Promise((resolve,reject)=>{
@@ -682,7 +686,7 @@ const LS={
   s:(k,v)=>{localStorage.setItem(k,JSON.stringify(v));pushDB(k,v);},
   d:k=>{localStorage.removeItem(k);DB.collection("sanad").doc(k).delete().catch(()=>{});}
 };
-const K={u:"snd_u4",p:"snd_p4",svc:"snd_s4",seq:"snd_q4",ss:"snd_ss4",rm:"snd_rm4",wa:"snd_wa4",lang:"snd_lang4",logo:"snd_logo4",notif:"snd_ntf4",tasks:"snd_tk4",prof:"snd_pr4"};
+const K={u:"snd_u4",p:"snd_p4",svc:"snd_s4",seq:"snd_q4",ss:"snd_ss4",rm:"snd_rm4",wa:"snd_wa4",lang:"snd_lang4",logo:"snd_logo4",notif:"snd_ntf4",tasks:"snd_tk4",prof:"snd_pr4",adgen:"snd_adg4"};
 
 // ── INIT DATA ──
 const initData=()=>{
@@ -1271,12 +1275,14 @@ const buildSB=()=>{
       {s:"الرئيسية"},{k:"dash",i:"⊞",l:"لوحة التحكم"},
       {s:"العمل"},{k:"projs",i:"◆",l:"المشاريع"},{k:"svcs",i:"⚡",l:"طلبات الخدمة",b:true},{k:"contacts",i:"◉",l:"العملاء"},
       {s:"العمليات"},{k:"tasks",i:"☑",l:"المهام",b:true},{k:"__pf__",i:"⏳",l:"طلبات الموافقة",b:true},
+      {s:"التسويق"},{k:"adgen",i:"🎬",l:"المحتوى الإعلاني"},
       {s:"الإدارة"},{k:"users",i:"👥",l:"المستخدمون",b:true},{k:"staff-mgmt",i:"◈",l:"الموظفون"},{k:"settings",i:"⚙",l:"الإعدادات"}
     ],
     staff:[
       {s:"الرئيسية"},{k:"dash",i:"⊞",l:"لوحة التحكم"},
       {s:"العمل"},{k:"projs",i:"◆",l:"المشاريع"},{k:"svcs",i:"⚡",l:"طلبات الخدمة"},{k:"contacts",i:"◉",l:"العملاء"},
       {s:"العمليات"},{k:"tasks",i:"☑",l:"المهام",b:true},{k:"__pf__",i:"⏳",l:"طلبات الموافقة",b:true},
+      {s:"التسويق"},{k:"adgen",i:"🎬",l:"المحتوى الإعلاني"},
       {k:"settings",i:"⚙",l:"الإعدادات"}
     ],
     office:[
@@ -1413,9 +1419,151 @@ const showPendingFiles=()=>{
   m.classList.toggle("hid");
 };
 
+// ── AD CONTENT GENERATOR (Higgsfield) ──
+const AD_APPS=[
+  {id:"bytedance/seedream/v4/text-to-image",label:"Seedream v4 — نص إلى صورة"},
+];
+const adgenPolls={};
+
+const rAdGen=()=>{
+  const hist=LS.g(K.adgen)||[];
+  $("pg-adgen").innerHTML=`
+    <div style="max-width:900px;margin:0 auto;">
+      <div class="card" style="margin-bottom:20px;">
+        <div class="ch"><div class="cht">🎬 مولّد المحتوى الإعلاني (Higgsfield)</div></div>
+        <div class="cp">
+          <div style="font-size:11px;color:var(--t3);margin-bottom:14px;line-height:1.6;">
+            يولّد صور/فيديوهات إعلانية عبر Higgsfield API من خلال دالة سحابية آمنة — الـ API Secret متخزن في السيرفر فقط ومش موجود في كود الصفحة.
+          </div>
+          <textarea id="ag-prompt" placeholder="اوصف المحتوى الإعلاني اللي عايزه... مثال: إعلان لشقة فاخرة في القاهرة الجديدة، إضاءة ذهبية، أسلوب سينمائي" rows="3" style="width:100%;border:1.5px solid var(--bd);border-radius:8px;padding:10px 12px;font-family:Cairo,sans-serif;font-size:13px;resize:vertical;margin-bottom:10px;"></textarea>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+            <select id="ag-app" style="flex:1;min-width:220px;border:1.5px solid var(--bd);border-radius:8px;padding:9px 10px;font-family:Cairo,sans-serif;font-size:12px;">
+              ${AD_APPS.map(a=>`<option value="${a.id}">${a.label}</option>`).join("")}
+              <option value="__custom__">— موديل مخصص (اكتب المعرّف يدويًا) —</option>
+            </select>
+            <input id="ag-app-custom" placeholder="مثال: bytedance/seedance/v1/text-to-video" class="hid" style="flex:1;min-width:220px;border:1.5px solid var(--bd);border-radius:8px;padding:9px 10px;font-family:Cairo,sans-serif;font-size:12px;"/>
+            <select id="ag-ratio" style="width:140px;border:1.5px solid var(--bd);border-radius:8px;padding:9px 10px;font-family:Cairo,sans-serif;font-size:12px;">
+              <option value="">نسبة تلقائية</option>
+              <option value="1:1">1:1</option>
+              <option value="16:9">16:9</option>
+              <option value="9:16">9:16</option>
+              <option value="4:5">4:5</option>
+            </select>
+          </div>
+          <button class="btn btn-p" onclick="submitAdGen()" id="ag-btn">✨ توليد</button>
+          <span style="font-size:11px;color:var(--t3);margin-right:10px;">لمعرّفات موديلات إضافية (فيديو مثلاً) راجع <a href="https://cloud.higgsfield.ai" target="_blank" style="color:var(--gold);">cloud.higgsfield.ai</a></span>
+        </div>
+      </div>
+
+      <div style="font-size:14px;font-weight:800;color:var(--t1);margin-bottom:10px;">السجل (${hist.length})</div>
+      <div id="ag-hist" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;"></div>
+    </div>`;
+
+  $("ag-app").onchange=e=>{$("ag-app-custom").classList.toggle("hid",e.target.value!=="__custom__");};
+  renderAdGenHist();
+  hist.filter(h=>h.status==="pending").forEach(h=>pollAdGen(h.id));
+};
+
+const renderAdGenHist=()=>{
+  const hist=LS.g(K.adgen)||[];
+  const el=$("ag-hist");if(!el)return;
+  if(hist.length===0){
+    el.innerHTML=`<div style="grid-column:1/-1;padding:32px;text-align:center;color:var(--t3);background:var(--w);border:1px solid var(--bd);border-radius:12px;">لسه معملتش أي محتوى إعلاني</div>`;
+    return;
+  }
+  el.innerHTML=hist.slice().reverse().map(h=>{
+    const badge=h.status==="pending"
+      ?`<span class="pill" style="background:rgba(183,119,13,.12);color:#B7770D;">⏳ جاري التوليد</span>`
+      :h.status==="failed"
+      ?`<span class="pill" style="background:rgba(192,57,43,.12);color:#C0392B;">✗ فشل</span>`
+      :`<span class="pill" style="background:rgba(27,122,74,.12);color:#1B7A4A;">✓ جاهز</span>`;
+    const media=h.status==="done"&&h.resultUrl
+      ?(h.mediaType==="video"
+        ?`<video src="${h.resultUrl}" controls style="width:100%;height:150px;object-fit:cover;background:#000;"></video>`
+        :`<img src="${h.resultUrl}" style="width:100%;height:150px;object-fit:cover;"/>`)
+      :`<div style="width:100%;height:150px;display:flex;align-items:center;justify-content:center;background:var(--w2);color:var(--t3);font-size:24px;">${h.status==="failed"?"✗":"⏳"}</div>`;
+    return`<div class="card">
+      ${media}
+      <div class="cp" style="padding:12px;">
+        <div style="font-size:11px;color:var(--t2);margin-bottom:6px;max-height:48px;overflow:hidden;">${(h.prompt||"").slice(0,90)}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          ${badge}
+          <div style="display:flex;gap:6px;">
+            ${h.status==="done"&&h.resultUrl?`<a href="${h.resultUrl}" target="_blank" class="btn btn-gh btn-xs">تحميل</a>`:""}
+            <button class="btn btn-gh btn-xs" onclick="deleteAdGen('${h.id}')">🗑</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+};
+
+const submitAdGen=async()=>{
+  const prompt=$("ag-prompt").value.trim();
+  if(!prompt){toast("اكتب وصف المحتوى الإعلاني أولاً","warn");return;}
+  const appSel=$("ag-app").value;
+  const application=appSel==="__custom__"?($("ag-app-custom").value||"").trim():appSel;
+  if(!application){toast("حدد الموديل","warn");return;}
+  const ratio=$("ag-ratio").value;
+  const btn=$("ag-btn");btn.disabled=true;btn.textContent="جارٍ الإرسال...";
+
+  const id="ag_"+Date.now();
+  const mediaType=application.includes("video")?"video":"image";
+  const record={id,prompt,application,mediaType,status:"pending",createdAt:new Date().toISOString(),createdBy:CU.id,createdByName:CU.name};
+
+  try{
+    const res=await FN.httpsCallable("generateAdContent")({
+      userId:CU.id,prompt,application,params:ratio?{aspect_ratio:ratio}:undefined
+    });
+    record.requestId=res.data.requestId;
+    record.statusUrl=res.data.statusUrl;
+    const hist=LS.g(K.adgen)||[];hist.push(record);LS.s(K.adgen,hist);
+    $("ag-prompt").value="";
+    renderAdGenHist();
+    pollAdGen(id);
+    toast("بدأ التوليد، هيظهر هنا أول ما يخلص","ok");
+  }catch(e){
+    toast("فشل الاتصال بـ Higgsfield: "+(e.message||e),"err");
+  }finally{
+    btn.disabled=false;btn.textContent="✨ توليد";
+  }
+};
+
+const pollAdGen=id=>{
+  if(adgenPolls[id])return;
+  const tick=async()=>{
+    const hist=LS.g(K.adgen)||[];
+    const rec=hist.find(h=>h.id===id);
+    if(!rec||rec.status!=="pending"){delete adgenPolls[id];return;}
+    try{
+      const res=await FN.httpsCallable("checkAdContentStatus")({userId:CU.id,statusUrl:rec.statusUrl});
+      const data=res.data;
+      if(data.status==="completed"){
+        rec.status="done";
+        rec.resultUrl=data.images?.[0]?.url||data.videos?.[0]?.url||data.video?.url||data.url||null;
+        LS.s(K.adgen,(LS.g(K.adgen)||[]).map(h=>h.id===id?rec:h));
+        delete adgenPolls[id];renderAdGenHist();return;
+      }
+      if(["failed","nsfw","canceled","cancelled"].includes(data.status)){
+        rec.status="failed";
+        LS.s(K.adgen,(LS.g(K.adgen)||[]).map(h=>h.id===id?rec:h));
+        delete adgenPolls[id];renderAdGenHist();return;
+      }
+    }catch(e){/* transient — keep polling */}
+    adgenPolls[id]=setTimeout(tick,3000);
+  };
+  adgenPolls[id]=setTimeout(tick,50);
+};
+
+const deleteAdGen=id=>{
+  clearTimeout(adgenPolls[id]);delete adgenPolls[id];
+  LS.s(K.adgen,(LS.g(K.adgen)||[]).filter(h=>h.id!==id));
+  renderAdGenHist();
+};
+
 // ── PAGE ROUTING ──
-const PGS=["dash","projs","file","svcs","users","contacts","prof","office-staff","staff-mgmt","tasks","settings"];
-const PTIT={dash:"لوحة التحكم",projs:"المشاريع",file:"ملف المشروع",svcs:"طلبات الخدمة",users:"المستخدمون",contacts:"العملاء",prof:"المهنيون","office-staff":"موظفو المكتب","staff-mgmt":"الموظفون",tasks:"المهام",settings:"الإعدادات"};
+const PGS=["dash","projs","file","svcs","users","contacts","prof","office-staff","staff-mgmt","tasks","settings","adgen"];
+const PTIT={dash:"لوحة التحكم",projs:"المشاريع",file:"ملف المشروع",svcs:"طلبات الخدمة",users:"المستخدمون",contacts:"العملاء",prof:"المهنيون","office-staff":"موظفو المكتب","staff-mgmt":"الموظفون",tasks:"المهام",settings:"الإعدادات",adgen:"المحتوى الإعلاني"};
 
 const showPage=pg=>{
   PGS.forEach(p=>$("pg-"+p)?.classList.add("hid"));
@@ -1433,6 +1581,7 @@ const showPage=pg=>{
   if(pg==="staff-mgmt")rStaffMgmt();
   if(pg==="tasks")rTasks();
   if(pg==="settings")rSettings();
+  if(pg==="adgen")rAdGen();
 };
 
 const togSB=()=>{$("sb").classList.toggle("sl");$("main").classList.toggle("sl");};
